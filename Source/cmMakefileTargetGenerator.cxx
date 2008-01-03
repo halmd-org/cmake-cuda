@@ -522,7 +522,8 @@ cmMakefileTargetGenerator
                                       depends, commands, false);
 
   bool lang_is_c_or_cxx = ((strcmp(lang, "C") == 0) ||
-                           (strcmp(lang, "CXX") == 0));
+                           (strcmp(lang, "CXX") == 0) ||
+                           (strcmp(lang, "CUDA") == 0));
   bool do_preprocess_rules = lang_is_c_or_cxx &&
     this->LocalGenerator->GetCreatePreprocessedSourceRules();
   bool do_assembly_rules = lang_is_c_or_cxx &&

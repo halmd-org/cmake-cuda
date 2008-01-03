@@ -300,7 +300,7 @@ void cmLocalUnixMakefileGenerator3::WriteLocalMakefile()
     for(std::vector<LocalObjectEntry>::const_iterator ei =
           lo->second.begin(); ei != lo->second.end(); ++ei)
       {
-      if(ei->Language == "C" || ei->Language == "CXX")
+      if(ei->Language == "C" || ei->Language == "CXX" || ei->Language == "CUDA")
         {
         lang_is_c_or_cxx = true;
         }
