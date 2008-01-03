@@ -1313,7 +1313,7 @@ bool cmLocalUnixMakefileGenerator3::ScanDependencies(const char* tgtInfo)
 
     // Create the scanner for this language
     cmDepends *scanner = 0;
-    if(lang == "C" || lang == "CXX" || lang == "RC")
+    if(lang == "C" || lang == "CXX" || lang == "RC" || lang == "CUDA" )
       {
       std::string includeCacheFileName = dir;
       includeCacheFileName += "/";
