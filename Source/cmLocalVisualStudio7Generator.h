@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio7Generator.h,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.22.2.6 $
+  Date:      $Date: 2007/12/18 20:02:08 $
+  Version:   $Revision: 1.22.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,6 +64,7 @@ public:
     }
   void SetVersion71() {this->Version = 71;}
   void SetVersion8() {this->Version = 8;}
+  void SetVersion9() {this->Version = 9;}
   void SetPlatformName(const char* n) { this->PlatformName = n;}
   virtual void ConfigureFinalPass();
   
@@ -144,7 +145,11 @@ struct cmVS7FlagTable
     UserIgnored  = (1<<1), // ignore any user value
     UserRequired = (1<<2), // match only when user value is non-empty
     Continue     = (1<<3), // continue looking for matching entries
-
+    SemicolonAppendable = (1<<4), // a flag that if specified multiple times
+                                  // should have its value appended to the
+                                  // old value with semicolons (e.g.
+                                  // /NODEFAULTLIB: => 
+                                  // IgnoreDefaultLibraryNames)
     UserValueIgnored  = UserValue | UserIgnored,
     UserValueRequired = UserValue | UserRequired
   };

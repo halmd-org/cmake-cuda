@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:21:32 $
-  Version:   $Revision: 1.96.2.9 $
+  Date:      $Date: 2007/12/04 22:14:05 $
+  Version:   $Revision: 1.96.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -915,16 +915,22 @@ const char* cmTarget::GetDirectory(const char* config)
 
 const char* cmTarget::GetLocation(const char* config)
 {
-  this->Location = this->GetDirectory();
+  this->Location = this->GetDirectory(config);
   if(!this->Location.empty())
     {
     this->Location += "/";
     }
-  const char* cfgid = this->Makefile->GetDefinition("CMAKE_CFG_INTDIR");
-  if(cfgid && strcmp(cfgid, ".") != 0)
+  if(!config)
     {
-    this->Location += cfgid;
-    this->Location += "/";
+     // No specific configuration was given so it will not appear on
+     // the result of GetDirectory.  Add a name here to be replaced at
+     // build time.
+    const char* cfgid = this->Makefile->GetDefinition("CMAKE_CFG_INTDIR");
+    if(cfgid && strcmp(cfgid, ".") != 0)
+      {
+      this->Location += cfgid;
+      this->Location += "/";
+       }
     }
   this->Location += this->GetFullName(config, false);
   return this->Location.c_str();

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTest.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/05/17 18:41:52 $
-  Version:   $Revision: 1.300.2.5 $
+  Date:      $Date: 2007/12/04 22:14:05 $
+  Version:   $Revision: 1.300.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -314,9 +314,12 @@ int cmCTest::Initialize(const char* binary_dir, bool new_tag,
       << "   Build name: " << this->GetCTestConfiguration("BuildName")
       << std::endl);
     cmCTestLog(this, DEBUG, "Produce XML is on" << std::endl);
-    if ( this->GetCTestConfiguration("NightlyStartTime").empty() )
+    if ( this->TestModel == cmCTest::NIGHTLY &&
+         this->GetCTestConfiguration("NightlyStartTime").empty() )
       {
-      cmCTestLog(this, DEBUG, "No nightly start time" << std::endl);
+      cmCTestLog(this, WARNING,
+                 "WARNING: No nightly start time found please set in"
+                 " CTestConfig.cmake or DartConfig.cmake" << std::endl);
   cmCTestLog(this, DEBUG, "Here: " << __LINE__ << std::endl);
       return 0;
       }
@@ -1191,6 +1194,13 @@ int cmCTest::RunTest(std::vector<const char*> argv,
 //----------------------------------------------------------------------
 void cmCTest::StartXML(std::ostream& ostr)
 {
+  if(this->CurrentTag.empty())
+    {
+    cmCTestLog(this, ERROR_MESSAGE,
+               "Current Tag empty, this may mean"
+               " NightlStartTime was not set correctly." << std::endl);
+    cmSystemTools::SetFatalErrorOccured();
+    }
   ostr << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
     << "<Site BuildName=\"" << this->GetCTestConfiguration("BuildName")
     << "\" BuildStamp=\"" << this->CurrentTag << "-"

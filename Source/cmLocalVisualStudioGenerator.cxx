@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudioGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.2.2.5 $
+  Date:      $Date: 2008/01/15 21:02:31 $
+  Version:   $Revision: 1.2.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -126,6 +126,15 @@ cmLocalVisualStudioGenerator
     newline = newline_text;
     script += "cd ";
     script += this->Convert(workingDirectory, START_OUTPUT, SHELL);
+
+    // Change the working drive.
+    if(workingDirectory[0] && workingDirectory[1] == ':')
+      {
+      script += newline;
+      newline = newline_text;
+      script += workingDirectory[0];
+      script += workingDirectory[1];
+      }
     }
   // for visual studio IDE add extra stuff to the PATH
   // if CMAKE_MSVCIDE_RUN_PATH is set.

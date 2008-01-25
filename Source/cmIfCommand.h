@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIfCommand.h,v $
   Language:  C++
-  Date:      $Date: 2007/05/17 18:41:52 $
-  Version:   $Revision: 1.32.2.6 $
+  Date:      $Date: 2007/10/25 18:03:48 $
+  Version:   $Revision: 1.32.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -143,6 +143,8 @@ public:
       "  IF(IS_DIRECTORY directory-name)\n"
       "True if the given name is a directory.  "
       "Behavior is well-defined only for full paths.\n"
+      "  IF(IS_ABSOLUTE path)\n"
+      "True if the given path is an absolute path.\n "
       "  IF(variable MATCHES regex)\n"
       "  IF(string MATCHES regex)\n"
       "True if the given string or variable's value matches the given "

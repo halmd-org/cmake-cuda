@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio7Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/05/17 18:41:52 $
-  Version:   $Revision: 1.125.2.13 $
+  Date:      $Date: 2008/01/15 21:02:31 $
+  Version:   $Revision: 1.125.2.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -359,9 +359,6 @@ cmVS7FlagTable cmLocalVisualStudio7GeneratorFlagTable[] =
   {"EnableFunctionLevelLinking", "Gy",
    "EnableFunctionLevelLinking", "TRUE", 0},
   {"EnableIntrinsicFunctions", "Oi", "EnableIntrinsicFunctions", "TRUE", 0},
-  {"ExceptionHandling", "EHsc", "enable c++ exceptions", "TRUE", 0},
-  {"ExceptionHandling", "EHa", "enable c++ exceptions", "2", 0},
-  {"ExceptionHandling", "GX", "enable c++ exceptions", "TRUE", 0},
   {"GlobalOptimizations", "Og", "Global Optimize", "TRUE", 0},
   {"ImproveFloatingPointConsistency", "Op", 
    "ImproveFloatingPointConsistency", "TRUE", 0},
@@ -385,7 +382,7 @@ cmVS7FlagTable cmLocalVisualStudio7GeneratorLinkFlagTable[] =
   {"LinkIncremental", "INCREMENTAL:NO", "link incremental", "1", 0},
   {"LinkIncremental", "INCREMENTAL:YES", "link incremental", "2", 0},
   {"IgnoreDefaultLibraryNames", "NODEFAULTLIB:", "default libs to ignore", "",
-   cmVS7FlagTable::UserValue},
+   cmVS7FlagTable::UserValue | cmVS7FlagTable::SemicolonAppendable},
   {"IgnoreAllDefaultLibraries", "NODEFAULTLIB", "ignore all default libs",
    "TRUE", 0},
   {0,0,0,0,0}
@@ -1464,14 +1461,7 @@ cmLocalVisualStudio7Generator::WriteProjectStart(std::ostream& fout,
     }
   else
     {
-    if (this->Version == 8)
-      {
-      fout << "\tVersion=\"8.00\"\n";
-      }
-    else
-      {
-      fout << "\tVersion=\"7.00\"\n";
-      }
+    fout <<  "\tVersion=\"" << this->Version << ".00\"\n";
     }
   const char* projLabel = target.GetProperty("PROJECT_LABEL");
   if(!projLabel)
@@ -1807,51 +1797,68 @@ cmLocalVisualStudio7GeneratorOptions
 ::CheckFlagTable(cmVS7FlagTable const* table, const char* flag,
                  bool& flag_handled)
 {
-      // Look for an entry in the flag table matching this flag.
+  // Look for an entry in the flag table matching this flag.
   for(cmVS7FlagTable const* entry = table; entry->IDEName; ++entry)
+    {
+    bool entry_found = false;
+    if(entry->special & cmVS7FlagTable::UserValue)
+      {
+      // This flag table entry accepts a user-specified value.  If
+      // the entry specifies UserRequired we must match only if a
+      // non-empty value is given.
+      int n = static_cast<int>(strlen(entry->commandFlag));
+      if(strncmp(flag+1, entry->commandFlag, n) == 0 &&
+         (!(entry->special & cmVS7FlagTable::UserRequired) ||
+          static_cast<int>(strlen(flag+1)) > n))
         {
-        bool entry_found = false;
-        if(entry->special & cmVS7FlagTable::UserValue)
+        if(entry->special & cmVS7FlagTable::UserIgnored)
           {
-          // This flag table entry accepts a user-specified value.  If
-          // the entry specifies UserRequired we must match only if a
-          // non-empty value is given.
-          int n = static_cast<int>(strlen(entry->commandFlag));
-          if(strncmp(flag+1, entry->commandFlag, n) == 0 &&
-             (!(entry->special & cmVS7FlagTable::UserRequired) ||
-              static_cast<int>(strlen(flag+1)) > n))
+          // Ignore the user-specified value.
+          this->FlagMap[entry->IDEName] = entry->value;
+          } 
+        else if(entry->special & cmVS7FlagTable::SemicolonAppendable)
+          {
+          const char *new_value = flag+1+n;
+          
+          std::map<cmStdString,cmStdString>::iterator itr;
+          itr = this->FlagMap.find(entry->IDEName);
+          if(itr != this->FlagMap.end())
             {
-            if(entry->special & cmVS7FlagTable::UserIgnored)
-              {
-              // Ignore the user-specified value.
-              this->FlagMap[entry->IDEName] = entry->value;
-              }
-            else
-              {
-              // Use the user-specified value.
-              this->FlagMap[entry->IDEName] = flag+1+n;
-              }
-            entry_found = true;
+            // Append to old value (if present) with semicolons;
+            itr->second += ";";
+            itr->second += new_value;
+            }
+          else
+            {
+            this->FlagMap[entry->IDEName] = new_value;
             }
           }
-        else if(strcmp(flag+1, entry->commandFlag) == 0)
+        else
           {
-          // This flag table entry provides a fixed value.
-          this->FlagMap[entry->IDEName] = entry->value;
-          entry_found = true;
+          // Use the user-specified value.
+          this->FlagMap[entry->IDEName] = flag+1+n;
           }
-
-        // If the flag has been handled by an entry not requesting a
-        // search continuation we are done.
-        if(entry_found && !(entry->special & cmVS7FlagTable::Continue))
-          {
-      return true;
-          }
-
-        // If the entry was found the flag has been handled.
-        flag_handled = flag_handled || entry_found;
+        entry_found = true;
         }
-
+      }
+    else if(strcmp(flag+1, entry->commandFlag) == 0)
+      {
+      // This flag table entry provides a fixed value.
+      this->FlagMap[entry->IDEName] = entry->value;
+      entry_found = true;
+      }
+    
+    // If the flag has been handled by an entry not requesting a
+    // search continuation we are done.
+    if(entry_found && !(entry->special & cmVS7FlagTable::Continue))
+      {
+      return true;
+      }
+    
+    // If the entry was found the flag has been handled.
+    flag_handled = flag_handled || entry_found;
+    }
+  
   return false;
 }
 

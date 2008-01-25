@@ -1,11 +1,75 @@
+Changes in CMake 2.4.8
+* MSVC90 now defined for vs 9
+Changes in CMake 2.4.8 RC 13
+* fix vs 9 so it works, again...
+* fix bug 6150, working directory can now change drives with vs custom commands
+* fix windows vista elevation issue with CMakeSetup.exe
+Changes in CMake 2.4.8 RC 12
+* Fix vs 9 so cmake can find it
+* Fix bug 6230 MODULE install with versions was broken
+Changes in CMake 2.4.8 RC 11
+* Remove ability to select install location for mac (it does not work)
+Changes in CMake 2.4.8 RC 10
+* Fix for FindQt4 and glib and gthread, if not found don't use
+Changes in CMake 2.4.8 RC 9
+* add some descriptive text to the mac installer
+Changes in CMake 2.4.8 RC 8
+* Add ability to select install location for mac
+* Add list(FIND) because it is used in new FindQt4.cmake
+Changes in CMake 2.4.8 RC 7
+* Fix tar long file path issue with cpack
+* Add beta support for VS 9 
+* Fix variable name in docs for FindPkgConfig bug 5722
+* Fix for bug 5645 ifort bad pic flag on linux
+Changes in CMake 2.4.8 RC 6
+* Fix for bug 6006 INSTALL DIRECTORY signature problem
+* Update FindQt4 from CVS Head for many bug fixes
+* Fix bug 5638 CMAKE_INSTALL_PREFIX not working on SunOS with CC
+* Fix bug 6117 FindPkgConfig can run twice now
+* Fix bug 6124 touch.exe was required for fortran
+Changes in CMake 2.4.8 RC 5
+* Fix bug 6106 FindPerlLibs.cmake missing escaped $
+* Allow NODEFAULTLIBS to have more than one value bug 5455
+* Suppress regeneration of makefiles during try compile avoid infinite
+  loop in trycompile with some vs 2005 builds.
+* Rest of Fix for fix 5363, removes warning on vs 6
+* Allow for debug libraries in InstallRequiredSystemLibraries.cmake for vs8
+* Fix for bug 4605 JavaEmbedding.framework should not be used.
+Changes in CMake 2.4.8 RC 4
+* fix for cpack and messing up PATH with NSIS
+Changes in CMake 2.4.8 RC 3
+* fix for bug 5363: GET_TARGET_PROPERTY(... DEBUG_LOCATION) 
+  returns value containing $(OutDir)
+* Better error from ctest if nightly time not set
+* Fix for exception handling flags in VS 2003 and up
+* Avoid relinking exclude-from-all directory targets before install
+Changes in CMake 2.4.8 RC 2
+* fix for bug 5590 relative paths in windows not working across drives
+* fix warning/error with TAR_VERBOSE flag
+Changes in CMake 2.4.8 RC 1
+* Fix for kde4-config location 
+* Fix for self extracting .sh files on solaris
+* Remove KDE3_ENABLE_FINAL (did not work)
+* KDE3 fix for 64 bit location of plugins
+* mark PYTHON_EXECUTABLE as advanced
+* Fix for version numbers on NetBSD
+* Add more search directories (install prefix and cmake location)
+* include WindowsPaths in Windows.cmake not just Windows-cl.cmake
+* documentation fix for file, find_package, try_run
+* add IS_ABSOLUTE to if
+* INSTALL() everything which doesn't have a COMPONENT set, is assigned 
+  to the COMPONENT "Unspecified"
+* make #cmakedefine output match autoconf when undefined
+* document cmake remove -f
+* document order of -D and -P
+* add support for DragonFly and GNU hurd
+* fix for fortran depends doing too many scans
 Changes in CMake 2.4.7
 --- RC 11 ----
 * Fix bug 5238 for cygwin versioned executables 
-
-* Allow for platform choice of executable shared libs install
-
+* Fix bug 4805 Allow for platform choice of executable
+   shared libs install
 * Fix @ONLY issues with RC 10
-
 * Add -E make_directory to cmake executable
 --- RC 10 ----
 * Fix rebuild problem with makefiles and cmake vs CMakeSetup 
