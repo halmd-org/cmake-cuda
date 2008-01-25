@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/06/29 16:58:18 $
-  Version:   $Revision: 1.247.2.10 $
+  Date:      $Date: 2007/12/18 20:02:08 $
+  Version:   $Revision: 1.247.2.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -53,6 +53,8 @@
 #    include "cmGlobalVisualStudio7Generator.h"
 #    include "cmGlobalVisualStudio71Generator.h"
 #    include "cmGlobalVisualStudio8Generator.h"
+#    include "cmGlobalVisualStudio9Generator.h"
+#    include "cmGlobalVisualStudio9Win64Generator.h"
 #    include "cmGlobalVisualStudio8Win64Generator.h"
 #    include "cmGlobalBorlandMakefileGenerator.h"
 #    include "cmGlobalNMakeMakefileGenerator.h"
@@ -791,9 +793,12 @@ void CMakeCommandUsage(const char* program)
     " line\n"
     << "  environment             - display the current enviroment\n"
     << "  make_directory dir      - create a directory\n"
-    << "  remeove file1 file2 ... - remove the file(s)\n"
+    << "  remove [-f] file1 file2 ... - remove the file(s), use -f to force "
+       "it\n"
     << "  tar [cxt][vfz] file.tar file/dir1 file/dir2 ... - create a tar.\n"
     << "  time command [args] ... - run command and return elapsed time\n"
+    << "  touch file                - touch a file.\n"
+    << "  touch_nocreate file       - touch a file but do not create it.\n"
 #if defined(_WIN32) && !defined(__CYGWIN__)
     << "  write_regv key value    - write registry value\n"
     << "  delete_regv key         - delete registry value\n"
@@ -934,6 +939,34 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
             {
             return 1;
             }
+          }
+        }
+      return 0;
+      }
+    // Touch file
+    else if (args[1] == "touch" && args.size() > 2)
+      {
+      for (std::string::size_type cc = 2; cc < args.size(); cc ++)
+        {
+        // Complain if the file could not be removed, still exists,
+        // and the -f option was not given.
+        if(!cmSystemTools::Touch(args[cc].c_str(), true))
+          {
+          return 1;
+          }
+        }
+      return 0;
+      }
+    // Touch file
+    else if (args[1] == "touch_nocreate" && args.size() > 2)
+      {
+      for (std::string::size_type cc = 2; cc < args.size(); cc ++)
+        {
+        // Complain if the file could not be removed, still exists,
+        // and the -f option was not given.
+        if(!cmSystemTools::Touch(args[cc].c_str(), false))
+          {
+          return 1;
           }
         }
       return 0;
@@ -1909,6 +1942,10 @@ void cmake::AddDefaultGenerators()
     &cmGlobalVisualStudio71Generator::New;
   this->Generators[cmGlobalVisualStudio8Generator::GetActualName()] =
     &cmGlobalVisualStudio8Generator::New;
+  this->Generators[cmGlobalVisualStudio9Generator::GetActualName()] =
+    &cmGlobalVisualStudio9Generator::New;
+  this->Generators[cmGlobalVisualStudio9Win64Generator::GetActualName()] =
+    &cmGlobalVisualStudio9Win64Generator::New;
   this->Generators[cmGlobalVisualStudio8Win64Generator::GetActualName()] =
     &cmGlobalVisualStudio8Win64Generator::New;
   this->Generators[cmGlobalBorlandMakefileGenerator::GetActualName()] =

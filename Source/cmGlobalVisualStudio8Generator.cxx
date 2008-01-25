@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio8Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.10.2.5 $
+  Date:      $Date: 2007/12/04 22:14:05 $
+  Version:   $Revision: 1.10.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -258,6 +258,12 @@ static cmVS7FlagTable cmVS8ExtraFlagTable[] =
   {"PrecompiledHeaderThrough", "Yu", "Precompiled Header Name", "",
    cmVS7FlagTable::UserValueRequired},
   // There is no YX option in the VS8 IDE.
+
+  // Exception handling mode.  If no entries match, it will be FALSE.
+  {"ExceptionHandling", "GX", "enable c++ exceptions", "1", 0},
+  {"ExceptionHandling", "EHsc", "enable c++ exceptions", "1", 0},
+  {"ExceptionHandling", "EHa", "enable SEH exceptions", "2", 0},
+
   {0,0,0,0,0}
 };
 cmVS7FlagTable const* cmGlobalVisualStudio8Generator::GetExtraFlagTableVS8()

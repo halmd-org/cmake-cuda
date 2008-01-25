@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefile.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/06/29 16:58:18 $
-  Version:   $Revision: 1.335.2.14 $
+  Date:      $Date: 2007/12/17 22:40:58 $
+  Version:   $Revision: 1.335.2.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1251,7 +1251,17 @@ void cmMakefile::AddCacheDefinition(const char* name, const char* value,
       }
 
     }
+  std::string saveValue;
+  if(val)
+    {
+    saveValue = val;
+    }
+  // make ivalidate the const char* 
   this->GetCacheManager()->AddCacheEntry(name, val, doc, type);
+  if(val)
+    {
+    val = saveValue.c_str();
+    }
   this->AddDefinition(name, val);
 }
 
@@ -2500,9 +2510,8 @@ void cmMakefile::ConfigureString(const std::string& input,
         }
       else
         {
-        cmSystemTools::ReplaceString(line, "#cmakedefine", "#undef");
-        output += "/* ";
-        output += line;
+        output += "/* #undef ";
+        output += this->cmDefineRegex.match(1);
         output += " */";
         }
       }

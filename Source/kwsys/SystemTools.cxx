@@ -64,6 +64,11 @@
 # include <windows.h>
 #endif
 
+#ifdef _MSC_VER
+#include <sys/utime.h>
+#else
+#include <utime.h>
+#endif
 // This is a hack to prevent warnings about these functions being
 // declared but not referenced.
 #if defined(__sgi) && !defined(__GNUC__)
@@ -769,6 +774,36 @@ bool SystemTools::FileExists(const char* filename)
     }
 }
 
+bool SystemTools::Touch(const char* filename, bool create)
+{
+  if(create && !SystemTools::FileExists(filename))
+    {
+    FILE* file = fopen(filename, "a+b");
+    if(file)
+      {
+      fclose(file);
+      return true;
+      }
+    return false;
+    }
+#ifdef _MSC_VER
+#define utime _utime
+#define utimbuf _utimbuf
+#endif
+  struct stat fromStat;
+  if(stat(filename, &fromStat) < 0)
+    {
+    return false;
+    }
+  struct utimbuf buf;
+  buf.actime = fromStat.st_atime;
+  buf.modtime = static_cast<time_t>(SystemTools::GetTime());
+  if(utime(filename, &buf) < 0)
+    {
+    return false;
+    }
+  return true;
+}
 
 bool SystemTools::FileTimeCompare(const char* f1, const char* f2,
                                   int* result)
@@ -2704,22 +2739,15 @@ kwsys_stl::string SystemTools::RelativePath(const char* local, const char* remot
     sameCount++;
     }
 
-#if 0
-  // NOTE: We did this at one time to prevent relative paths to the
-  // compiler from looking like "../../../../../../../usr/bin/gcc".
-  // Now however relative paths are only computed for destinations
-  // inside the build tree so this is not a problem.  This is now a
-  // general-purpose method and should not have this hack.  I'm
-  // leaving it in place in case removing it causes a problem so it is
-  // easy to restore:
-  //
-  // If there is nothing in common but the root directory, then just
-  // return the full path.
-  if(sameCount <= 1)
+  // If there is nothing in common at all then just return the full
+  // path.  This is the case only on windows when the paths have
+  // different drive letters.  On unix two full paths always at least
+  // have the root "/" in common so we will return a relative path
+  // that passes through the root directory.
+  if(sameCount == 0)
     {
     return remote;
     }
-#endif
 
   // for each entry that is not common in the local path
   // add a ../ to the finalpath array, this gets us out of the local
