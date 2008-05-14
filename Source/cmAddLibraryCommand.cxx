@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddLibraryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/06/01 15:18:49 $
-  Version:   $Revision: 1.24.2.2 $
+  Date:      $Date: 2008-02-11 22:33:46 $
+  Version:   $Revision: 1.36 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,8 +16,11 @@
 =========================================================================*/
 #include "cmAddLibraryCommand.h"
 
+#include "cmake.h"
+
 // cmLibraryCommand
-bool cmAddLibraryCommand::InitialPass(std::vector<std::string> const& args)
+bool cmAddLibraryCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -26,47 +29,113 @@ bool cmAddLibraryCommand::InitialPass(std::vector<std::string> const& args)
     }
   // Library type defaults to value of BUILD_SHARED_LIBS, if it exists,
   // otherwise it defaults to static library.
-  int shared = 
-    !cmSystemTools::IsOff(this->Makefile->GetDefinition("BUILD_SHARED_LIBS"));
-  bool in_all = true;
+  cmTarget::TargetType type = cmTarget::SHARED_LIBRARY;
+  if (cmSystemTools::IsOff(this->Makefile->GetDefinition("BUILD_SHARED_LIBS")))
+    {
+    type = cmTarget::STATIC_LIBRARY;
+    }
+  bool excludeFromAll = false;
+  bool importTarget = false;
   
   std::vector<std::string>::const_iterator s = args.begin();
 
-  this->LibName = *s;
+  std::string libName = *s;
 
   ++s;
   
   // If the second argument is "SHARED" or "STATIC", then it controls
   // the type of library.  Otherwise, it is treated as a source or
-  // source list name. There man be two keyword arguments, check for them
+  // source list name. There may be two keyword arguments, check for them
+  bool haveSpecifiedType = false;
   while ( s != args.end() )
     {
     std::string libType = *s;
     if(libType == "STATIC")
       {
       ++s;
-      shared = 0;
+      type = cmTarget::STATIC_LIBRARY;
+      haveSpecifiedType = true;
       }
     else if(libType == "SHARED")
       {
       ++s;
-      shared = 1;
+      type = cmTarget::SHARED_LIBRARY;
+      haveSpecifiedType = true;
       }
     else if(libType == "MODULE")
       {
       ++s;
-      shared = 2;
+      type = cmTarget::MODULE_LIBRARY;
+      haveSpecifiedType = true;
       }
     else if(*s == "EXCLUDE_FROM_ALL")
       {
       ++s;
-      in_all = false;
+      excludeFromAll = true;
+      }
+    else if(*s == "IMPORTED")
+      {
+      ++s;
+      importTarget = true;
       }
     else
       {
       break;
       }
     }
+
+  /* ideally we should check whether for the linker language of the target 
+    CMAKE_${LANG}_CREATE_SHARED_LIBRARY is defined and if not default to
+    STATIC. But at this point we know only the name of the target, but not 
+    yet its linker language. */
+  if ((type != cmTarget::STATIC_LIBRARY) && 
+       (this->Makefile->GetCMakeInstance()->GetPropertyAsBool(
+                                      "TARGET_SUPPORTS_SHARED_LIBS") == false))
+    {
+    std::string msg = "ADD_LIBRARY for library ";
+    msg += args[0];
+    msg += " is used with the ";
+    msg += type==cmTarget::SHARED_LIBRARY ? "SHARED" : "MODULE";
+    msg += " option, but the target platform supports only STATIC libraries. "
+           "Building it STATIC instead. This may lead to problems.";
+    cmSystemTools::Message(msg.c_str() ,"Warning");
+    type = cmTarget::STATIC_LIBRARY;
+    }
+
+  // The IMPORTED signature requires a type to be specified explicitly.
+  if(importTarget && !haveSpecifiedType)
+    {
+    this->SetError("called with IMPORTED argument but no library type.");
+    return false;
+    }
+
+  // Handle imported target creation.
+  if(importTarget)
+    {
+    // Make sure the target does not already exist.
+    if(this->Makefile->FindTargetToUse(libName.c_str()))
+      {
+      cmOStringStream e;
+      e << "cannot create imported target \"" << libName
+        << "\" because another target with the same name already exists.";
+      this->SetError(e.str().c_str());
+      return false;
+      }
+
+    // Create the imported target.
+    this->Makefile->AddImportedTarget(libName.c_str(), type);
+    return true;
+    }
+
+  // Enforce name uniqueness.
+  {
+  std::string msg;
+  if(!this->Makefile->EnforceUniqueName(libName, msg))
+    {
+    this->SetError(msg.c_str());
+    return false;
+    }
+  }
 
   if (s == args.end())
     {
@@ -84,8 +153,8 @@ bool cmAddLibraryCommand::InitialPass(std::vector<std::string> const& args)
     ++s;
     }
 
-  this->Makefile->AddLibrary(this->LibName.c_str(), shared, srclists,
-                             in_all);
+  this->Makefile->AddLibrary(libName.c_str(), type, srclists,
+                             excludeFromAll);
   
   return true;
 }

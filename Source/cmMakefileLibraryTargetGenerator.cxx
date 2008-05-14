@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileLibraryTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:21:32 $
-  Version:   $Revision: 1.14.2.7 $
+  Date:      $Date: 2008-04-21 00:44:52 $
+  Version:   $Revision: 1.58.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -27,9 +27,26 @@
 #include <memory> // auto_ptr
 
 //----------------------------------------------------------------------------
-cmMakefileLibraryTargetGenerator::cmMakefileLibraryTargetGenerator()
+cmMakefileLibraryTargetGenerator
+::cmMakefileLibraryTargetGenerator(cmTarget* target):
+  cmMakefileTargetGenerator(target)
 {
-  this->DriveCustomCommandsOnDepends = true;
+  this->CustomCommandDriver = OnDepends;
+  this->Target->GetLibraryNames(
+    this->TargetNameOut, this->TargetNameSO, this->TargetNameReal,
+    this->TargetNameImport, this->TargetNamePDB,
+    this->LocalGenerator->ConfigurationName.c_str());
+
+  if(this->Target->IsFrameworkOnApple())
+    {
+    this->FrameworkVersion = this->Target->GetFrameworkVersion();
+    this->MacContentDirectory = this->Target->GetDirectory();
+    this->MacContentDirectory += "/";
+    this->MacContentDirectory += this->TargetNameOut;
+    this->MacContentDirectory += ".framework/Versions/";
+    this->MacContentDirectory += this->FrameworkVersion;
+    this->MacContentDirectory += "/";
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -37,18 +54,15 @@ void cmMakefileLibraryTargetGenerator::WriteRuleFiles()
 {
   // create the build.make file and directory, put in the common blocks
   this->CreateRuleFile();
-  
+
   // write rules used to help build object files
   this->WriteCommonCodeRules();
-  
+
   // write in rules for object files and custom commands
   this->WriteTargetBuildRules();
 
   // write the per-target per-language flags
   this->WriteTargetLanguageFlags();
-
-  // Write the dependency generation rule.
-  this->WriteTargetDependRules();
 
   // write the link rules
   // Write the rule for this target type.
@@ -85,10 +99,13 @@ void cmMakefileLibraryTargetGenerator::WriteRuleFiles()
   // Write clean target
   this->WriteTargetCleanRules();
 
+  // Write the dependency generation rule.  This must be done last so
+  // that multiple output pair information is available.
+  this->WriteTargetDependRules();
+
   // close the streams
   this->CloseFileStreams();
 }
-
 
 //----------------------------------------------------------------------------
 void cmMakefileLibraryTargetGenerator::WriteStaticLibraryRules()
@@ -111,6 +128,11 @@ void cmMakefileLibraryTargetGenerator::WriteStaticLibraryRules()
 //----------------------------------------------------------------------------
 void cmMakefileLibraryTargetGenerator::WriteSharedLibraryRules(bool relink)
 {
+  if(this->Target->IsFrameworkOnApple())
+    {
+    this->WriteFrameworkRules(relink);
+    return;
+    }
   const char* linkLanguage =
     this->Target->GetLinkerLanguage(this->GlobalGenerator);
   std::string linkRuleVar = "CMAKE_";
@@ -131,7 +153,7 @@ void cmMakefileLibraryTargetGenerator::WriteSharedLibraryRules(bool relink)
                                     
   this->LocalGenerator->AddConfigVariableFlags
     (extraFlags, "CMAKE_SHARED_LINKER_FLAGS",
-                                               this->LocalGenerator->ConfigurationName.c_str());
+     this->LocalGenerator->ConfigurationName.c_str());
   if(this->Makefile->IsOn("WIN32") && !(this->Makefile->IsOn("CYGWIN") 
                                         || this->Makefile->IsOn("MINGW")))
     {
@@ -140,15 +162,16 @@ void cmMakefileLibraryTargetGenerator::WriteSharedLibraryRules(bool relink)
     for(std::vector<cmSourceFile*>::const_iterator i = sources.begin();
         i != sources.end(); ++i)
       {
-      if((*i)->GetSourceExtension() == "def")
+      cmSourceFile* sf = *i;
+      if(sf->GetExtension() == "def")
         {
         extraFlags += " ";
         extraFlags += 
           this->Makefile->GetSafeDefinition("CMAKE_LINK_DEF_FILE_FLAG");
         extraFlags += 
-          this->Convert((*i)->GetFullPath().c_str(),
+          this->Convert(sf->GetFullPath().c_str(),
                         cmLocalGenerator::START_OUTPUT,
-                        cmLocalGenerator::MAKEFILE);
+                        cmLocalGenerator::SHELL);
         }
       }
     }
@@ -177,10 +200,117 @@ void cmMakefileLibraryTargetGenerator::WriteModuleLibraryRules(bool relink)
     (extraFlags, this->Target->GetProperty(linkFlagsConfig.c_str()));
   this->LocalGenerator->AddConfigVariableFlags
     (extraFlags, "CMAKE_MODULE_LINKER_FLAGS",
-                                               this->LocalGenerator->ConfigurationName.c_str());
+     this->LocalGenerator->ConfigurationName.c_str());
 
   // TODO: .def files should be supported here also.
   this->WriteLibraryRules(linkRuleVar.c_str(), extraFlags.c_str(), relink);
+}
+
+//----------------------------------------------------------------------------
+void cmMakefileLibraryTargetGenerator::WriteFrameworkRules(bool relink)
+{
+  const char* linkLanguage =
+    this->Target->GetLinkerLanguage(this->GlobalGenerator);
+  std::string linkRuleVar = "CMAKE_";
+  if (linkLanguage)
+    {
+    linkRuleVar += linkLanguage;
+    }
+  linkRuleVar += "_CREATE_MACOSX_FRAMEWORK";
+
+  std::string extraFlags;
+  this->LocalGenerator->AppendFlags(extraFlags, 
+                                    this->Target->GetProperty("LINK_FLAGS"));
+  std::string linkFlagsConfig = "LINK_FLAGS_";
+  linkFlagsConfig += 
+    cmSystemTools::UpperCase(this->LocalGenerator->ConfigurationName.c_str());
+  this->LocalGenerator->AppendFlags
+    (extraFlags, this->Target->GetProperty(linkFlagsConfig.c_str()));
+  this->LocalGenerator->AddConfigVariableFlags
+    (extraFlags, "CMAKE_MACOSX_FRAMEWORK_LINKER_FLAGS",
+     this->LocalGenerator->ConfigurationName.c_str());
+
+  // TODO: .def files should be supported here also.
+  this->WriteLibraryRules(linkRuleVar.c_str(), extraFlags.c_str(), relink);
+}
+
+//----------------------------------------------------------------------------
+void cmMakefileLibraryTargetGenerator::CreateFramework()
+{
+  // TODO: Use the cmMakefileTargetGenerator::ExtraFiles vector to
+  // drive rules to create these files at build time.
+  std::string oldName;
+  std::string newName;
+
+  // Compute the location of the top-level foo.framework directory.
+  std::string top = this->Target->GetDirectory();
+  top += "/";
+  top += this->TargetNameOut;
+  top += ".framework/";
+
+  // Make foo.framework/Versions
+  std::string versions = top;
+  versions += "Versions";
+  cmSystemTools::MakeDirectory(versions.c_str());
+
+  // Make foo.framework/Versions/version
+  std::string version = versions;
+  version += "/";
+  version += this->FrameworkVersion;
+  cmSystemTools::MakeDirectory(version.c_str());
+
+  // Current -> version
+  oldName = this->FrameworkVersion;
+  newName = versions;
+  newName += "/Current";
+  cmSystemTools::RemoveFile(newName.c_str());
+  cmSystemTools::CreateSymlink(oldName.c_str(), newName.c_str());
+  this->Makefile->AddCMakeOutputFile(newName.c_str());
+
+  // foo -> Versions/Current/foo
+  oldName = "Versions/Current/";
+  oldName += this->TargetNameOut;
+  newName = top;
+  newName += this->TargetNameOut;
+  cmSystemTools::RemoveFile(newName.c_str());
+  cmSystemTools::CreateSymlink(oldName.c_str(), newName.c_str());
+  this->Makefile->AddCMakeOutputFile(newName.c_str());
+
+  // Resources -> Versions/Current/Resources
+  if(this->MacContentFolders.find("Resources") !=
+     this->MacContentFolders.end())
+    {
+    oldName = "Versions/Current/Resources";
+    newName = top;
+    newName += "Resources";
+    cmSystemTools::RemoveFile(newName.c_str());
+    cmSystemTools::CreateSymlink(oldName.c_str(), newName.c_str());
+    this->Makefile->AddCMakeOutputFile(newName.c_str());
+    }
+
+  // Headers -> Versions/Current/Headers
+  if(this->MacContentFolders.find("Headers") !=
+     this->MacContentFolders.end())
+    {
+    oldName = "Versions/Current/Headers";
+    newName = top;
+    newName += "Headers";
+    cmSystemTools::RemoveFile(newName.c_str());
+    cmSystemTools::CreateSymlink(oldName.c_str(), newName.c_str());
+    this->Makefile->AddCMakeOutputFile(newName.c_str());
+    }
+
+  // PrivateHeaders -> Versions/Current/PrivateHeaders
+  if(this->MacContentFolders.find("PrivateHeaders") !=
+     this->MacContentFolders.end())
+    {
+    oldName = "Versions/Current/PrivateHeaders";
+    newName = top;
+    newName += "PrivateHeaders";
+    cmSystemTools::RemoveFile(newName.c_str());
+    cmSystemTools::CreateSymlink(oldName.c_str(), newName.c_str());
+    this->Makefile->AddCMakeOutputFile(newName.c_str());
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -245,43 +375,61 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
     this->LocalGenerator->ConfigurationName.c_str());
 
   // Construct the full path version of the names.
-  std::string outpath = this->LocalGenerator->LibraryOutputPath;
-  if(outpath.length() == 0)
+  std::string outpath;
+  std::string outpathImp;
+  if(this->Target->IsFrameworkOnApple())
     {
-    outpath = this->Makefile->GetStartOutputDirectory();
-    outpath += "/";
+    outpath = this->MacContentDirectory;
+    this->CreateFramework();
     }
-  if(relink)
+  else if(relink)
     {
     outpath = this->Makefile->GetStartOutputDirectory();
     outpath += cmake::GetCMakeFilesDirectory();
     outpath += "/CMakeRelink.dir";
     cmSystemTools::MakeDirectory(outpath.c_str());
     outpath += "/";
+    if(!targetNameImport.empty())
+      {
+      outpathImp = outpath;
+      }
     }
+  else
+    {
+    outpath = this->Target->GetDirectory();
+    cmSystemTools::MakeDirectory(outpath.c_str());
+    outpath += "/";
+    if(!targetNameImport.empty())
+      {
+      outpathImp = this->Target->GetDirectory(0, true);
+      cmSystemTools::MakeDirectory(outpathImp.c_str());
+      outpathImp += "/";
+      }
+    }
+
   std::string targetFullPath = outpath + targetName;
   std::string targetFullPathPDB = outpath + targetNamePDB;
   std::string targetFullPathSO = outpath + targetNameSO;
   std::string targetFullPathReal = outpath + targetNameReal;
-  std::string targetFullPathImport = outpath + targetNameImport;
+  std::string targetFullPathImport = outpathImp + targetNameImport;
 
   // Construct the output path version of the names for use in command
   // arguments.
   std::string targetOutPathPDB = 
     this->Convert(targetFullPathPDB.c_str(),cmLocalGenerator::FULL,
-                  cmLocalGenerator::MAKEFILE);
+                  cmLocalGenerator::SHELL);
   std::string targetOutPath = 
     this->Convert(targetFullPath.c_str(),cmLocalGenerator::START_OUTPUT,
-                  cmLocalGenerator::MAKEFILE);
+                  cmLocalGenerator::SHELL);
   std::string targetOutPathSO = 
     this->Convert(targetFullPathSO.c_str(),cmLocalGenerator::START_OUTPUT,
-                  cmLocalGenerator::MAKEFILE);
+                  cmLocalGenerator::SHELL);
   std::string targetOutPathReal = 
     this->Convert(targetFullPathReal.c_str(),cmLocalGenerator::START_OUTPUT,
-                  cmLocalGenerator::MAKEFILE);
+                  cmLocalGenerator::SHELL);
   std::string targetOutPathImport =
     this->Convert(targetFullPathImport.c_str(),cmLocalGenerator::START_OUTPUT,
-                  cmLocalGenerator::MAKEFILE);
+                  cmLocalGenerator::SHELL);
 
   // Add the link message.
   std::string buildEcho = "Linking ";
@@ -312,7 +460,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   // need to be cleaned.
   std::vector<std::string> libCleanFiles;
   if(this->Target->GetPropertyAsBool("CLEAN_DIRECT_OUTPUT"))
-  {
+    {
     // The user has requested that only the files directly built
     // by this target be cleaned instead of all possible names.
     libCleanFiles.push_back(this->Convert(targetFullPath.c_str(),
@@ -331,10 +479,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
           cmLocalGenerator::START_OUTPUT,
           cmLocalGenerator::UNCHANGED));
       }
-    if(!targetNameImport.empty() &&
-       targetNameImport != targetName &&
-       targetNameImport != targetNameReal &&
-       targetNameImport != targetNameSO)
+    if(!targetNameImport.empty())
       {
       libCleanFiles.push_back(this->Convert(targetFullPathImport.c_str(),
           cmLocalGenerator::START_OUTPUT,
@@ -346,61 +491,57 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
     // This target may switch between static and shared based
     // on a user option or the BUILD_SHARED_LIBS switch.  Clean
     // all possible names.
-  std::string cleanStaticName;
-  std::string cleanSharedName;
-  std::string cleanSharedSOName;
-  std::string cleanSharedRealName;
-  std::string cleanImportName;
+    std::string cleanStaticName;
+    std::string cleanSharedName;
+    std::string cleanSharedSOName;
+    std::string cleanSharedRealName;
+    std::string cleanImportName;
     std::string cleanPDBName;
-  this->Target->GetLibraryCleanNames(
-    cleanStaticName,
-    cleanSharedName,
-    cleanSharedSOName,
-    cleanSharedRealName,
-    cleanImportName,
+    this->Target->GetLibraryCleanNames(
+      cleanStaticName,
+      cleanSharedName,
+      cleanSharedSOName,
+      cleanSharedRealName,
+      cleanImportName,
       cleanPDBName,
-    this->LocalGenerator->ConfigurationName.c_str());
-  std::string cleanFullStaticName = outpath + cleanStaticName;
-  std::string cleanFullSharedName = outpath + cleanSharedName;
-  std::string cleanFullSharedSOName = outpath + cleanSharedSOName;
-  std::string cleanFullSharedRealName = outpath + cleanSharedRealName;
-  std::string cleanFullImportName = outpath + cleanImportName;
+      this->LocalGenerator->ConfigurationName.c_str());
+    std::string cleanFullStaticName = outpath + cleanStaticName;
+    std::string cleanFullSharedName = outpath + cleanSharedName;
+    std::string cleanFullSharedSOName = outpath + cleanSharedSOName;
+    std::string cleanFullSharedRealName = outpath + cleanSharedRealName;
+    std::string cleanFullImportName = outpathImp + cleanImportName;
     std::string cleanFullPDBName = outpath + cleanPDBName;
-  libCleanFiles.push_back
+    libCleanFiles.push_back
       (this->Convert(cleanFullStaticName.c_str(),
                      cmLocalGenerator::START_OUTPUT,
-                   cmLocalGenerator::UNCHANGED));
-  if(cleanSharedRealName != cleanStaticName)
-    {
-    libCleanFiles.push_back(this->Convert(cleanFullSharedRealName.c_str(),
-                                          cmLocalGenerator::START_OUTPUT,
-                                          cmLocalGenerator::UNCHANGED));
-    }
-  if(cleanSharedSOName != cleanStaticName &&
-     cleanSharedSOName != cleanSharedRealName)
-    {
-    libCleanFiles.push_back(this->Convert(cleanFullSharedSOName.c_str(),
-                                          cmLocalGenerator::START_OUTPUT,
-                                          cmLocalGenerator::UNCHANGED));
-    }
-  if(cleanSharedName != cleanStaticName &&
-     cleanSharedName != cleanSharedSOName &&
-     cleanSharedName != cleanSharedRealName)
-    {
-    libCleanFiles.push_back(this->Convert(cleanFullSharedName.c_str(),
-                                          cmLocalGenerator::START_OUTPUT,
-                                          cmLocalGenerator::UNCHANGED));
-    }
-  if(!cleanImportName.empty() &&
-     cleanImportName != cleanStaticName &&
-     cleanImportName != cleanSharedSOName &&
-     cleanImportName != cleanSharedRealName &&
-     cleanImportName != cleanSharedName)
-    {
-    libCleanFiles.push_back(this->Convert(cleanFullImportName.c_str(),
-                                          cmLocalGenerator::START_OUTPUT,
-                                          cmLocalGenerator::UNCHANGED));
-    }
+                     cmLocalGenerator::UNCHANGED));
+    if(cleanSharedRealName != cleanStaticName)
+      {
+      libCleanFiles.push_back(this->Convert(cleanFullSharedRealName.c_str(),
+          cmLocalGenerator::START_OUTPUT,
+          cmLocalGenerator::UNCHANGED));
+      }
+    if(cleanSharedSOName != cleanStaticName &&
+      cleanSharedSOName != cleanSharedRealName)
+      {
+      libCleanFiles.push_back(this->Convert(cleanFullSharedSOName.c_str(),
+          cmLocalGenerator::START_OUTPUT,
+          cmLocalGenerator::UNCHANGED));
+      }
+    if(cleanSharedName != cleanStaticName &&
+      cleanSharedName != cleanSharedSOName &&
+      cleanSharedName != cleanSharedRealName)
+      {
+      libCleanFiles.push_back(this->Convert(cleanFullSharedName.c_str(),
+          cmLocalGenerator::START_OUTPUT,
+          cmLocalGenerator::UNCHANGED));
+      }
+    if(!cleanImportName.empty())
+      {
+      libCleanFiles.push_back(this->Convert(cleanFullImportName.c_str(),
+          cmLocalGenerator::START_OUTPUT,
+          cmLocalGenerator::UNCHANGED));
+      }
 
     // List the PDB for cleaning only when the whole target is
     // cleaned.  We do not want to delete the .pdb file just before
@@ -409,7 +550,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
       (this->Convert(cleanFullPDBName.c_str(),
                      cmLocalGenerator::START_OUTPUT,
                      cmLocalGenerator::UNCHANGED));
-  }
+    }
 
 #ifdef _WIN32
   // There may be a manifest file for this target.  Add it to the
@@ -423,16 +564,20 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
     }
 #endif
 
-  // Add a command to remove any existing files for this library.
   std::vector<std::string> commands1;
-  this->LocalGenerator->AppendCleanCommand(commands1, libCleanFiles,
-                                           *this->Target, "target");
-  this->LocalGenerator->CreateCDCommand
-    (commands1,
-                                        this->Makefile->GetStartOutputDirectory(),
-                                        this->Makefile->GetHomeOutputDirectory());
-  commands.insert(commands.end(), commands1.begin(), commands1.end());
-  commands1.clear();
+  // Add a command to remove any existing files for this library.
+  // for static libs only 
+  if(this->Target->GetType() == cmTarget::STATIC_LIBRARY)
+    {
+    this->LocalGenerator->AppendCleanCommand(commands1, libCleanFiles,
+                                             *this->Target, "target");
+    this->LocalGenerator->CreateCDCommand
+      (commands1,
+       this->Makefile->GetStartOutputDirectory(),
+       this->Makefile->GetHomeOutputDirectory());
+    commands.insert(commands.end(), commands1.begin(), commands1.end());
+    commands1.clear();
+    }
 
   // Add the pre-build and pre-link rules building but not when relinking.
   if(!relink)
@@ -443,81 +588,81 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
       ->AppendCustomCommands(commands, this->Target->GetPreLinkCommands());
     }
 
-  // Open the link script if it will be used.
-  bool useLinkScript = false;
-  std::string linkScriptName;
-  std::auto_ptr<cmGeneratedFileStream> linkScriptStream;
-  if(this->GlobalGenerator->GetUseLinkScript() &&
-     (this->Target->GetType() == cmTarget::STATIC_LIBRARY ||
-      this->Target->GetType() == cmTarget::SHARED_LIBRARY ||
-      this->Target->GetType() == cmTarget::MODULE_LIBRARY))
+  // Determine whether a link script will be used.
+  bool useLinkScript = this->GlobalGenerator->GetUseLinkScript();
+
+  // Select whether to use a response file for objects.
+  bool useResponseFile = false;
+  {
+  std::string responseVar = "CMAKE_";
+  responseVar += linkLanguage;
+  responseVar += "_USE_RESPONSE_FILE_FOR_OBJECTS";
+  if(this->Makefile->IsOn(responseVar.c_str()))
     {
+    useResponseFile = true;
+    }
+  }
+
+  // For static libraries there might be archiving rules.
+  std::vector<std::string> archiveCreateCommands;
+  std::vector<std::string> archiveAppendCommands;
+  std::vector<std::string> archiveFinishCommands;
+  std::string::size_type archiveCommandLimit = std::string::npos;
+  if(this->Target->GetType() == cmTarget::STATIC_LIBRARY)
+    {
+    std::string arCreateVar = "CMAKE_";
+    arCreateVar += linkLanguage;
+    arCreateVar += "_ARCHIVE_CREATE";
+    if(const char* rule = this->Makefile->GetDefinition(arCreateVar.c_str()))
+      {
+      cmSystemTools::ExpandListArgument(rule, archiveCreateCommands);
+      }
+    std::string arAppendVar = "CMAKE_";
+    arAppendVar += linkLanguage;
+    arAppendVar += "_ARCHIVE_APPEND";
+    if(const char* rule = this->Makefile->GetDefinition(arAppendVar.c_str()))
+      {
+      cmSystemTools::ExpandListArgument(rule, archiveAppendCommands);
+      }
+    std::string arFinishVar = "CMAKE_";
+    arFinishVar += linkLanguage;
+    arFinishVar += "_ARCHIVE_FINISH";
+    if(const char* rule = this->Makefile->GetDefinition(arFinishVar.c_str()))
+      {
+      cmSystemTools::ExpandListArgument(rule, archiveFinishCommands);
+      }
+    }
+
+  // Decide whether to use archiving rules.
+  bool useArchiveRules =
+    !archiveCreateCommands.empty() && !archiveAppendCommands.empty();
+  if(useArchiveRules)
+    {
+    // Archiving rules are always run with a link script.
     useLinkScript = true;
-    linkScriptName = this->TargetBuildDirectoryFull;
-    if(relink)
-      {
-      linkScriptName += "/relink.txt";
-      }
-    else
-      {
-      linkScriptName += "/link.txt";
-      }
-    std::auto_ptr<cmGeneratedFileStream> lss(
-      new cmGeneratedFileStream(linkScriptName.c_str()));
-    linkScriptStream = lss;
+
+    // Archiving rules never use a response file.
+    useResponseFile = false;
+
+    // Limit the length of individual object lists to less than the
+    // 32K command line length limit on Windows.  We could make this a
+    // platform file variable but this should work everywhere.
+    archiveCommandLimit = 30000;
     }
 
-  std::vector<std::string> link_script_commands;
-
-  // Construct the main link rule.
-  std::string linkRule = this->Makefile->GetRequiredDefinition(linkRuleVar);
-  if(useLinkScript)
-    {
-    cmSystemTools::ExpandListArgument(linkRule, link_script_commands);
-    std::string link_command = "$(CMAKE_COMMAND) -E cmake_link_script ";
-    link_command += this->Convert(linkScriptName.c_str(),
-                                  cmLocalGenerator::START_OUTPUT,
-                                  cmLocalGenerator::SHELL);
-    link_command += " --verbose=$(VERBOSE)";
-    commands1.push_back(link_command);
-    }
-  else
-    {
-  cmSystemTools::ExpandListArgument(linkRule, commands1);
-    }
-  this->LocalGenerator->CreateCDCommand
-    (commands1,
-                                        this->Makefile->GetStartOutputDirectory(),
-                                        this->Makefile->GetHomeOutputDirectory());
-  commands.insert(commands.end(), commands1.begin(), commands1.end());
-
-  // Add a rule to create necessary symlinks for the library.
-  if(targetOutPath != targetOutPathReal)
-    {
-    std::string symlink = "$(CMAKE_COMMAND) -E cmake_symlink_library ";
-    symlink += targetOutPathReal;
-    symlink += " ";
-    symlink += targetOutPathSO;
-    symlink += " ";
-    symlink += targetOutPath;
-    commands1.clear();
-    commands1.push_back(symlink);
-    this->LocalGenerator->CreateCDCommand(commands1,
-                                  this->Makefile->GetStartOutputDirectory(),
-                                  this->Makefile->GetHomeOutputDirectory());
-    commands.insert(commands.end(), commands1.begin(), commands1.end());
-    }
-
-  // Add the post-build rules when building but not when relinking.
-  if(!relink)
-    {
-    this->LocalGenerator->
-      AppendCustomCommands(commands, this->Target->GetPostBuildCommands());
-    }
+  // Expand the rule variables.
+  std::vector<std::string> real_link_commands;
+  {
+  // Set path conversion for link script shells.
+  this->LocalGenerator->SetLinkScriptShell(useLinkScript);
 
   // Collect up flags to link in needed libraries.
   cmOStringStream linklibs;
-  this->LocalGenerator->OutputLinkLibraries(linklibs, *this->Target, relink);
+  if(this->Target->GetType() != cmTarget::STATIC_LIBRARY)
+    {
+    this->LocalGenerator
+      ->OutputLinkLibraries(linklibs, *this->Target, relink);
+    }
 
   // Construct object file lists that may be needed to expand the
   // rule.
@@ -525,17 +670,31 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   std::string variableNameExternal;
   this->WriteObjectsVariable(variableName, variableNameExternal);
   std::string buildObjs;
-  if(useLinkScript)
+  if(useResponseFile)
     {
-    this->WriteObjectsString(buildObjs);
+    std::string objects;
+    this->WriteObjectsString(objects);
+    std::string objects_rsp =
+      this->CreateResponseFile("objects.rsp", objects, depends);
+    buildObjs = "@";
+    buildObjs += this->Convert(objects_rsp.c_str(),
+                               cmLocalGenerator::NONE,
+                               cmLocalGenerator::SHELL);
+    }
+  else if(useLinkScript)
+    {
+    if(!useArchiveRules)
+      {
+      this->WriteObjectsString(buildObjs);
+      }
     }
   else
     {
     buildObjs = "$(";
-  buildObjs += variableName;
-  buildObjs += ") $(";
-  buildObjs += variableNameExternal;
-  buildObjs += ")";
+    buildObjs += variableName;
+    buildObjs += ") $(";
+    buildObjs += variableNameExternal;
+    buildObjs += ")";
     }
   std::string cleanObjs = "$(";
   cleanObjs += variableName;
@@ -565,22 +724,11 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   std::string objdir = cmake::GetCMakeFilesDirectoryPostSlash();
   objdir += this->Target->GetName();
   objdir += ".dir";
-  vars.ObjectDir = objdir.c_str(); 
-  std::string targetLinkScriptPathReal;
-  if(useLinkScript)
-    {
-    // Paths in the link script are interpreted directly by the shell
-    // and not make.
-    targetLinkScriptPathReal =
-      this->Convert(targetFullPathReal.c_str(),
-                    cmLocalGenerator::START_OUTPUT,
-                    cmLocalGenerator::SHELL);
-    vars.Target = targetLinkScriptPathReal.c_str();
-    }
-  else
-    {
+  objdir = this->Convert(objdir.c_str(),
+                         cmLocalGenerator::START_OUTPUT,
+                         cmLocalGenerator::SHELL);
+  vars.ObjectDir = objdir.c_str();
   vars.Target = targetOutPathReal.c_str();
-    }
   std::string linkString = linklibs.str();
   vars.LinkLibraries = linkString.c_str();
   vars.ObjectsQuoted = buildObjs.c_str();
@@ -622,40 +770,112 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
                                linkLanguage, langFlags);
     }
   vars.LanguageCompileFlags = langFlags.c_str();
-  // Expand placeholders in the commands.
+
+  // Construct the main link rule and expand placeholders.
   this->LocalGenerator->TargetImplib = targetOutPathImport;
-  if(useLinkScript)
+  if(useArchiveRules)
     {
-    for(std::vector<std::string>::iterator i = link_script_commands.begin();
-        i != link_script_commands.end(); ++i)
+    // Construct the individual object list strings.
+    std::vector<std::string> object_strings;
+    this->WriteObjectsStrings(object_strings, archiveCommandLimit);
+
+    // Create the archive with the first set of objects.
+    std::vector<std::string>::iterator osi = object_strings.begin();
+    {
+    vars.Objects = osi->c_str();
+    for(std::vector<std::string>::const_iterator
+          i = archiveCreateCommands.begin();
+        i != archiveCreateCommands.end(); ++i)
       {
-      this->LocalGenerator->ExpandRuleVariables(*i, vars);
+      std::string cmd = *i;
+      this->LocalGenerator->ExpandRuleVariables(cmd, vars);
+      real_link_commands.push_back(cmd);
+      }
+    }
+    // Append to the archive with the other object sets.
+    for(++osi; osi != object_strings.end(); ++osi)
+      {
+      vars.Objects = osi->c_str();
+      for(std::vector<std::string>::const_iterator
+            i = archiveAppendCommands.begin();
+          i != archiveAppendCommands.end(); ++i)
+        {
+        std::string cmd = *i;
+        this->LocalGenerator->ExpandRuleVariables(cmd, vars);
+        real_link_commands.push_back(cmd);
+        }
+      }
+    // Finish the archive.
+    vars.Objects = "";
+    for(std::vector<std::string>::const_iterator
+          i = archiveFinishCommands.begin();
+        i != archiveFinishCommands.end(); ++i)
+      {
+      std::string cmd = *i;
+      this->LocalGenerator->ExpandRuleVariables(cmd, vars);
+      real_link_commands.push_back(cmd);
       }
     }
   else
     {
-  for(std::vector<std::string>::iterator i = commands.begin();
-      i != commands.end(); ++i)
-    {
-    this->LocalGenerator->ExpandRuleVariables(*i, vars);
-    }
+    // Get the set of commands.
+    std::string linkRule = this->Makefile->GetRequiredDefinition(linkRuleVar);
+    cmSystemTools::ExpandListArgument(linkRule, real_link_commands);
+
+    // Expand placeholders.
+    for(std::vector<std::string>::iterator i = real_link_commands.begin();
+        i != real_link_commands.end(); ++i)
+      {
+      this->LocalGenerator->ExpandRuleVariables(*i, vars);
+      }
     }
   this->LocalGenerator->TargetImplib = "";
+
+  // Restore path conversion to normal shells.
+  this->LocalGenerator->SetLinkScriptShell(false);
+  }
 
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.
   if(useLinkScript)
     {
-    for(std::vector<std::string>::iterator cmd = link_script_commands.begin();
-        cmd != link_script_commands.end(); ++cmd)
-      {
-      // Do not write out empty commands or commands beginning in the
-      // shell no-op ":".
-      if(!cmd->empty() && (*cmd)[0] != ':')
-        {
-        (*linkScriptStream) << *cmd << "\n";
-        }
-      }
+    // Use a link script.
+    const char* name = (relink? "relink.txt" : "link.txt");
+    this->CreateLinkScript(name, real_link_commands, commands1, depends);
+    }
+  else
+    {
+    // No link script.  Just use the link rule directly.
+    commands1 = real_link_commands;
+    }
+  this->LocalGenerator->CreateCDCommand
+    (commands1,
+     this->Makefile->GetStartOutputDirectory(),
+     this->Makefile->GetHomeOutputDirectory());
+  commands.insert(commands.end(), commands1.begin(), commands1.end());
+  commands1.clear();
+
+  // Add a rule to create necessary symlinks for the library.
+  if(targetOutPath != targetOutPathReal)
+    {
+    std::string symlink = "$(CMAKE_COMMAND) -E cmake_symlink_library ";
+    symlink += targetOutPathReal;
+    symlink += " ";
+    symlink += targetOutPathSO;
+    symlink += " ";
+    symlink += targetOutPath;
+    commands1.push_back(symlink);
+    this->LocalGenerator->CreateCDCommand(commands1,
+                                  this->Makefile->GetStartOutputDirectory(),
+                                  this->Makefile->GetHomeOutputDirectory());
+    commands.insert(commands.end(), commands1.begin(), commands1.end());
+    commands1.clear();
+    }
+  // Add the post-build rules when building but not when relinking.
+  if(!relink)
+    {
+    this->LocalGenerator->
+      AppendCustomCommands(commands, this->Target->GetPostBuildCommands());
     }
 
   // Write the build rule.
@@ -663,36 +883,25 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
                                       targetFullPathReal.c_str(),
                                       depends, commands, false);
 
-  // The symlink names for the target should depend on the real target
-  // so if the target version changes it rebuilds and recreates the
-  // symlinks.
-  if(targetFullPathSO != targetFullPathReal)
+  // Some targets have more than one output file.  Create rules to
+  // drive the build if any extra outputs are missing.
+  std::vector<std::string> extraOutputs;
+  if(targetNameSO != targetNameReal)
     {
-    depends.clear();
-    commands.clear();
-    depends.push_back(targetFullPathReal.c_str());
-    this->LocalGenerator->WriteMakeRule(*this->BuildFileStream, 0,
-                                        targetFullPathSO.c_str(),
-                                        depends, commands, false);
+    this->GenerateExtraOutput(targetFullPathSO.c_str(),
+                              targetFullPathReal.c_str());
     }
-  if(targetFullPath != targetFullPathSO)
+  if(targetName != targetNameSO &&
+     targetName != targetNameReal)
     {
-    depends.clear();
-    commands.clear();
-    depends.push_back(targetFullPathSO.c_str());
-    this->LocalGenerator->WriteMakeRule(*this->BuildFileStream, 0,
-                                        targetFullPath.c_str(),
-                                        depends, commands, false);
+    this->GenerateExtraOutput(targetFullPath.c_str(),
+                              targetFullPathReal.c_str());
     }
 
   // Write the main driver rule to build everything in this target.
   this->WriteTargetDriverRule(targetFullPath.c_str(), relink);
 
-  // Clean all the possible library names and symlinks and object files.
+  // Clean all the possible library names and symlinks.
   this->CleanFiles.insert(this->CleanFiles.end(),
-                          libCleanFiles.begin(),libCleanFiles.end()); 
-  this->CleanFiles.insert(this->CleanFiles.end(),
-                          this->Objects.begin(),
-                          this->Objects.end());
+                          libCleanFiles.begin(),libCleanFiles.end());
 }
-

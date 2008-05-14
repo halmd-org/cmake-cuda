@@ -7,6 +7,7 @@ REMOVE_DEFINITIONS(-DCMAKE_IS_REALLY_FUN)
 #
 UTILITY_SOURCE(CREATE_FILE_EXE create_file "." create_file.cxx)
 ADD_EXECUTABLE(create_file create_file.cxx)
+SET_TARGET_PROPERTIES(create_file PROPERTIES RUNTIME_OUTPUT_DIRECTORY ".")
 
 #
 # Create static library
@@ -45,8 +46,15 @@ ADD_LIBRARY(CMakeTestLibraryShared SHARED ${SharedLibrarySources})
 ADD_LIBRARY(CMakeTestModule MODULE moduleFile.c)
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DTEST_C_FLAGS")
 ADD_LIBRARY(CMakeTestCLibraryShared SHARED testConly.c)
+DEFINE_PROPERTY(
+  TARGET PROPERTY FOO
+  BRIEF_DOCS "a test property"
+  FULL_DOCS "A simple etst proerty that means nothign and is used for nothing"
+  )
 SET_TARGET_PROPERTIES(CMakeTestCLibraryShared PROPERTIES FOO BAR)
-SET_TARGET_PROPERTIES(CMakeTestCLibraryShared PROPERTIES LINK_FLAGS "-lm")
+IF(NOT BEOS)  # No libm on BeOS.
+  SET_TARGET_PROPERTIES(CMakeTestCLibraryShared PROPERTIES LINK_FLAGS "-lm")
+ENDIF(NOT BEOS)
 GET_TARGET_PROPERTY(FOO_BAR_VAR CMakeTestCLibraryShared FOO)
 IF(${FOO_BAR_VAR} MATCHES "BAR")
 ELSE(${FOO_BAR_VAR} MATCHES "BAR")

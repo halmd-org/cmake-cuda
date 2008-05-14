@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmListFileCache.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.27.2.2 $
+  Date:      $Date: 2008-05-01 16:35:39 $
+  Version:   $Revision: 1.41.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,6 +18,8 @@
 
 #include "cmListFileLexer.h"
 #include "cmSystemTools.h"
+#include "cmMakefile.h"
+#include "cmVersion.h"
 
 #include <cmsys/RegularExpression.hxx>
 
@@ -29,7 +31,9 @@ bool cmListFileCacheParseFunction(cmListFileLexer* lexer,
                                   cmListFileFunction& function,
                                   const char* filename);
 
-bool cmListFile::ParseFile(const char* filename, bool requireProjectCommand)
+bool cmListFile::ParseFile(const char* filename, 
+                           bool topLevel,
+                           cmMakefile *mf)
 {
   if(!cmSystemTools::FileExists(filename))
     {
@@ -115,7 +119,70 @@ bool cmListFile::ParseFile(const char* filename, bool requireProjectCommand)
 
   cmListFileLexer_Delete(lexer);
 
-  if(requireProjectCommand)
+  // do we need a cmake_policy(VERSION call?
+  if(topLevel)
+  {
+    bool hasVersion = false;
+    // search for the right policy command
+    for(std::vector<cmListFileFunction>::iterator i 
+          = this->Functions.begin();
+        i != this->Functions.end(); ++i)
+    {
+      if (cmSystemTools::LowerCase(i->Name) == "cmake_minimum_required")
+      {
+        hasVersion = true;
+        break;
+      }
+    }
+    // if no policy command is found this is an error if they use any 
+    // non advanced functions or a lot of functions
+    if(!hasVersion)
+    {
+      bool isProblem = true;
+      if (this->Functions.size() < 30)
+      {
+        // the list of simple commands DO NOT ADD TO THIS LIST!!!!!
+        // these commands must have backwards compatibility forever and
+        // and that is a lot longer than your tiny mind can comprehend mortal
+        std::set<std::string> allowedCommands;
+        allowedCommands.insert("project");
+        allowedCommands.insert("set");
+        allowedCommands.insert("if");
+        allowedCommands.insert("endif");
+        allowedCommands.insert("else");
+        allowedCommands.insert("elseif");
+        allowedCommands.insert("add_executable");
+        allowedCommands.insert("add_library");
+        allowedCommands.insert("target_link_libraries");
+        allowedCommands.insert("option");
+        allowedCommands.insert("message");
+        isProblem = false;
+        for(std::vector<cmListFileFunction>::iterator i 
+              = this->Functions.begin();
+            i != this->Functions.end(); ++i)
+        {
+          std::string name = cmSystemTools::LowerCase(i->Name);
+          if (allowedCommands.find(name) == allowedCommands.end())
+          {
+            isProblem = true;
+            break;
+          }       
+        }
+      }
+      
+      if (isProblem)
+      {
+      // Tell the top level cmMakefile to diagnose
+      // this violation of CMP0000.
+      mf->SetCheckCMP0000(true);
+
+      // Implicitly set the version for the user.
+      mf->SetPolicyVersion("2.4");
+      }
+    }
+  }
+
+  if(topLevel)
     {
     bool hasProject = false;
     // search for a project command
@@ -138,6 +205,10 @@ bool cmListFile::ParseFile(const char* filename, bool requireProjectCommand)
       project.Arguments.push_back(prj);
       this->Functions.insert(this->Functions.begin(),project);
       }
+    }
+  if(parseError)
+    {
+    return false;
     }
   return true;
 }
@@ -215,4 +286,19 @@ bool cmListFileCacheParseFunction(cmListFileLexer* lexer,
   cmSystemTools::Error(error.str().c_str());
 
   return false;
+}
+
+//----------------------------------------------------------------------------
+std::ostream& operator<<(std::ostream& os, cmListFileContext const& lfc)
+{
+  os << lfc.FilePath;
+  if(lfc.Line)
+    {
+    os << ":" << lfc.Line;
+    if(!lfc.Name.empty())
+      {
+      os << " (" << lfc.Name << ")";
+      }
+    }
+  return os;
 }

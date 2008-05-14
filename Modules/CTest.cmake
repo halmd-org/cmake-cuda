@@ -1,7 +1,27 @@
-# - setup CTest
+# - Configure a project for testing with CTest/Dart
 # This file configures a project to use the CTest/Dart
-# testing/dashboard process.  
+# testing/dashboard process.  This module should be included
+# in the CMakeLists.txt file at the top of a project.  Typical usage:
+#  INCLUDE(CTest)
+#  IF(BUILD_TESTING)
+#    # ... testing related CMake code ...
+#  ENDIF(BUILD_TESTING)
+# The BUILD_TESTING option is created by the CTest module to determine
+# whether testing support should be enabled.  The default is ON.
+
 OPTION(BUILD_TESTING "Build the testing tree." ON)
+
+# function to turn generator name into a version string
+# like vs7 vs71 vs8 vs9 
+FUNCTION(GET_VS_VERSION_STRING generator var)
+  STRING(REGEX REPLACE "Visual Studio ([0-9][0-9]?)($|.*)" "\\1" NUMBER "${generator}") 
+  IF("${generator}" MATCHES "Visual Studio 7 .NET 2003")
+    SET(ver_string "vs71")
+  ELSE("${generator}" MATCHES "Visual Studio 7 .NET 2003")
+    SET(ver_string "vs${NUMBER}")
+  ENDIF("${generator}" MATCHES "Visual Studio 7 .NET 2003")
+  SET(${var} ${ver_string} PARENT_SCOPE)
+ENDFUNCTION(GET_VS_VERSION_STRING)
 
 IF(BUILD_TESTING)
   # Setup some auxilary macros
@@ -12,17 +32,15 @@ IF(BUILD_TESTING)
   ENDMACRO(SET_IF_NOT_SET)
 
   MACRO(SET_IF_SET var val)
-    IF("${val}" MATCHES "^$")
-    ELSE("${val}" MATCHES "^$")
+    IF(NOT "${val}" MATCHES "^$")
       SET("${var}" "${val}")
-    ENDIF("${val}" MATCHES "^$")
+    ENDIF(NOT "${val}" MATCHES "^$")
   ENDMACRO(SET_IF_SET)
 
   MACRO(SET_IF_SET_AND_NOT_SET var val)
-    IF("${val}" MATCHES "^$")
-    ELSE("${val}" MATCHES "^$")
+    IF(NOT "${val}" MATCHES "^$")
       SET_IF_NOT_SET("${var}" "${val}")
-    ENDIF("${val}" MATCHES "^$")
+    ENDIF(NOT "${val}" MATCHES "^$")
   ENDMACRO(SET_IF_SET_AND_NOT_SET)
 
   # Make sure testing is enabled
@@ -38,6 +56,7 @@ IF(BUILD_TESTING)
     SET_IF_SET_AND_NOT_SET(DROP_SITE_MODE "${CTEST_DROP_SITE_MODE}")
     SET_IF_SET_AND_NOT_SET(DROP_LOCATION "${CTEST_DROP_LOCATION}")
     SET_IF_SET_AND_NOT_SET(TRIGGER_SITE "${CTEST_TRIGGER_SITE}")
+    SET_IF_SET_AND_NOT_SET(UPDATE_TYPE "${CTEST_UPDATE_TYPE}")
   ENDIF(EXISTS "${PROJECT_SOURCE_DIR}/CTestConfig.cmake")
 
   # the project can have a DartConfig.cmake file
@@ -97,7 +116,10 @@ IF(BUILD_TESTING)
   ENDIF(NOT UPDATE_TYPE)
 
   IF(NOT UPDATE_TYPE)
-    MESSAGE(STATUS "Cannot determine repository type. Please set UPDATE_TYPE to 'cvs' or 'svn'. CTest update will not work.")
+    IF(NOT __CTEST_UPDATE_TYPE_COMPLAINED)
+      SET(__CTEST_UPDATE_TYPE_COMPLAINED 1 CACHE INTERNAL "Already complained about update type.")
+      MESSAGE(STATUS "CTest cannot determine repository type. Please set UPDATE_TYPE to 'cvs' or 'svn'. CTest update will not work.")
+    ENDIF(NOT __CTEST_UPDATE_TYPE_COMPLAINED)
   ENDIF(NOT UPDATE_TYPE)
 
   IF(UPDATE_TYPE MATCHES "[Cc][Vv][Ss]")
@@ -161,15 +183,7 @@ IF(BUILD_TESTING)
       SET(DART_CXX_NAME "vs60")
     ENDIF(DART_CXX_NAME MATCHES "msdev")
     IF(DART_CXX_NAME MATCHES "devenv")
-      IF(CMAKE_GENERATOR MATCHES "^Visual Studio 7$")
-        SET(DART_CXX_NAME "vs70")
-      ELSE(CMAKE_GENERATOR MATCHES "^Visual Studio 7$")
-        IF(CMAKE_GENERATOR MATCHES "^Visual Studio 7 .NET 2003$")
-          SET(DART_CXX_NAME "vs71")
-        ELSE(CMAKE_GENERATOR MATCHES "^Visual Studio 7 .NET 2003$")
-          SET(DART_CXX_NAME "vs8")
-        ENDIF(CMAKE_GENERATOR MATCHES "^Visual Studio 7 .NET 2003$")
-      ENDIF(CMAKE_GENERATOR MATCHES "^Visual Studio 7$")
+      GET_VS_VERSION_STRING("${CMAKE_GENERATOR}" DART_CXX_NAME)
     ENDIF(DART_CXX_NAME MATCHES "devenv")
     SET(BUILDNAME "${BUILD_NAME_SYSTEM_NAME}-${DART_CXX_NAME}")
   ENDIF(NOT BUILDNAME)

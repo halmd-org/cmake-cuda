@@ -27,7 +27,9 @@
 # include "kwsys_ios_iostream.h.in"
 #endif
 
-#include "testSystemTools.h"
+// Include with <> instead of "" to avoid getting any in-source copy
+// left on disk.
+#include <testSystemTools.h>
 
 #include <string.h> /* strcmp */
 
@@ -328,7 +330,7 @@ bool CheckStringOperations()
 }
 
 //----------------------------------------------------------------------------
-int main(/*int argc, char* argv*/)
+int testSystemTools(int, char*[])
 {
   bool res = true;
 

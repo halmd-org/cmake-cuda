@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:48 $
-  Version:   $Revision: 1.56.2.5 $
+  Date:      $Date: 2008-02-14 20:31:08 $
+  Version:   $Revision: 1.103 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -42,13 +42,20 @@ public:
   /**
    * Generate the makefile for this directory. 
    */
-  virtual void Generate() {};
+  virtual void Generate() {}
 
   /**
    * Process the CMakeLists files for this directory to fill in the
    * Makefile ivar 
    */
   virtual void Configure();
+
+  /** 
+   * Calls TraceVSDependencies() on all targets of this generator.
+   */
+  virtual void TraceDependencies();
+
+  virtual void AddHelperCommands() {}
 
   /**
    * Perform any final calculations prior to generation
@@ -68,11 +75,15 @@ public:
   /**
    * Generate a manifest of target files that will be built.
    */
-  virtual void GenerateTargetManifest(cmTargetManifest&);
+  virtual void GenerateTargetManifest();
 
   ///! Get the makefile for this generator
   cmMakefile *GetMakefile() {
     return this->Makefile; };
+  
+  ///! Get the makefile for this generator, const version
+    const cmMakefile *GetMakefile() const {
+      return this->Makefile; };
   
   ///! Get the GlobalGenerator this is associated with
   cmGlobalGenerator *GetGlobalGenerator() {
@@ -102,9 +113,6 @@ public:
                       OutputFormat output = UNCHANGED,
                       bool optional = false);
   
-  ///! Call this prior to using Convert
-  void SetupPathConversions();
-  
   /**
    * Convert the given path to an output path that is optionally
    * relative based on the cache option CMAKE_USE_RELATIVE_PATHS.  The
@@ -113,16 +121,6 @@ public:
    */
   std::string ConvertToOptionallyRelativeOutputPath(const char* remote);
 
-  // flag to determine if this project should be included in a parent project
-  bool GetExcludeAll()
-    {
-      return this->ExcludeFromAll;
-    }
-  void SetExcludeAll(bool b)
-    {
-      this->ExcludeFromAll = b;
-    }
-  
   ///! set/get the parent generator 
   cmLocalGenerator* GetParent(){return this->Parent;}
   void SetParent(cmLocalGenerator* g) { this->Parent = g; g->AddChild(this); }
@@ -137,9 +135,16 @@ public:
   void AddSharedFlags(std::string& flags, const char* lang, bool shared);
   void AddConfigVariableFlags(std::string& flags, const char* var,
                               const char* config);
-  void AppendFlags(std::string& flags, const char* newFlags);
+  virtual void AppendFlags(std::string& flags, const char* newFlags);
   ///! Get the include flags for the current makefile and language
   const char* GetIncludeFlags(const char* lang); 
+
+  /**
+   * Encode a list of preprocessor definitions for the compiler
+   * command line.
+   */
+  void AppendDefines(std::string& defines, const char* defines_list,
+                     const char* lang);
 
   /** Translate a dependency as given in CMake code to the name to
       appear in a generated build file.  If the given name is that of
@@ -150,24 +155,24 @@ public:
       the source directory of this generator.  This should only be
       used for dependencies of custom commands.  */
   std::string GetRealDependency(const char* name, const char* config);
+  
+  /** Translate a command as given in CMake code to the location of the 
+      executable if the command is the name of a CMake executable target.
+      If that's not the case, just return the original name. */
+  std::string GetRealLocation(const char* inName, const char* config);
 
   ///! for existing files convert to output path and short path if spaces
   std::string ConvertToOutputForExisting(const char* p);
   
-  /** Called from command-line hook to check dependencies.  */
-  virtual void CheckDependencies(cmMakefile* /* mf */, 
-                                 bool /* verbose */,
-                                 bool /* clear */) {};
+  /** Called from command-line hook to clear dependencies.  */
+  virtual void ClearDependencies(cmMakefile* /* mf */, 
+                                 bool /* verbose */) {}
   
-  /** Called from command-line hook to scan dependencies.  */
-  virtual bool ScanDependencies(const char* /* tgtInfo */) { return true; }
-
-  /** Compute the list of link libraries and directories for the given
-      target and configuration.  */
-  void ComputeLinkInformation(cmTarget& target, const char* config,
-                              std::vector<cmStdString>& outLibs,
-                              std::vector<cmStdString>& outDirs,
-                              std::vector<cmStdString>* fullPathLibs=0);
+  /** Called from command-line hook to update dependencies.  */
+  virtual bool UpdateDependencies(const char* /* tgtInfo */,
+                                  bool /*verbose*/,
+                                  bool /*color*/)
+    { return true; }
 
   /** Get the include flags for the current makefile and language.  */
   void GetIncludeDirectories(std::vector<std::string>& dirs,
@@ -202,7 +207,11 @@ public:
     const char* TargetInstallNameDir;
     const char* LinkFlags;
     const char* LanguageCompileFlags;
+    const char* Defines;
   };
+
+  /** Set whether to treat conversions to SHELL as a link script shell.  */
+  void SetLinkScriptShell(bool b) { this->LinkScriptShell = b; }
 
   /** Escape the given string to be used as a command line argument in
       the native build system shell.  Optionally allow the build
@@ -215,8 +224,58 @@ public:
   /** Backwards-compatibility version of EscapeForShell.  */
   std::string EscapeForShellOldStyle(const char* str);
 
-protected:
+  /** Escape the given string as an argument in a CMake script.  */
+  std::string EscapeForCMake(const char* str);
 
+  /** Return the directories into which object files will be put.
+   *  There maybe more than one for fat binary systems like OSX.
+   */
+  virtual void 
+  GetTargetObjectFileDirectories(cmTarget* target,
+                                 std::vector<std::string>& 
+                                 dirs);
+  
+  /**
+   * Convert the given remote path to a relative path with respect to
+   * the given local path.  The local path must be given in component
+   * form (see SystemTools::SplitPath) without a trailing slash.  The
+   * remote path must use forward slashes and not already be escaped
+   * or quoted.
+   */
+  std::string ConvertToRelativePath(const std::vector<std::string>& local,
+                                    const char* remote);
+
+  /**
+   * Get the relative path from the generator output directory to a
+   * per-target support directory.
+   */
+  virtual std::string GetTargetDirectory(cmTarget const& target) const;
+
+  /**
+   * Get the level of backwards compatibility requested by the project
+   * in this directory.  This is the value of the CMake variable
+   * CMAKE_BACKWARDS_COMPATIBILITY whose format is
+   * "major.minor[.patch]".  The returned integer is encoded as
+   *
+   *   CMake_VERSION_ENCODE(major, minor, patch)
+   *
+   * and is monotonically increasing with the CMake version.
+   */
+  unsigned int GetBackwardsCompatibility();
+
+  /**
+   * Test whether compatibility is set to a given version or lower.
+   */
+  bool NeedBackwardsCompatibility(unsigned int major,
+                                  unsigned int minor,
+                                  unsigned int patch = 0xFFu);
+
+  /**
+   * Generate a Mac OS X application bundle Info.plist file.
+   */
+  void GenerateAppleInfoPList(cmTarget* target, const char* targetName,
+                              const char* fname);
+protected:
   /** Construct a comment for a custom command.  */
   std::string ConstructComment(const cmCustomCommand& cc,
                                const char* default_comment = "");
@@ -230,7 +289,7 @@ protected:
   
   ///! put all the libraries for a target on into the given stream
   virtual void OutputLinkLibraries(std::ostream&, cmTarget&, bool relink);
-
+  
   // Expand rule variables in CMake of the type found in language rules
   void ExpandRuleVariables(std::string& string,
                            const RuleVariables& replaceValues);
@@ -259,8 +318,22 @@ protected:
     std::vector<std::string> const& configurationTypes);
 
   // Compute object file names.
-  std::string GetObjectFileNameWithoutTarget(const cmSourceFile& source);
-  std::string& CreateSafeUniqueObjectFileName(const char* sin);
+  std::string GetObjectFileNameWithoutTarget(const cmSourceFile& source,
+                                             std::string::size_type dir_len,
+                                             bool* hasSourceExtension = 0);
+  std::string& CreateSafeUniqueObjectFileName(const char* sin,
+                                              std::string::size_type dir_len);
+
+  void ConfigureRelativePaths();
+  std::string FindRelativePathTopSource();
+  std::string FindRelativePathTopBinary();
+  void SetupPathConversions();
+
+  std::string ConvertToLinkReference(std::string const& lib);
+
+  /** Check whether the native build system supports the given
+      definition.  Issues a warning.  */
+  virtual bool CheckDefinition(std::string const& define) const;
 
   cmMakefile *Makefile;
   cmGlobalGenerator *GlobalGenerator;
@@ -271,7 +344,6 @@ protected:
   std::vector<std::string> StartDirectoryComponents;
   std::vector<std::string> HomeOutputDirectoryComponents;
   std::vector<std::string> StartOutputDirectoryComponents;
-  bool ExcludeFromAll;
   cmLocalGenerator* Parent;
   std::vector<cmLocalGenerator*> Children;
   std::map<cmStdString, cmStdString> LanguageToIncludeFlags;
@@ -279,15 +351,33 @@ protected:
   bool WindowsShell;
   bool WindowsVSIDE;
   bool WatcomWMake;
+  bool MinGWMake;
+  bool NMake;
   bool ForceUnixPath;
   bool MSYSShell;
+  bool LinkScriptShell;
   bool UseRelativePaths;
   bool IgnoreLibPrefix;
   bool Configured;
   bool EmitUniversalBinaryFlags;
+  // A type flag is not nice. It's used only in TraceDependencies().
+  bool IsMakefileGenerator;
   // Hack for ExpandRuleVariable until object-oriented version is
   // committed.
   std::string TargetImplib;
+
+  // The top-most directories for relative path conversion.  Both the
+  // source and destination location of a relative path conversion
+  // must be underneath one of these directories (both under source or
+  // both under binary) in order for the relative path to be evaluated
+  // safely by the build tools.
+  std::string RelativePathTopSource;
+  std::string RelativePathTopBinary;
+  bool RelativePathsConfigured;
+  bool PathConversionsSetup;
+
+  unsigned int BackwardsCompatibility;
+  bool BackwardsCompatibilityFinal;
 };
 
 #endif

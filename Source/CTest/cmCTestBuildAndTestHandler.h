@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildAndTestHandler.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/10 20:03:08 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2007-03-19 17:04:10 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -65,6 +65,7 @@ protected:
   std::vector<std::string> BuildOptions;
   bool                     BuildTwoConfig;
   std::string              BuildMakeProgram;
+  std::string              ConfigSample;
   std::string              SourceDir;
   std::string              BinaryDir;
   std::string              BuildProject;
@@ -75,6 +76,7 @@ protected:
   std::vector<std::string> TestCommandArgs;
   std::vector<std::string> BuildTargets;
   bool                     BuildNoCMake;
+  double                   Timeout;
 };
 
 #endif

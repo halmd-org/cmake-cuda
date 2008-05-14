@@ -3,8 +3,8 @@
 Program:   CMake - Cross-Platform Makefile Generator
 Module:    $RCSfile: cmGlobalVisualStudio9Win64Generator.h,v $
 Language:  C++
-Date:      $Date: 2007/12/18 20:58:48 $
-Version:   $Revision: 1.1.2.1 $
+Date:      $Date: 2007-12-17 19:43:11 $
+Version:   $Revision: 1.1 $
 
 Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
 See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -49,6 +49,6 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages, 
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
 };
 #endif

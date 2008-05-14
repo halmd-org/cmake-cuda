@@ -5,9 +5,16 @@ IF(EXISTS /usr/include/dlfcn.h)
   SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")         # +s, flag for exe link to use shared lib
   SET(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")       # -rpath
   SET(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP ":")   # : or empty
+  SET(CMAKE_SHARED_LIBRARY_RPATH_LINK_C_FLAG "-Wl,-rpath-link,")
   SET(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
   SET(CMAKE_SHARED_LIBRARY_SONAME_CXX_FLAG "-Wl,-soname,")
+  SET(CMAKE_EXE_EXPORTS_C_FLAG "-Wl,--export-dynamic")
+  SET(CMAKE_EXE_EXPORTS_CXX_FLAG "-Wl,--export-dynamic")
 ENDIF(EXISTS /usr/include/dlfcn.h)
+
+# Shared libraries with no builtin soname may not be linked safely by
+# specifying the file path.
+SET(CMAKE_PLATFORM_USES_PATH_WHEN_NO_SONAME 1)
 
 # Initialize C link type selection flags.  These flags are used when
 # building a shared library, shared module, or executable that links

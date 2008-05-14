@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetFilenameComponentCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.15.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.17 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,7 +19,7 @@
 
 // cmGetFilenameComponentCommand
 bool cmGetFilenameComponentCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 3)
     {
@@ -107,12 +107,12 @@ bool cmGetFilenameComponentCommand
       this->Makefile->AddCacheDefinition
         (storeArgs.c_str(), programArgs.c_str(),
          "", args[2] == "PATH" ? cmCacheManager::FILEPATH
-                                     : cmCacheManager::STRING);
+         : cmCacheManager::STRING);
       }
     this->Makefile->AddCacheDefinition
       (args[0].c_str(), result.c_str(), "",
-                                   args[2] == "PATH" ? cmCacheManager::FILEPATH
-                                                     : cmCacheManager::STRING);
+       args[2] == "PATH" ? cmCacheManager::FILEPATH
+       : cmCacheManager::STRING);
     }
   else 
     {

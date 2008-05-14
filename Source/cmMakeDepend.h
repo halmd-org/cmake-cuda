@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakeDepend.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:42 $
-  Version:   $Revision: 1.23.2.1 $
+  Date:      $Date: 2006-05-12 16:29:09 $
+  Version:   $Revision: 1.24 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

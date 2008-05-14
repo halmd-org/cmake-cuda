@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddExecutableCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.25.2.2 $
+  Date:      $Date: 2008-02-11 22:33:46 $
+  Version:   $Revision: 1.35 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,8 @@
 #include "cmAddExecutableCommand.h"
 
 // cmExecutableCommand
-bool cmAddExecutableCommand::InitialPass(std::vector<std::string> const& args)
+bool cmAddExecutableCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2 )
     {
@@ -31,7 +32,8 @@ bool cmAddExecutableCommand::InitialPass(std::vector<std::string> const& args)
   ++s;
   bool use_win32 = false;
   bool use_macbundle = false;
-  bool in_all = true;
+  bool excludeFromAll = false;
+  bool importTarget = false;
   while ( s != args.end() )
     {
     if (*s == "WIN32")
@@ -47,13 +49,66 @@ bool cmAddExecutableCommand::InitialPass(std::vector<std::string> const& args)
     else if(*s == "EXCLUDE_FROM_ALL")
       {
       ++s;
-      in_all = false;
+      excludeFromAll = true;
       }
+    else if(*s == "IMPORTED")
+     {
+     ++s;
+     importTarget = true;
+     }
     else
       {
       break;
       }
     }
+
+  // Special modifiers are not allowed with IMPORTED signature.
+  if(importTarget && (use_win32 || use_macbundle || excludeFromAll))
+    {
+    if(use_win32)
+      {
+      this->SetError("may not be given WIN32 for an IMPORTED target.");
+      }
+    else if(use_macbundle)
+      {
+      this->SetError(
+        "may not be given MACOSX_BUNDLE for an IMPORTED target.");
+      }
+    else // if(excludeFromAll)
+      {
+      this->SetError(
+        "may not be given EXCLUDE_FROM_ALL for an IMPORTED target.");
+      }
+    return false;
+    }
+
+  // Handle imported target creation.
+  if(importTarget)
+    {
+    // Make sure the target does not already exist.
+    if(this->Makefile->FindTargetToUse(exename.c_str()))
+      {
+      cmOStringStream e;
+      e << "cannot create imported target \"" << exename
+        << "\" because another target with the same name already exists.";
+      this->SetError(e.str().c_str());
+      return false;
+      }
+
+    // Create the imported target.
+    this->Makefile->AddImportedTarget(exename.c_str(), cmTarget::EXECUTABLE);
+    return true;
+    }
+
+  // Enforce name uniqueness.
+  {
+  std::string msg;
+  if(!this->Makefile->EnforceUniqueName(exename, msg))
+    {
+    this->SetError(msg.c_str());
+    return false;
+    }
+  }
 
   if (s == args.end())
     {
@@ -64,7 +119,7 @@ bool cmAddExecutableCommand::InitialPass(std::vector<std::string> const& args)
 
   std::vector<std::string> srclists(s, args.end());
   cmTarget* tgt = this->Makefile->AddExecutable(exename.c_str(), srclists,
-                                                in_all);
+                                                excludeFromAll);
   if ( use_win32 )
     {
     tgt->SetProperty("WIN32_EXECUTABLE", "ON");

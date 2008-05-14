@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___ 
  *                             \___|\___/|_| \_\_____|
  *
- * $Id: ftpget.c,v 1.1.8.1 2006/07/24 15:19:36 hoffman Exp $
+ * $Id: ftpget.c,v 1.2 2006-07-09 17:48:37 andy Exp $
  */
 
 #include "curl/curl.h"

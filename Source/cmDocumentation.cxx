@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentation.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.31.2.3 $
+  Date:      $Date: 2008-03-05 16:05:20 $
+  Version:   $Revision: 1.69 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,8 +20,9 @@
 #include "cmVersion.h"
 #include <cmsys/Directory.hxx>
 
+
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationStandardOptions[] =
+static const char *cmDocumentationStandardOptions[][3] =
 {
   {"--copyright [file]", "Print the CMake copyright and exit.",
    "If a file is specified, the copyright is written into it."},
@@ -35,7 +36,7 @@ static const cmDocumentationEntry cmDocumentationStandardOptions[] =
   {"--help-html [file]", "Print full help in HTML format.",
    "This option is used by CMake authors to help produce web pages.  "
    "If a file is specified, the help is written into it."},
-  {"--help-man [file]", "Print a UNIX man page and exit.",
+  {"--help-man [file]", "Print full help as a UNIX man page and exit.",
    "This option is used by the cmake build to generate the UNIX man page.  "
    "If a file is specified, the help is written into it."},
   {"--version [file]", "Show program name/version banner and exit.",
@@ -44,15 +45,66 @@ static const cmDocumentationEntry cmDocumentationStandardOptions[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationCommandsHeader[] =
+static const char *cmModulesDocumentationDescription[][3] =
 {
   {0,
-   "The following commands are available in CMakeLists.txt code:", 0},
+  "  CMake Modules - Modules coming with CMake, the Cross-Platform Makefile "
+  "Generator.", 0},
+//  CMAKE_DOCUMENTATION_OVERVIEW,
+  {0,
+  "This is the documentation for the modules and scripts coming with CMake. "
+  "Using these modules you can check the computer system for "
+  "installed software packages, features of the compiler and the "
+  "existance of headers to name just a few.", 0},
   {0,0,0}
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationModulesHeader[] =
+static const char *cmCustomModulesDocumentationDescription[][3] =
+{
+  {0,
+  "  Custom CMake Modules - Additional Modules for CMake.", 0},
+//  CMAKE_DOCUMENTATION_OVERVIEW,
+  {0,
+  "This is the documentation for additional modules and scripts for CMake. "
+  "Using these modules you can check the computer system for "
+  "installed software packages, features of the compiler and the "
+  "existance of headers to name just a few.", 0},
+  {0,0,0}
+};
+
+//----------------------------------------------------------------------------
+static const char *cmPropertiesDocumentationDescription[][3] =
+{
+  {0,
+   "  CMake Properties - Properties supported by CMake, "
+   "the Cross-Platform Makefile Generator.", 0},
+//  CMAKE_DOCUMENTATION_OVERVIEW,
+  {0,
+   "This is the documentation for the properties supported by CMake. "
+   "Properties can have different scopes. They can either be assigned to a "
+   "source file, a directory, a target or globally to CMake. By modifying the "
+   "values of properties the behaviour of the build system can be customized.",
+   0},
+  {0,0,0}
+};
+
+//----------------------------------------------------------------------------
+static const char *cmCompatCommandsDocumentationDescription[][3] =
+{
+  {0,
+   "  CMake Compatibility Listfile Commands - "
+   "Obsolete commands supported by CMake for compatibility.", 0},
+//  CMAKE_DOCUMENTATION_OVERVIEW,
+  {0,
+  "This is the documentation for now obsolete listfile commands from previous "
+  "CMake versions, which are still supported for compatibility reasons. You "
+  "should instead use the newer, faster and shinier new commands. ;-)", 0},
+  {0,0,0}
+};
+
+//----------------------------------------------------------------------------
+static const char *cmDocumentationModulesHeader[][3] =
 {
   {0,
    "The following modules are provided with CMake. "
@@ -61,7 +113,16 @@ static const cmDocumentationEntry cmDocumentationModulesHeader[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationGeneratorsHeader[] =
+static const char *cmDocumentationCustomModulesHeader[][3] =
+{
+  {0,
+   "The following modules are also available for CMake. "
+   "They can be used with INCLUDE(ModuleName).", 0},
+  {0,0,0}
+};
+
+//----------------------------------------------------------------------------
+static const char *cmDocumentationGeneratorsHeader[][3] =
 {
   {0,
    "The following generators are available on this platform:", 0},
@@ -69,7 +130,7 @@ static const cmDocumentationEntry cmDocumentationGeneratorsHeader[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationStandardSeeAlso[] =
+static const char *cmDocumentationStandardSeeAlso[][3] =
 {
   {0,
    "The following resources are available to get help using CMake:", 0},
@@ -100,15 +161,7 @@ static const cmDocumentationEntry cmDocumentationStandardSeeAlso[] =
 };
 
 //----------------------------------------------------------------------------
-const cmDocumentationEntry cmDocumentationAuthor[] =
-{
-  {0,
-   "This manual page was generated by the \"--help-man\" option.", 0},
-  {0,0,0}
-};
-
-//----------------------------------------------------------------------------
-const cmDocumentationEntry cmDocumentationCopyright[] =
+static const char *cmDocumentationCopyright[][3] =
 {
   {0,
    "Copyright (c) 2002 Kitware, Inc., Insight Consortium.  "
@@ -150,10 +203,56 @@ const cmDocumentationEntry cmDocumentationCopyright[] =
 
 //----------------------------------------------------------------------------
 cmDocumentation::cmDocumentation()
+:CurrentFormatter(0)
 {
-  this->CurrentForm = TextForm;
-  this->TextIndent = "";
-  this->TextWidth = 77;
+  this->SetForm(TextForm);
+
+  cmDocumentationSection *sec;
+
+  sec = new cmDocumentationSection("Author","AUTHOR");
+  sec->Append(cmDocumentationEntry
+              (0,
+               "This manual page was generated by the \"--help-man\" option.",
+               0));
+  this->AllSections["Author"] = sec;
+
+  sec = new cmDocumentationSection("Copyright","COPYRIGHT");
+  sec->Append(cmDocumentationCopyright);
+  this->AllSections["Copyright"] = sec;
+
+  sec = new cmDocumentationSection("See Also","SEE ALSO");
+  sec->Append(cmDocumentationStandardSeeAlso);
+  this->AllSections["Standard See Also"] = sec;  
+
+  sec = new cmDocumentationSection("Options","OPTIONS");
+  sec->Append(cmDocumentationStandardOptions);
+  this->AllSections["Options"] = sec;  
+
+  sec = new cmDocumentationSection("Properties","PROPERTIES");
+  sec->Append(cmPropertiesDocumentationDescription);
+  this->AllSections["Properties Description"] = sec;  
+
+  sec = new cmDocumentationSection("Generators","GENERATORS");
+  sec->Append(cmDocumentationGeneratorsHeader);
+  this->AllSections["Generators"] = sec;  
+
+  sec = new cmDocumentationSection("Compatibility Commands",
+                                   "COMPATIBILITY COMMANDS");
+  sec->Append(cmCompatCommandsDocumentationDescription);
+  this->AllSections["Compatibility Commands"] = sec;  
+
+
+  this->PropertySections.push_back("Properties of Global Scope");
+  this->PropertySections.push_back("Properties on Directories");
+  this->PropertySections.push_back("Properties on Targets");
+  this->PropertySections.push_back("Properties on Tests");
+  this->PropertySections.push_back("Properties on Source Files");
+
+  this->VariableSections.push_back("Variables that Provide Information");
+  this->VariableSections.push_back("Variables That Change Behavior");
+  this->VariableSections.push_back("Variables That Describe the System");
+  this->VariableSections.push_back("Variables that Control the Build");
+  this->VariableSections.push_back("Variables for Languages");
 }
 
 //----------------------------------------------------------------------------
@@ -164,24 +263,32 @@ cmDocumentation::~cmDocumentation()
     {
     delete [] *i;
     }
+  for(std::map<std::string,cmDocumentationSection *>::iterator i = 
+        this->AllSections.begin();
+      i != this->AllSections.end(); ++i)
+    {
+    delete i->second;
+    }
 }
 
 //----------------------------------------------------------------------------
 bool cmDocumentation::PrintCopyright(std::ostream& os)
 {
-  for(const cmDocumentationEntry* op = cmDocumentationCopyright;
-      op->brief; ++op)
+  cmDocumentationSection *sec = this->AllSections["Copyright"];
+  const std::vector<cmDocumentationEntry> &entries = sec->GetEntries();
+  for(std::vector<cmDocumentationEntry>::const_iterator op = entries.begin();
+      op != entries.end(); ++op)
     {
-    if(op->name)
+    if(op->Name.size())
       {
       os << " * ";
-      this->TextIndent = "    ";
-      this->PrintColumn(os, op->brief);
+      this->TextFormatter.SetIndent("    ");
+      this->TextFormatter.PrintColumn(os, op->Brief.c_str());
       }
     else
       {
-      this->TextIndent = "";
-      this->PrintColumn(os, op->brief);
+      this->TextFormatter.SetIndent("");
+      this->TextFormatter.PrintColumn(os, op->Brief.c_str());
       }
     os << "\n";
     }
@@ -197,42 +304,100 @@ bool cmDocumentation::PrintVersion(std::ostream& os)
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::AddSection(const char* name,
-                                 const cmDocumentationEntry* d)
+void cmDocumentation::AddSectionToPrint(const char *section)
 {
-  this->Names.push_back(name);
-  this->Sections.push_back(d);
+  if (this->AllSections.find(section) != this->AllSections.end())
+    {
+    this->PrintSections.push_back(this->AllSections[section]);
+    }
 }
 
 //----------------------------------------------------------------------------
 void cmDocumentation::ClearSections()
 {
-  this->Names.erase(this->Names.begin(), this->Names.end());
-  this->Sections.erase(this->Sections.begin(), this->Sections.end());
+  this->PrintSections.erase(this->PrintSections.begin(), 
+                            this->PrintSections.end());
+  this->ModulesFound.clear();
 }
 
 //----------------------------------------------------------------------------
 bool cmDocumentation::PrintDocumentation(Type ht, std::ostream& os)
 {
-  if ( ht != cmDocumentation::HTML &&
-    ht != cmDocumentation::Man )
+  if ((this->CurrentFormatter->GetForm() != HTMLForm) 
+       && (this->CurrentFormatter->GetForm() != DocbookForm)
+       && (this->CurrentFormatter->GetForm() != ManForm))
     {
     this->PrintVersion(os);
     }
+
   switch (ht)
     {
-    case cmDocumentation::Usage:     return this->PrintDocumentationUsage(os);
-    case cmDocumentation::Single:    
+    case cmDocumentation::Usage:
+      return this->PrintDocumentationUsage(os);
+    case cmDocumentation::Single:
       return this->PrintDocumentationSingle(os);
-    case cmDocumentation::SingleModule:  
+    case cmDocumentation::SingleModule:
       return this->PrintDocumentationSingleModule(os);
-    case cmDocumentation::List:      return this->PrintDocumentationList(os);
-    case cmDocumentation::ModuleList: return this->PrintModuleList(os);
-    case cmDocumentation::Full:      return this->PrintDocumentationFull(os);
-    case cmDocumentation::HTML:      return this->PrintDocumentationHTML(os);
-    case cmDocumentation::Man:       return this->PrintDocumentationMan(os);
-    case cmDocumentation::Copyright: return this->PrintCopyright(os);
-    case cmDocumentation::Version:   return true;
+    case cmDocumentation::SinglePolicy:
+      return this->PrintDocumentationSinglePolicy(os);
+    case cmDocumentation::SingleProperty:
+      return this->PrintDocumentationSingleProperty(os);
+    case cmDocumentation::SingleVariable:
+      return this->PrintDocumentationSingleVariable(os);
+    case cmDocumentation::List:
+      this->PrintDocumentationList(os,"Commands");
+      this->PrintDocumentationList(os,"Compatibility Commands");
+      return true;
+    case cmDocumentation::ModuleList: 
+      // find the modules first, print the custom module docs only if 
+      // any custom modules have been found actually, Alex
+      this->CreateCustomModulesSection();
+      this->CreateModulesSection();
+      if (this->AllSections.find("Custom CMake Modules")
+         != this->AllSections.end())
+        {
+        this->PrintDocumentationList(os,"Custom CMake Modules");
+        }
+      this->PrintDocumentationList(os,"Modules");
+      return true;
+    case cmDocumentation::PropertyList: 
+      this->PrintDocumentationList(os,"Properties Description");
+      for (std::vector<std::string>::iterator i = 
+             this->PropertySections.begin();
+           i != this->PropertySections.end(); ++i)
+        {
+        this->PrintDocumentationList(os,i->c_str());
+        }
+      return true;
+    case cmDocumentation::VariableList: 
+      for (std::vector<std::string>::iterator i = 
+             this->VariableSections.begin();
+           i != this->VariableSections.end(); ++i)
+        {
+        this->PrintDocumentationList(os,i->c_str());
+        }
+      return true;
+    case cmDocumentation::Full: 
+      return this->PrintDocumentationFull(os);
+    case cmDocumentation::Modules: 
+      return this->PrintDocumentationModules(os);
+    case cmDocumentation::CustomModules: 
+      return this->PrintDocumentationCustomModules(os);
+    case cmDocumentation::Policies: 
+      return this->PrintDocumentationPolicies(os);
+    case cmDocumentation::Properties: 
+      return this->PrintDocumentationProperties(os);
+    case cmDocumentation::Variables: 
+      return this->PrintDocumentationVariables(os);
+    case cmDocumentation::Commands: 
+      return this->PrintDocumentationCurrentCommands(os);
+    case cmDocumentation::CompatCommands: 
+      return this->PrintDocumentationCompatCommands(os);
+
+    case cmDocumentation::Copyright: 
+      return this->PrintCopyright(os);
+    case cmDocumentation::Version:   
+      return true;
     default: return false;
     }
 }
@@ -240,34 +405,97 @@ bool cmDocumentation::PrintDocumentation(Type ht, std::ostream& os)
 //----------------------------------------------------------------------------
 bool cmDocumentation::CreateModulesSection()
 {
-  this->ModulesSection.push_back(cmDocumentationModulesHeader[0]);
+  cmDocumentationSection *sec = 
+    new cmDocumentationSection("Standard CMake Modules", "MODULES");
+  this->AllSections["Modules"] = sec;
   std::string cmakeModules = this->CMakeRoot;
   cmakeModules += "/Modules";
   cmsys::Directory dir;
   dir.Load(cmakeModules.c_str());
-  for(unsigned int i = 0; i < dir.GetNumberOfFiles(); ++i)
+  if (dir.GetNumberOfFiles() > 0)
     {
-    std::string fname = dir.GetFile(i);
-    if(fname.length() > 6)
-      {
-      if(fname.substr(fname.length()-6, 6) == ".cmake")
-        {
-        std::string moduleName = fname.substr(0, fname.length()-6);
-        std::string path = cmakeModules;
-        path += "/";
-        path += fname;
-        this->CreateSingleModule(path.c_str(), moduleName.c_str());
-        }
-      }
-    } 
-  cmDocumentationEntry e = { 0, 0, 0 };
-  this->ModulesSection.push_back(e);
+    sec->Append(cmDocumentationModulesHeader[0]);
+    sec->Append(cmModulesDocumentationDescription);
+    this->CreateModuleDocsForDir(dir, *this->AllSections["Modules"]);
+    }
   return true;
 }
 
 //----------------------------------------------------------------------------
+bool cmDocumentation::CreateCustomModulesSection()
+{
+  bool sectionHasHeader = false;
+
+  std::vector<std::string> dirs;
+  cmSystemTools::ExpandListArgument(this->CMakeModulePath, dirs);
+
+  for(std::vector<std::string>::const_iterator dirIt = dirs.begin();
+      dirIt != dirs.end();
+      ++dirIt)
+    {
+    cmsys::Directory dir;
+    dir.Load(dirIt->c_str());
+    if (dir.GetNumberOfFiles() > 0)
+      {
+      if (!sectionHasHeader)
+        {
+        cmDocumentationSection *sec = 
+          new cmDocumentationSection("Custom CMake Modules","CUSTOM MODULES");
+        this->AllSections["Custom CMake Modules"] = sec;
+        sec->Append(cmDocumentationCustomModulesHeader[0]);
+        sec->Append(cmCustomModulesDocumentationDescription);
+        sectionHasHeader = true;
+        }
+      this->CreateModuleDocsForDir
+        (dir, *this->AllSections["Custom CMake Modules"]);
+      }
+    }
+
+  return true;
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation
+::CreateModuleDocsForDir(cmsys::Directory& dir, 
+                         cmDocumentationSection &moduleSection)
+{
+  // sort the files alphabetically, so the docs for one module are easier 
+  // to find than if they are in random order
+  std::vector<std::string> sortedFiles;
+  for(unsigned int i = 0; i < dir.GetNumberOfFiles(); ++i)
+  {
+    sortedFiles.push_back(dir.GetFile(i));
+  }
+  std::sort(sortedFiles.begin(), sortedFiles.end());
+
+  for(std::vector<std::string>::const_iterator fname = sortedFiles.begin();
+      fname!=sortedFiles.end(); ++fname)
+    {
+    if(fname->length() > 6)
+      {
+      if(fname->substr(fname->length()-6, 6) == ".cmake")
+        {
+        std::string moduleName = fname->substr(0, fname->length()-6);
+        // this check is to avoid creating documentation for the modules with
+        // the same name in multiple directories of CMAKE_MODULE_PATH
+        if (this->ModulesFound.find(moduleName) == this->ModulesFound.end())
+          {
+          this->ModulesFound.insert(moduleName);
+          std::string path = dir.GetPath();
+          path += "/";
+          path += (*fname);
+          this->CreateSingleModule(path.c_str(), moduleName.c_str(), 
+                                   moduleSection);
+          }
+        }
+      }
+    }
+}
+
+//----------------------------------------------------------------------------
 bool cmDocumentation::CreateSingleModule(const char* fname, 
-                                         const char* moduleName)
+                                         const char* moduleName,
+                                         cmDocumentationSection &moduleSection)
 {
   std::ifstream fin(fname);
   if(!fin)
@@ -342,8 +570,7 @@ bool cmDocumentation::CreateSingleModule(const char* fname,
       this->ModuleStrings.push_back(ptext);
       char* pbrief = strcpy(new char[brief.length()+1], brief.c_str());
       this->ModuleStrings.push_back(pbrief);
-      cmDocumentationEntry e = { pname, pbrief, ptext };
-      this->ModulesSection.push_back(e);
+      moduleSection.Append(pname, pbrief, ptext);
       return true;
       }
     }
@@ -357,38 +584,20 @@ bool cmDocumentation::PrintRequestedDocumentation(std::ostream& os)
   bool result = true;
   
   // Loop over requested documentation types.
-  for(RequestedMapType::const_iterator i = this->RequestedMap.begin();
-      i != this->RequestedMap.end(); ++i)
+  for(std::vector<RequestedHelpItem>::const_iterator 
+      i = this->RequestedHelpItems.begin();
+      i != this->RequestedHelpItems.end(); 
+      ++i)
     {
-    // Special case for printing help for a single command.
-    if(i->first == cmDocumentation::Usage && i->second.length() > 0 &&
-       !this->CommandsSection.empty())
-      {
-      // Check if the argument to the usage request was a command.
-      for(cmDocumentationEntry* entry = &this->CommandsSection[0];
-          entry->brief; ++entry)
-        {
-        if(entry->name && (strcmp(entry->name, i->second.c_str()) == 0))
-          {
-          this->PrintDocumentationCommand(os, entry);
-          return true;
-          }
-        }
-      
-      // Argument was not a command.  Complain.
-      os << "Help argument \"" << i->second.c_str()
-         << "\" is not a CMake command.  "
-         << "Use --help-command-list to see all commands.\n";
-      return false;
-      }
-    
+    this->SetForm(i->HelpForm);
+    this->CurrentArgument = i->Argument;
     // If a file name was given, use it.  Otherwise, default to the
     // given stream.
     std::ofstream* fout = 0;
     std::ostream* s = &os;
-    if(i->second.length() > 0)
+    if(i->Filename.length() > 0)
       {
-      fout = new std::ofstream(i->second.c_str(), std::ios::out);
+      fout = new std::ofstream(i->Filename.c_str(), std::ios::out);
       if(fout)
         {
         s = fout;
@@ -400,7 +609,7 @@ bool cmDocumentation::PrintRequestedDocumentation(std::ostream& os)
       }
     
     // Print this documentation type to the stream.
-    if(!this->PrintDocumentation(i->first, *s) || !*s)
+    if(!this->PrintDocumentation(i->HelpType, *s) || !*s)
       {
       result = false;
       }
@@ -414,22 +623,58 @@ bool cmDocumentation::PrintRequestedDocumentation(std::ostream& os)
   return result;
 }
 
+#define GET_OPT_ARGUMENT(target)                      \
+     if((i+1 < argc) && !this->IsOption(argv[i+1]))   \
+        {                                             \
+        target = argv[i+1];                           \
+        i = i+1;                                      \
+        };
+
+
+cmDocumentation::Form cmDocumentation::GetFormFromFilename(
+                                                   const std::string& filename)
+{
+  std::string ext = cmSystemTools::GetFilenameExtension(filename);
+  ext = cmSystemTools::UpperCase(ext);
+  if ((ext == ".HTM") || (ext == ".HTML"))
+    {
+    return cmDocumentation::HTMLForm;
+    }
+
+  if (ext == ".DOCBOOK")
+    {
+    return cmDocumentation::DocbookForm;
+    }
+
+  // ".1" to ".9" should be manpages
+  if ((ext.length()==2) && (ext[1] >='1') && (ext[1]<='9'))
+    {
+    return cmDocumentation::ManForm;
+    }
+
+  return cmDocumentation::TextForm;
+}
+
 //----------------------------------------------------------------------------
 bool cmDocumentation::CheckOptions(int argc, const char* const* argv)
 {
   // Providing zero arguments gives usage information.
   if(argc == 1)
     {
-    this->RequestedMap[cmDocumentation::Usage] = "";
+    RequestedHelpItem help;
+    help.HelpType = cmDocumentation::Usage;
+    help.HelpForm = cmDocumentation::UsageForm;
+    this->RequestedHelpItems.push_back(help);
     return true;
     }
-  
+
   // Search for supported help options.
+
   bool result = false;
   for(int i=1; i < argc; ++i)
     {
+    RequestedHelpItem help;
     // Check if this is a supported help option.
-    Type type = cmDocumentation::None;
     if((strcmp(argv[i], "-help") == 0) ||
        (strcmp(argv[i], "--help") == 0) ||
        (strcmp(argv[i], "/?") == 0) ||
@@ -437,70 +682,155 @@ bool cmDocumentation::CheckOptions(int argc, const char* const* argv)
        (strcmp(argv[i], "-h") == 0) ||
        (strcmp(argv[i], "-H") == 0))
       {
-      type = cmDocumentation::Usage;
+      help.HelpType = cmDocumentation::Usage;
+      help.HelpForm = cmDocumentation::UsageForm;
+      GET_OPT_ARGUMENT(help.Argument);
+      help.Argument = cmSystemTools::LowerCase(help.Argument);
+      // special case for single command
+      if (!help.Argument.empty())
+        {
+        help.HelpType = cmDocumentation::Single;
+        }
+      }
+    else if(strcmp(argv[i], "--help-properties") == 0)
+      {
+      help.HelpType = cmDocumentation::Properties;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-policies") == 0)
+      {
+      help.HelpType = cmDocumentation::Policies;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-variables") == 0)
+      {
+      help.HelpType = cmDocumentation::Variables;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-modules") == 0)
+      {
+      help.HelpType = cmDocumentation::Modules;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-custom-modules") == 0)
+      {
+      help.HelpType = cmDocumentation::CustomModules;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-commands") == 0)
+      {
+      help.HelpType = cmDocumentation::Commands;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-compatcommands") == 0)
+      {
+      help.HelpType = cmDocumentation::CompatCommands;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
       }
     else if(strcmp(argv[i], "--help-full") == 0)
       {
-      type = cmDocumentation::Full;
+      help.HelpType = cmDocumentation::Full;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
       }
     else if(strcmp(argv[i], "--help-html") == 0)
       {
-      type = cmDocumentation::HTML;
+      help.HelpType = cmDocumentation::Full;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::HTMLForm;
       }
     else if(strcmp(argv[i], "--help-man") == 0)
       {
-      type = cmDocumentation::Man;
+      help.HelpType = cmDocumentation::Full;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::ManForm;
       }
     else if(strcmp(argv[i], "--help-command") == 0)
       {
-      type = cmDocumentation::Single;
-      if((i+1 < argc) && !this->IsOption(argv[i+1]))
-        {
-        this->SingleCommand = argv[i+1];
-        this->SingleCommand = cmSystemTools::UpperCase(this->SingleCommand);
-        i = i+1;
-        }
+      help.HelpType = cmDocumentation::Single;
+      GET_OPT_ARGUMENT(help.Argument);
+      GET_OPT_ARGUMENT(help.Filename);
+      help.Argument = cmSystemTools::LowerCase(help.Argument);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
       }
     else if(strcmp(argv[i], "--help-module") == 0)
       {
-      type = cmDocumentation::SingleModule;
-      if((i+1 < argc) && !this->IsOption(argv[i+1]))
-        {
-        this->SingleModuleName = argv[i+1];
-        i = i+1;
-        }
+      help.HelpType = cmDocumentation::SingleModule;
+      GET_OPT_ARGUMENT(help.Argument);
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-property") == 0)
+      {
+      help.HelpType = cmDocumentation::SingleProperty;
+      GET_OPT_ARGUMENT(help.Argument);
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-policy") == 0)
+      {
+      help.HelpType = cmDocumentation::SinglePolicy;
+      GET_OPT_ARGUMENT(help.Argument);
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
+      }
+    else if(strcmp(argv[i], "--help-variable") == 0)
+      {
+      help.HelpType = cmDocumentation::SingleVariable;
+      GET_OPT_ARGUMENT(help.Argument);
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = this->GetFormFromFilename(help.Filename);
       }
     else if(strcmp(argv[i], "--help-command-list") == 0)
       {
-      type = cmDocumentation::List;
+      help.HelpType = cmDocumentation::List;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::TextForm;
       }
     else if(strcmp(argv[i], "--help-module-list") == 0)
       {
-      type = cmDocumentation::ModuleList;
+      help.HelpType = cmDocumentation::ModuleList;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::TextForm;
+      }
+    else if(strcmp(argv[i], "--help-property-list") == 0)
+      {
+      help.HelpType = cmDocumentation::PropertyList;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::TextForm;
+      }
+    else if(strcmp(argv[i], "--help-variable-list") == 0)
+      {
+      help.HelpType = cmDocumentation::VariableList;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::TextForm;
       }
     else if(strcmp(argv[i], "--copyright") == 0)
       {
-      type = cmDocumentation::Copyright;
+      help.HelpType = cmDocumentation::Copyright;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::UsageForm;
       }
     else if((strcmp(argv[i], "--version") == 0) || 
             (strcmp(argv[i], "-version") == 0) || 
             (strcmp(argv[i], "/V") == 0))
       {
-      type = cmDocumentation::Version;
+      help.HelpType = cmDocumentation::Version;
+      GET_OPT_ARGUMENT(help.Filename);
+      help.HelpForm = cmDocumentation::UsageForm;
       }
-    if(type)
+    if(help.HelpType != None)
       {
       // This is a help option.  See if there is a file name given.
       result = true;
-      if((i+1 < argc) && !this->IsOption(argv[i+1]))
-        {
-        this->RequestedMap[type] = argv[i+1];
-        i = i+1;
-        }
-      else
-        {
-        this->RequestedMap[type] = "";
-        }
+      this->RequestedHelpItems.push_back(help);
       }
     }
   return result;
@@ -509,10 +839,22 @@ bool cmDocumentation::CheckOptions(int argc, const char* const* argv)
 //----------------------------------------------------------------------------
 void cmDocumentation::Print(Form f, std::ostream& os)
 {
-  this->CurrentForm = f;
-  for(unsigned int i=0; i < this->Sections.size(); ++i)
+  this->SetForm(f);
+  this->Print(os);
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation::Print(std::ostream& os)
+{
+  // if the formatter supports it, print a master index for 
+  // all sections
+  this->CurrentFormatter->PrintIndex(os, this->PrintSections);
+  for(unsigned int i=0; i < this->PrintSections.size(); ++i)
     {
-    this->PrintSection(os, this->Sections[i], this->Names[i]);
+    std::string name = this->PrintSections[i]->
+      GetName((this->CurrentFormatter->GetForm()));
+    this->CurrentFormatter->PrintSection(os,*this->PrintSections[i], 
+                                         name.c_str());
     }
 }
 
@@ -523,569 +865,202 @@ void cmDocumentation::SetName(const char* name)
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::SetNameSection(const cmDocumentationEntry* section)
+void cmDocumentation::SetSection(const char *name, 
+                                 cmDocumentationSection *section)
 {
-  this->SetSection(0, section, 0, this->NameSection);
+  if (this->AllSections.find(name) != this->AllSections.end())
+    {
+    delete this->AllSections[name];
+    }
+  this->AllSections[name] = section;
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::SetUsageSection(const cmDocumentationEntry* section)
+void cmDocumentation::SetSection(const char *name, 
+                                 std::vector<cmDocumentationEntry> &docs)
 {
-  this->SetSection(0, section, 0, this->UsageSection);
+  cmDocumentationSection *sec = 
+    new cmDocumentationSection(name, 
+                               cmSystemTools::UpperCase(name).c_str());
+  sec->Append(docs);
+  this->SetSection(name,sec);
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation::SetSection(const char *name, 
+                                 const char *docs[][3])
+{
+  cmDocumentationSection *sec = 
+    new cmDocumentationSection(name, 
+                               cmSystemTools::UpperCase(name).c_str());
+  sec->Append(docs);
+  this->SetSection(name,sec);
 }
 
 //----------------------------------------------------------------------------
 void cmDocumentation
-::SetDescriptionSection(const cmDocumentationEntry* section)
+::SetSections(std::map<std::string,cmDocumentationSection *> &sections)
 {
-  this->SetSection(0, section, 0, this->DescriptionSection);
+  for (std::map<std::string,cmDocumentationSection *>::const_iterator 
+         it = sections.begin(); it != sections.end(); ++it)
+    {
+    this->SetSection(it->first.c_str(),it->second);
+    }    
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::SetOptionsSection(const cmDocumentationEntry* section)
+void cmDocumentation::PrependSection(const char *name, 
+                                     const char *docs[][3])
 {
-  this->SetSection(0, section, cmDocumentationStandardOptions,
-                   this->OptionsSection);
+  cmDocumentationSection *sec = 0;
+  if (this->AllSections.find(name) == this->AllSections.end())
+    {
+    sec = new cmDocumentationSection
+      (name, cmSystemTools::UpperCase(name).c_str());
+    this->SetSection(name,sec);
+    }
+  else
+    {
+    sec = this->AllSections[name];
+    }
+  sec->Prepend(docs);
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::SetCommandsSection(const cmDocumentationEntry* section)
+void cmDocumentation::PrependSection(const char *name, 
+                                     std::vector<cmDocumentationEntry> &docs)
 {
-  this->SetSection(cmDocumentationCommandsHeader, section, 0,
-                   this->CommandsSection);
+  cmDocumentationSection *sec = 0;
+  if (this->AllSections.find(name) == this->AllSections.end())
+    {
+    sec = new cmDocumentationSection
+      (name, cmSystemTools::UpperCase(name).c_str());
+    this->SetSection(name,sec);
+    }
+  else
+    {
+    sec = this->AllSections[name];
+    }
+  sec->Prepend(docs);
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation
-::SetGeneratorsSection(const cmDocumentationEntry* section)
+void cmDocumentation::AppendSection(const char *name, 
+                                    const char *docs[][3])
 {
-  this->SetSection(cmDocumentationGeneratorsHeader, section, 0,
-                   this->GeneratorsSection);
+  cmDocumentationSection *sec = 0;
+  if (this->AllSections.find(name) == this->AllSections.end())
+    {
+    sec = new cmDocumentationSection
+      (name, cmSystemTools::UpperCase(name).c_str());
+    this->SetSection(name,sec);
+    }
+  else
+    {
+    sec = this->AllSections[name];
+    }
+  sec->Append(docs);
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::SetSeeAlsoList(const cmDocumentationEntry* also)
+void cmDocumentation::AppendSection(const char *name, 
+                                    std::vector<cmDocumentationEntry> &docs)
 {
-  this->SeeAlsoSection.clear();
+  cmDocumentationSection *sec = 0;
+  if (this->AllSections.find(name) == this->AllSections.end())
+    {
+    sec = new cmDocumentationSection
+      (name, cmSystemTools::UpperCase(name).c_str());
+    this->SetSection(name,sec);
+    }
+  else
+    {
+    sec = this->AllSections[name];
+    }
+  sec->Append(docs);
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation::AppendSection(const char *name, 
+                                    cmDocumentationEntry &docs)
+{
+
+  std::vector<cmDocumentationEntry> docsVec;
+  docsVec.push_back(docs);
+  this->AppendSection(name,docsVec);
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation::PrependSection(const char *name, 
+                                     cmDocumentationEntry &docs)
+{
+
+  std::vector<cmDocumentationEntry> docsVec;
+  docsVec.push_back(docs);
+  this->PrependSection(name,docsVec);
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation::SetSeeAlsoList(const char *data[][3])
+{
+  cmDocumentationSection *sec = 
+    new cmDocumentationSection("See Also", "SEE ALSO");
+  this->AllSections["See Also"] = sec;
   this->SeeAlsoString = ".B ";
-  for(const cmDocumentationEntry* i = also; i->brief; ++i)
+  int i = 0;
+  while(data[i][1])
     {
-    this->SeeAlsoString += i->brief;
-    this->SeeAlsoString += (i+1)->brief? "(1), ":"(1)";    
+    this->SeeAlsoString += data[i][1];
+    this->SeeAlsoString += data[i+1][1]? "(1), ":"(1)";    
+    ++i;
     }
-  cmDocumentationEntry e = {0, 0, 0};
-  e.brief = this->SeeAlsoString.c_str();
-  this->SeeAlsoSection.push_back(e);
-  for(const cmDocumentationEntry* i = cmDocumentationStandardSeeAlso;
-      i->brief; ++i)
-    {
-    this->SeeAlsoSection.push_back(*i);
-    }
-  e.brief = 0;
-  this->SeeAlsoSection.push_back(e);  
+  sec->Append(0,this->SeeAlsoString.c_str(),0);
+  sec->Append(cmDocumentationStandardSeeAlso);
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::PrintSection(std::ostream& os,
-                                   const cmDocumentationEntry* section,
-                                   const char* name)
+bool cmDocumentation::PrintDocumentationGeneric(std::ostream& os,
+                                                const char *section)
 {
-  switch (this->CurrentForm)
+  if(this->AllSections.find(section) == this->AllSections.end())
     {
-    case TextForm: this->PrintSectionText(os, section, name); break;
-    case HTMLForm: this->PrintSectionHTML(os, section, name); break;
-    case ManForm: this->PrintSectionMan(os, section, name); break;
-    case UsageForm: this->PrintSectionUsage(os, section, name); break;
+    os << "Internal error: " << section << " list is empty." << std::endl;
+    return false;
     }
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintSectionText(std::ostream& os,
-                                       const cmDocumentationEntry* section,
-                                       const char* name)
-{
-  if(name)
+  if(this->CurrentArgument.length() == 0)
     {
-    os <<
-      "---------------------------------------"
-      "---------------------------------------\n";
-    os << name << "\n\n";
+    os << "Required argument missing.\n";
+    return false;
     }
-  if(!section) { return; }
-  for(const cmDocumentationEntry* op = section; op->brief; ++op)
+  const std::vector<cmDocumentationEntry> &entries = 
+    this->AllSections[section]->GetEntries();
+  for(std::vector<cmDocumentationEntry>::const_iterator ei = 
+        entries.begin();
+      ei != entries.end(); ++ei)
     {
-    if(op->name)
+    if(this->CurrentArgument == ei->Name)
       {
-      if(op->name[0])
-        {
-        os << "  " << op->name << "\n";
-        }
-      this->TextIndent = "       ";
-      this->PrintFormatted(os, op->brief);
-      if(op->full)
-        {
-        os << "\n";
-        this->PrintFormatted(os, op->full);
-        }
-      }
-    else
-      {
-      this->TextIndent = "";
-      this->PrintFormatted(os, op->brief);
-      }
-    os << "\n";
-    }  
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintSectionHTML(std::ostream& os,
-                                       const cmDocumentationEntry* section,
-                                       const char* name)
-{
-  if(name)
-    {
-    os << "<h2>" << name << "</h2>\n";
-    }
-  if(!section) { return; }
-  for(const cmDocumentationEntry* op = section; op->brief;)
-    {
-    if(op->name)
-      {
-      os << "<ul>\n";
-      for(;op->name;++op)
-        {
-        os << "  <li>\n";
-        if(op->name[0])
-          {
-          os << "    <b><code>";
-          this->PrintHTMLEscapes(os, op->name);
-          os << "</code></b>: ";
-          }
-        this->PrintHTMLEscapes(os, op->brief);
-        if(op->full)
-          {
-          os << "<br>\n    ";
-          this->PrintFormatted(os, op->full);
-          }
-        os << "\n";
-        os << "  </li>\n";
-        }
-      os << "</ul>\n";
-      }
-    else
-      {
-      this->PrintFormatted(os, op->brief);
-      os << "\n";
-      ++op;
+      this->PrintDocumentationCommand(os, *ei);
+      return true;
       }
     }
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintSectionMan(std::ostream& os,
-                                      const cmDocumentationEntry* section,
-                                      const char* name)
-{
-  if(name)
-    {
-    os << ".SH " << name << "\n";
-    }
-  if(!section) { return; }
-  for(const cmDocumentationEntry* op = section; op->brief; ++op)
-    {
-    if(op->name)
-      {
-      os << ".TP\n"
-         << ".B " << (op->name[0]?op->name:"*") << "\n";
-      this->PrintFormatted(os, op->brief);
-      this->PrintFormatted(os, op->full);
-      }
-    else
-      {
-      os << ".PP\n";
-      this->PrintFormatted(os, op->brief);
-      }
-    }  
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintSectionUsage(std::ostream& os,
-                                        const cmDocumentationEntry* section,
-                                        const char* name)
-{
-  if(name)
-    {
-    os << name << "\n";
-    }
-  if(!section) { return; }
-  for(const cmDocumentationEntry* op = section; op->brief; ++op)
-    {
-    if(op->name)
-      {
-      os << "  " << op->name;
-      this->TextIndent = "                                ";
-      int align = static_cast<int>(strlen(this->TextIndent))-4;
-      for(int i = static_cast<int>(strlen(op->name)); i < align; ++i)
-        {
-        os << " ";
-        }
-      if ( strlen(op->name) > strlen(this->TextIndent)-4 )
-        {
-        os << "\n";
-        os.write(this->TextIndent, strlen(this->TextIndent)-2);
-        }
-      os << "= ";
-      this->PrintColumn(os, op->brief);
-      os << "\n";
-      }
-    else
-      {
-      os << "\n";
-      this->TextIndent = "";
-      this->PrintFormatted(os, op->brief);
-      }
-    }
-  os << "\n";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintFormatted(std::ostream& os, const char* text)
-{
-  if(!text)
-    {
-    return;
-    }
-  const char* ptr = text;
-  while(*ptr)
-    {
-    // Any ptrs starting in a space are treated as preformatted text.
-    std::string preformatted;
-    while(*ptr == ' ')
-      {
-      for(char ch = *ptr; ch && ch != '\n'; ++ptr, ch = *ptr)
-        {
-        preformatted.append(1, ch);
-        }
-      if(*ptr)
-        {
-        ++ptr;
-        preformatted.append(1, '\n');
-        }
-      }
-    if(preformatted.length())
-      {
-      this->PrintPreformatted(os, preformatted.c_str());
-      }
-    
-    // Other ptrs are treated as paragraphs.
-    std::string paragraph;
-    for(char ch = *ptr; ch && ch != '\n'; ++ptr, ch = *ptr)
-      {
-      paragraph.append(1, ch);
-      }
-    if(*ptr)
-      {
-      ++ptr;
-      paragraph.append(1, '\n');
-      }
-    if(paragraph.length())
-      {
-      this->PrintParagraph(os, paragraph.c_str());
-      }
-    }
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintPreformatted(std::ostream& os, const char* text)
-{
-  switch (this->CurrentForm)
-    {
-    case TextForm: this->PrintPreformattedText(os, text); break;
-    case HTMLForm: this->PrintPreformattedHTML(os, text); break;
-    case ManForm: this->PrintPreformattedMan(os, text); break;
-    case UsageForm: this->PrintPreformattedText(os, text); break;
-    }
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintParagraph(std::ostream& os, const char* text)
-{
-  switch (this->CurrentForm)
-    {
-    case TextForm: this->PrintParagraphText(os, text); break;
-    case HTMLForm: this->PrintParagraphHTML(os, text); break;
-    case ManForm: this->PrintParagraphMan(os, text); break;
-    case UsageForm: this->PrintParagraphText(os, text); break;
-    }
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation
-::PrintPreformattedText(std::ostream& os, const char* text)
-{
-  bool newline = true;
-  for(const char* ptr = text; *ptr; ++ptr)
-    {
-    if(newline)
-      {
-      os << this->TextIndent;
-      newline = false;
-      }
-    os << *ptr;
-    if(*ptr == '\n')
-      {
-      newline = true;
-      }
-    }
-  os << "\n";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintParagraphText(std::ostream& os, const char* text)
-{
-  os << this->TextIndent;
-  this->PrintColumn(os, text);
-  os << "\n";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation
-::PrintPreformattedHTML(std::ostream& os, const char* text)
-{
-  os << "<pre>";
-  this->PrintHTMLEscapes(os, text);
-  os << "</pre>\n    ";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintParagraphHTML(std::ostream& os, const char* text)
-{
-  os << "<p>";
-  this->PrintHTMLEscapes(os, text);
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintPreformattedMan(std::ostream& os, const char* text)
-{
-  std::string man_text = text;
-  cmSystemTools::ReplaceString(man_text, "\\", "\\\\");
-  os << man_text << "\n";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintParagraphMan(std::ostream& os, const char* text)
-{
-  std::string man_text = text;
-  cmSystemTools::ReplaceString(man_text, "\\", "\\\\");
-  os << man_text << "\n\n";
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintColumn(std::ostream& os, const char* text)
-{
-  // Print text arranged in an indented column of fixed witdh.
-  const char* l = text;
-  int column = 0;
-  bool newSentence = false;
-  bool firstLine = true;
-  int width = this->TextWidth - static_cast<int>(strlen(this->TextIndent));
-  
-  // Loop until the end of the text.
-  while(*l)
-    {
-    // Parse the next word.
-    const char* r = l;
-    while(*r && (*r != '\n') && (*r != ' ')) { ++r; }
-    
-    // Does it fit on this line?
-    if(r-l < (width-column-(newSentence?1:0)))
-      {
-      // Word fits on this line.
-      if(r > l)
-        {
-        if(column)
-          {
-          // Not first word on line.  Separate from the previous word
-          // by a space, or two if this is a new sentence.
-          if(newSentence)
-            {
-            os << "  ";
-            column += 2;
-            }
-          else
-            {
-            os << " ";
-            column += 1;
-            }
-          }
-        else
-          {
-          // First word on line.  Print indentation unless this is the
-          // first line.
-          os << (firstLine?"":this->TextIndent);
-          }
-        
-        // Print the word.
-        os.write(l, static_cast<long>(r-l));
-        newSentence = (*(r-1) == '.');
-        }
-      
-      if(*r == '\n')
-        {
-        // Text provided a newline.  Start a new line.
-        os << "\n";
-        ++r;
-        column = 0;
-        firstLine = false;
-        }
-      else
-        {
-        // No provided newline.  Continue this line.
-        column += static_cast<long>(r-l);
-        }
-      }
-    else
-      {
-      // Word does not fit on this line.  Start a new line.
-      os << "\n";
-      firstLine = false;
-      if(r > l)
-        {
-        os << this->TextIndent;
-        os.write(l, static_cast<long>(r-l));
-        column = static_cast<long>(r-l);
-        newSentence = (*(r-1) == '.');
-        }
-      else
-        {
-        column = 0;
-        }
-      }
-    
-    // Move to beginning of next word.  Skip over whitespace.
-    l = r;
-    while(*l && (*l == ' ')) { ++l; }    
-    }
-}
-
-//----------------------------------------------------------------------------
-static bool cmDocumentationIsHyperlinkChar(char c)
-{
-  // This is not a complete list but works for CMake documentation.
-  return ((c >= 'A' && c <= 'Z') ||
-          (c >= 'a' && c <= 'z') ||
-          (c >= '0' && c <= '9') ||
-          c == '-' || c == '.' || c == '/' || c == '~' || c == '@' ||
-          c == ':' || c == '_' || c == '&' || c == '?' || c == '=');
-}
-
-//----------------------------------------------------------------------------
-static void cmDocumentationPrintHTMLChar(std::ostream& os, char c)
-{
-  // Use an escape sequence if necessary.
-  static cmDocumentationEntry escapes[] =
-  {
-    {"<", "&lt;", 0},
-    {">", "&gt;", 0},
-    {"&", "&amp;", 0},
-    {"\n", "<br>", 0},
-    {0,0,0}
-  };
-  for(const cmDocumentationEntry* op = escapes; op->name; ++op)
-    {
-    if(op->name[0] == c)
-        {
-        os << op->brief;
-      return;
-      }
-    }
-
-  // No escape sequence is needed.
-  os << c;
-}
-
-//----------------------------------------------------------------------------
-const char* cmDocumentationPrintHTMLLink(std::ostream& os, const char* begin)
-{
-  // Look for the end of the link.
-  const char* end = begin;
-  while(cmDocumentationIsHyperlinkChar(*end))
-    {
-    ++end;
-    }
-
-  // Print the hyperlink itself.
-  os << "<a href=\"";
-  for(const char* c = begin; c != end; ++c)
-    {
-    cmDocumentationPrintHTMLChar(os, *c);
-    }
-  os << "\">";
-
-  // The name of the hyperlink is the text itself.
-  for(const char* c = begin; c != end; ++c)
-    {
-    cmDocumentationPrintHTMLChar(os, *c);
-    }
-  os << "</a>";
-
-  // Return the position at which to continue scanning the input
-  // string.
-  return end;
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintHTMLEscapes(std::ostream& os, const char* text)
-{
-  // Hyperlink prefixes.
-  static const char* hyperlinks[] = {"http://", "ftp://", "mailto:", 0};
-
-  // Print each character.
-  for(const char* p = text; *p;)
-    {
-    // Handle hyperlinks specially to make them active.
-    bool found_hyperlink = false;
-    for(const char** h = hyperlinks; !found_hyperlink && *h; ++h)
-      {
-      if(strncmp(p, *h, strlen(*h)) == 0)
-        {
-        p = cmDocumentationPrintHTMLLink(os, p);
-        found_hyperlink = true;
-        }
-      }
-
-    // Print other characters normally.
-    if(!found_hyperlink)
-      {
-      cmDocumentationPrintHTMLChar(os, *p++);
-      }
-    }
+  return false;
 }
 
 //----------------------------------------------------------------------------
 bool cmDocumentation::PrintDocumentationSingle(std::ostream& os)
 {
-  if(this->CommandsSection.empty())
+  if (this->PrintDocumentationGeneric(os,"Commands"))
     {
-    os << "Internal error: commands list is empty." << std::endl;
-    return false;
+    return true;
     }
-  if(this->SingleCommand.length() == 0)
+  if (this->PrintDocumentationGeneric(os,"Compatibility Commands"))
     {
-    os << "Argument --help-command needs a command name.\n";
-    return false;
+    return true;
     }
-  for(cmDocumentationEntry* entry = &this->CommandsSection[0];
-      entry->brief; ++entry)
-    {
-    if(entry->name && this->SingleCommand == entry->name)
-      {
-      this->PrintDocumentationCommand(os, entry);
-      return true;
-      }
-    }
+
   // Argument was not a command.  Complain.
-  os << "Argument \"" << this->SingleCommand.c_str()
+  os << "Argument \"" << this->CurrentArgument.c_str()
      << "\" to --help-command is not a CMake command.  "
      << "Use --help-command-list to see all commands.\n";
   return false;
@@ -1094,64 +1069,145 @@ bool cmDocumentation::PrintDocumentationSingle(std::ostream& os)
 //----------------------------------------------------------------------------
 bool cmDocumentation::PrintDocumentationSingleModule(std::ostream& os)
 {
-  if(this->SingleModuleName.length() == 0)
+  if(this->CurrentArgument.length() == 0)
     {
     os << "Argument --help-module needs a module name.\n";
     return false;
     }
-  std::string cmakeModules = this->CMakeRoot;
-  cmakeModules += "/Modules/";
-  cmakeModules += this->SingleModuleName;
-  cmakeModules += ".cmake";
-  if(cmSystemTools::FileExists(cmakeModules.c_str())
-     && this->CreateSingleModule(cmakeModules.c_str(), 
-                                 this->SingleModuleName.c_str()))
+    
+  std::string moduleName;
+  // find the module
+  std::vector<std::string> dirs;
+  cmSystemTools::ExpandListArgument(this->CMakeModulePath, dirs);
+  for(std::vector<std::string>::const_iterator dirIt = dirs.begin();
+      dirIt != dirs.end();
+      ++dirIt)
     {
-    this->PrintDocumentationCommand(os, &this->ModulesSection[0]);
-    os <<  "\n       Defined in: ";
-    os << cmakeModules << "\n";
-    return true;
+    moduleName = *dirIt;
+    moduleName += "/";
+    moduleName += this->CurrentArgument;
+    moduleName += ".cmake";
+    if(cmSystemTools::FileExists(moduleName.c_str()))
+      {
+      break;
+      }
+    moduleName = "";
     }
+
+  if (moduleName.empty())
+    {
+    moduleName = this->CMakeRoot;
+    moduleName += "/Modules/";
+    moduleName += this->CurrentArgument;
+    moduleName += ".cmake";
+    if(!cmSystemTools::FileExists(moduleName.c_str()))
+      {
+      moduleName = "";
+      }
+    }
+
+  if(!moduleName.empty())
+    {
+    cmDocumentationSection *sec = 
+      new cmDocumentationSection("Standard CMake Modules", "MODULES");
+    this->AllSections["Modules"] = sec;
+    if (this->CreateSingleModule(moduleName.c_str(), 
+                                 this->CurrentArgument.c_str(),
+                                 *this->AllSections["Modules"]))
+      {
+      this->PrintDocumentationCommand
+        (os,  this->AllSections["Modules"]->GetEntries()[0]);
+      os <<  "\n       Defined in: ";
+      os << moduleName << "\n";
+      return true;
+      }
+    }
+
   // Argument was not a module.  Complain.
-  os << "Argument \"" << this->SingleModuleName.c_str()
-     << "\" to --help-module is not a CMake module.";
+  os << "Argument \"" << this->CurrentArgument.c_str()
+     << "\" to --help-module is not a CMake module.\n";
   return false;
 }
 
 //----------------------------------------------------------------------------
-bool cmDocumentation::PrintDocumentationList(std::ostream& os)
+bool cmDocumentation::PrintDocumentationSingleProperty(std::ostream& os)
 {
-  if(this->CommandsSection.empty())
+  bool done = false;
+  for (std::vector<std::string>::iterator i = 
+         this->PropertySections.begin();
+       !done && i != this->PropertySections.end(); ++i)
     {
-    os << "Internal error: commands list is empty." << std::endl;
-    return false;
+    done = this->PrintDocumentationGeneric(os,i->c_str());
     }
-  for(cmDocumentationEntry* entry = &this->CommandsSection[0];
-      entry->brief; ++entry)
+
+  if (done)
     {
-    if(entry->name)
-      {
-      os << entry->name << std::endl;
-      }
+    return true;
     }
-  return true;
+
+  // Argument was not a command.  Complain.
+  os << "Argument \"" << this->CurrentArgument.c_str()
+     << "\" to --help-property is not a CMake property.  "
+     << "Use --help-property-list to see all properties.\n";
+  return false;
 }
 
 //----------------------------------------------------------------------------
-bool cmDocumentation::PrintModuleList(std::ostream& os)
+bool cmDocumentation::PrintDocumentationSinglePolicy(std::ostream& os)
 {
-  this->CreateModulesSection();
-  if(this->ModulesSection.empty())
+  if (this->PrintDocumentationGeneric(os,"Policies"))
     {
-    os << "Internal error: modules list is empty." << std::endl;
+    return true;
+    }
+
+  // Argument was not a command.  Complain.
+  os << "Argument \"" << this->CurrentArgument.c_str()
+     << "\" to --help-policy is not a CMake policy.\n";
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationSingleVariable(std::ostream& os)
+{
+  bool done = false;
+  for (std::vector<std::string>::iterator i = 
+         this->VariableSections.begin();
+       !done && i != this->VariableSections.end(); ++i)
+    {
+    done = this->PrintDocumentationGeneric(os,i->c_str());
+    }
+
+  if (done)
+    {
+    return true;
+    }
+
+  // Argument was not a command.  Complain.
+  os << "Argument \"" << this->CurrentArgument.c_str()
+     << "\" to --help-variable is not a defined variable.  "
+     << "Use --help-variable-list to see all defined variables.\n";
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationList(std::ostream& os,
+                                             const char *section)
+{
+  if(this->AllSections.find(section) == this->AllSections.end())
+    {
+    os << "Internal error: " << section << " list is empty." << std::endl;
     return false;
     }
-  for(cmDocumentationEntry* entry = &this->ModulesSection[0];
-      entry->brief; ++entry)
+
+  const std::vector<cmDocumentationEntry> &entries = 
+    this->AllSections[section]->GetEntries();
+  for(std::vector<cmDocumentationEntry>::const_iterator ei = 
+        entries.begin();
+      ei != entries.end(); ++ei)
     {
-    if(entry->name)
+    if(ei->Name.size())
       {
-      os << entry->name << std::endl;
+      os << ei->Name << std::endl;
       }
     }
   return true;
@@ -1160,8 +1216,11 @@ bool cmDocumentation::PrintModuleList(std::ostream& os)
 //----------------------------------------------------------------------------
 bool cmDocumentation::PrintDocumentationUsage(std::ostream& os)
 {
-  this->CreateUsageDocumentation();
-  this->Print(UsageForm, os);
+  this->ClearSections();
+  this->AddSectionToPrint("Usage");
+  this->AddSectionToPrint("Options");
+  this->AddSectionToPrint("Generators");
+  this->Print(os);
   return true;
 }
 
@@ -1169,178 +1228,225 @@ bool cmDocumentation::PrintDocumentationUsage(std::ostream& os)
 bool cmDocumentation::PrintDocumentationFull(std::ostream& os)
 {
   this->CreateFullDocumentation();
-  this->Print(TextForm, os);
+  this->CurrentFormatter->PrintHeader(GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
   return true;
 }
 
 //----------------------------------------------------------------------------
-bool cmDocumentation::PrintDocumentationHTML(std::ostream& os)
-{
-  this->CreateFullDocumentation();
-  os << "<html><body>\n";
-  this->Print(HTMLForm, os);
-  os << "</body></html>\n";
-  return true;
-}
-
-//----------------------------------------------------------------------------
-bool cmDocumentation::PrintDocumentationMan(std::ostream& os)
-{
-  this->CreateManDocumentation();
-  os << ".TH " << this->GetNameString() << " 1 \""
-     << cmSystemTools::GetCurrentDateTime("%B %d, %Y").c_str()
-     << "\" \"" << this->GetNameString() 
-     << " " << cmVersion::GetCMakeVersion()
-     << "\"\n";
-  this->Print(ManForm, os);
-  return true;
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::PrintDocumentationCommand(std::ostream& os,
-                                                cmDocumentationEntry* entry)
-{
-  cmDocumentationEntry singleCommandSection[3] =
-    {
-      {entry->name, entry->brief, entry->full},
-      {0,0,0}
-    };
-  this->ClearSections();
-  this->AddSection(0, &singleCommandSection[0]);
-  this->Print(TextForm, os);
-}
-
-//----------------------------------------------------------------------------
-void cmDocumentation::CreateUsageDocumentation()
+bool cmDocumentation::PrintDocumentationModules(std::ostream& os)
 {
   this->ClearSections();
-  if(!this->UsageSection.empty())
+  this->CreateModulesSection();
+  this->AddSectionToPrint("Description");
+  this->AddSectionToPrint("Modules");
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("See Also");
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationCustomModules(std::ostream& os)
+{
+  this->ClearSections();
+  this->CreateCustomModulesSection();
+  this->AddSectionToPrint("Description");
+  this->AddSectionToPrint("Custom CMake Modules");
+// the custom modules are most probably not under Kitware's copyright, Alex
+//  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("See Also");
+
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationPolicies(std::ostream& os)
+{
+  this->ClearSections();
+  this->AddSectionToPrint("Description");
+  this->AddSectionToPrint("Policies");
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("See Also");
+
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationProperties(std::ostream& os)
+{
+  this->ClearSections();
+  this->AddSectionToPrint("Properties Description");
+  for (std::vector<std::string>::iterator i = 
+         this->PropertySections.begin();
+       i != this->PropertySections.end(); ++i)
     {
-    this->AddSection("Usage", &this->UsageSection[0]);
+    this->AddSectionToPrint(i->c_str());
     }
-  if(!this->OptionsSection.empty())
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("Standard See Also");
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationVariables(std::ostream& os)
+{
+  this->ClearSections();
+  for (std::vector<std::string>::iterator i = 
+         this->VariableSections.begin();
+       i != this->VariableSections.end(); ++i)
     {
-    this->AddSection("Command-Line Options", &this->OptionsSection[0]);
+    this->AddSectionToPrint(i->c_str());
     }
-  if(!this->GeneratorsSection.empty())
-    {
-    this->AddSection("Generators", &this->GeneratorsSection[0]);
-    }
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("Standard See Also");
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationCurrentCommands(std::ostream& os)
+{
+  this->ClearSections();
+  this->AddSectionToPrint("Commands");
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("Standard See Also");
+  this->CurrentFormatter->PrintHeader(this->GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDocumentation::PrintDocumentationCompatCommands(std::ostream& os)
+{
+  this->ClearSections();
+  this->AddSectionToPrint("Compatibility Commands Description");
+  this->AddSectionToPrint("Compatibility Commands");
+  this->AddSectionToPrint("Copyright");
+  this->AddSectionToPrint("Standard See Also");
+  this->CurrentFormatter->PrintHeader(GetNameString(), os);
+  this->Print(os);
+  this->CurrentFormatter->PrintFooter(os);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+void cmDocumentation
+::PrintDocumentationCommand(std::ostream& os,
+                            const cmDocumentationEntry &entry)
+{
+  cmDocumentationSection *sec = new cmDocumentationSection("","");
+  sec->Append(entry);
+  this->AllSections["temp"] = sec;
+  this->ClearSections();
+  this->AddSectionToPrint("temp");
+  this->Print(os);
+  this->AllSections.erase("temp");
+  delete sec;
 }
 
 //----------------------------------------------------------------------------
 void cmDocumentation::CreateFullDocumentation()
 {
   this->ClearSections();
-  if(!this->NameSection.empty())
-    {
-    this->AddSection("Name", &this->NameSection[0]);
-    }
-  if(!this->UsageSection.empty())
-    {
-    this->AddSection("Usage", &this->UsageSection[0]);
-    }
-  if(!this->DescriptionSection.empty())
-    {
-    this->AddSection(0, &this->DescriptionSection[0]);
-    }
-  if(!this->OptionsSection.empty())
-    {
-    this->AddSection("Command-Line Options", &this->OptionsSection[0]);
-    }
-  if(!this->GeneratorsSection.empty())
-    {
-    this->AddSection("Generators", &this->GeneratorsSection[0]);
-    }
-  if(!this->CommandsSection.empty())
-    {
-    this->AddSection("Listfile Commands", &this->CommandsSection[0]);
-    }
+  this->CreateCustomModulesSection();
   this->CreateModulesSection();
-  if(!this->ModulesSection.empty())
+
+  std::set<std::string> emitted;
+  this->AddSectionToPrint("Name");
+  emitted.insert("Name");
+  this->AddSectionToPrint("Usage");
+  emitted.insert("Usage");
+  this->AddSectionToPrint("Description");
+  emitted.insert("Description");
+  this->AddSectionToPrint("Options");
+  emitted.insert("Options");
+  this->AddSectionToPrint("Generators");
+  emitted.insert("Generators");
+  this->AddSectionToPrint("Commands");
+  emitted.insert("Commands");
+
+  
+  this->AddSectionToPrint("Properties Description");
+  emitted.insert("Properties Description");
+  for (std::vector<std::string>::iterator i = 
+         this->PropertySections.begin();
+       i != this->PropertySections.end(); ++i)
     {
-    this->AddSection("Standard CMake Modules", &this->ModulesSection[0]);
+    this->AddSectionToPrint(i->c_str());
+    emitted.insert(i->c_str());
     }
-  this->AddSection("Copyright", cmDocumentationCopyright);
-  this->AddSection("See Also", cmDocumentationStandardSeeAlso);
+
+  emitted.insert("Copyright");
+  emitted.insert("See Also");
+  emitted.insert("Standard See Also");
+  emitted.insert("Author");
+
+  // add any sections not yet written out, or to be written out
+  for (std::map<std::string, cmDocumentationSection*>::iterator i = 
+         this->AllSections.begin();
+       i != this->AllSections.end(); ++i)
+    {
+    if (emitted.find(i->first) == emitted.end())
+      {
+      this->AddSectionToPrint(i->first.c_str());
+      }
+    }
+
+  this->AddSectionToPrint("Copyright");
+
+  if(this->CurrentFormatter->GetForm() == ManForm)
+    {
+    this->AddSectionToPrint("See Also");
+    this->AddSectionToPrint("Author");
+    }
+  else
+    {
+    this->AddSectionToPrint("Standard See Also");
+    }
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentation::CreateManDocumentation()
+void cmDocumentation::SetForm(Form f)
 {
-  this->ClearSections();
-  if(!this->NameSection.empty())
-    {
-    this->AddSection("NAME", &this->NameSection[0]);
-    }
-  if(!this->UsageSection.empty())
-    {
-    this->AddSection("SYNOPSIS", &this->UsageSection[0]);
-    }
-  if(!this->DescriptionSection.empty())
-    {
-    this->AddSection("DESCRIPTION", &this->DescriptionSection[0]);
-    }
-  if(!this->OptionsSection.empty())
-    {
-    this->AddSection("OPTIONS", &this->OptionsSection[0]);
-    }
-  if(!this->GeneratorsSection.empty())
-    {
-    this->AddSection("GENERATORS", &this->GeneratorsSection[0]);
-    }
-  if(!this->CommandsSection.empty())
-    {
-    this->AddSection("COMMANDS", &this->CommandsSection[0]);
-    }
-  this->CreateModulesSection();
-  if(!this->ModulesSection.empty())
-    {
-    this->AddSection("MODULES", &this->ModulesSection[0]);
-    }
-
-  this->AddSection("COPYRIGHT", cmDocumentationCopyright);
-  if(!this->SeeAlsoSection.empty())
-    {
-    this->AddSection("SEE ALSO", &this->SeeAlsoSection[0]);
-    }
-  this->AddSection("AUTHOR", cmDocumentationAuthor);
+  switch(f)
+  {
+    case HTMLForm:
+      this->CurrentFormatter = &this->HTMLFormatter;
+      break;
+    case DocbookForm:
+      this->CurrentFormatter = &this->DocbookFormatter;
+      break;
+    case ManForm:
+      this->CurrentFormatter = &this->ManFormatter;
+      break;
+    case TextForm:
+      this->CurrentFormatter = &this->TextFormatter;
+      break;
+    case UsageForm:
+      this->CurrentFormatter = & this->UsageFormatter;
+      break;
+  }
 }
 
-//----------------------------------------------------------------------------
-void cmDocumentation::SetSection(const cmDocumentationEntry* header,
-                                 const cmDocumentationEntry* section,
-                                 const cmDocumentationEntry* footer,
-                                 std::vector<cmDocumentationEntry>& vec)
-{
-  vec.erase(vec.begin(), vec.end());
-  if(header)
-    {
-    for(const cmDocumentationEntry* op = header; op->brief; ++op)
-      {
-      vec.push_back(*op);
-      }
-    }
-  if(section)
-    {
-    for(const cmDocumentationEntry* op = section; op->brief; ++op)
-      {
-      vec.push_back(*op);
-      }
-    }
-  if(footer)
-    {
-    for(const cmDocumentationEntry* op = footer; op->brief; ++op)
-      {
-      vec.push_back(*op);
-      }
-    }
-  cmDocumentationEntry empty = {0,0,0};
-  vec.push_back(empty);  
-}
 
 //----------------------------------------------------------------------------
-const char* cmDocumentation::GetNameString()
+const char* cmDocumentation::GetNameString() const
 {
   if(this->NameString.length() > 0)
     {
@@ -1353,7 +1459,7 @@ const char* cmDocumentation::GetNameString()
 }
 
 //----------------------------------------------------------------------------
-bool cmDocumentation::IsOption(const char* arg)
+bool cmDocumentation::IsOption(const char* arg) const
 {
   return ((arg[0] == '-') || (strcmp(arg, "/V") == 0) || 
           (strcmp(arg, "/?") == 0));

@@ -1,3 +1,19 @@
+/*=========================================================================
+
+  Program:   CMake - Cross-Platform Makefile Generator
+  Module:    $RCSfile: cmDependsJavaLexer.h,v $
+  Language:  C++
+  Date:      $Date: 2007-07-27 14:55:24 $
+  Version:   $Revision: 1.5 $
+
+  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
+  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even 
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
 #ifndef cmDependsJava_yyHEADER_H
 #define cmDependsJava_yyHEADER_H 1
 #define cmDependsJava_yyIN_HEADER 1
@@ -21,6 +37,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+
+#if defined(__BEOS__)
+#include <unistd.h>   /* prevents a conflict with a #define later on... */
+#endif
 
 /* end standard C headers. */
 

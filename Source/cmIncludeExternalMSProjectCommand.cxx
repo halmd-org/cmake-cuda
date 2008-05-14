@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeExternalMSProjectCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.13.2.3 $
+  Date:      $Date: 2008-01-28 13:38:35 $
+  Version:   $Revision: 1.23 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,13 +18,13 @@
 
 // cmIncludeExternalMSProjectCommand
 bool cmIncludeExternalMSProjectCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2) 
   {
   this->SetError("INCLUDE_EXTERNAL_MSPROJECT called with incorrect "
                  "number of arguments");
-    return false;
+  return false;
   }
 // only compile this for win32 to avoid coverage errors
 #ifdef _WIN32
@@ -40,7 +40,7 @@ bool cmIncludeExternalMSProjectCommand
         depends.push_back(args[i]); 
         }
       }
-    
+
     // Hack together a utility target storing enough information
     // to reproduce the target inclusion.
     std::string utility_name("INCLUDE_EXTERNAL_MSPROJECT");
@@ -48,12 +48,11 @@ bool cmIncludeExternalMSProjectCommand
     utility_name += args[0];
     std::string path = args[1];
     cmSystemTools::ConvertToUnixSlashes(path);
-    
+
     // Create a target instance for this utility.
-    cmTarget target;
-    target.SetType(cmTarget::UTILITY, utility_name.c_str());
-    target.SetInAll(true);
-    target.SetMakefile(this->Makefile);
+    cmTarget* target=this->Makefile->AddNewTarget(cmTarget::UTILITY, 
+                                                  utility_name.c_str());
+    target->SetProperty("EXCLUDE_FROM_ALL","FALSE");
     std::vector<std::string> no_outputs;
     cmCustomCommandLines commandLines;
     cmCustomCommandLine commandLine;
@@ -61,13 +60,7 @@ bool cmIncludeExternalMSProjectCommand
     commandLine.push_back(path);
     commandLines.push_back(commandLine);
     cmCustomCommand cc(no_outputs, depends, commandLines, 0, 0);
-    target.GetPostBuildCommands().push_back(cc);
-
-    // Add the target to the set of targets.
-    cmTargets::iterator it =
-      this->Makefile->GetTargets()
-      .insert(cmTargets::value_type(utility_name.c_str(),target)).first;
-    this->Makefile->GetLocalGenerator()->GetGlobalGenerator()->AddTarget(*it);
+    target->GetPostBuildCommands().push_back(cc);
     }
 #endif
   return true;

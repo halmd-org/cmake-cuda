@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalKdevelopGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/02/18 16:03:36 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-03-30 13:09:23 $
+  Version:   $Revision: 1.7.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf, neundorf@kde.org. All rights reserved.
@@ -18,7 +18,9 @@
 #ifndef cmGlobalKdevelopGenerator_h
 #define cmGlobalKdevelopGenerator_h
 
-#include "cmGlobalUnixMakefileGenerator3.h"
+#include "cmExternalMakefileProjectGenerator.h"
+
+class cmLocalGenerator;
 
 /** \class cmGlobalKdevelopGenerator
  * \brief Write Unix Makefiles accompanied by KDevelop3 project files.
@@ -31,35 +33,26 @@
  * file, which lists the source files relative to the kdevelop project
  * directory. The kdevelop project directory is the base source directory.
  */
-class cmGlobalKdevelopGenerator : public cmGlobalUnixMakefileGenerator3
+class cmGlobalKdevelopGenerator : public cmExternalMakefileProjectGenerator
 {
 public:
   cmGlobalKdevelopGenerator();
-  static cmGlobalGenerator* New() { return new cmGlobalKdevelopGenerator; }
 
-  ///! Get the name for the generator.
-  virtual const char* GetName() const {
-    return cmGlobalKdevelopGenerator::GetActualName();}
-  static const char* GetActualName() {return "KDevelop3";}
-
+  virtual const char* GetName() const
+                          { return cmGlobalKdevelopGenerator::GetActualName();}
+  static const char* GetActualName()                     { return "KDevelop3";}
+  static cmExternalMakefileProjectGenerator* New() 
+                                      { return new cmGlobalKdevelopGenerator; }
   /** Get the documentation entry for this generator.  */
-  virtual void GetDocumentation(cmDocumentationEntry& entry) const;
-  
-  ///! Create a local generator appropriate to this Global Generator
-  virtual cmLocalGenerator *CreateLocalGenerator();
+  virtual void GetDocumentation(cmDocumentationEntry& entry, 
+                                const char* fullName) const;
 
- /**
-   * Generate the all required files for building this project/tree. This
-   * basically creates a series of LocalGenerators for each directory and
-   * requests that they Generate.  
-   */
   virtual void Generate();
-
+private:
   /*** Create the foo.kdevelop.filelist file, return false if it doesn't
     succeed.  If the file already exists the contents will be merged.  
     */
-  bool CreateFilelistFile(cmLocalGenerator* lg,
-                          std::vector<cmLocalGenerator*>& lgs,
+  bool CreateFilelistFile(const std::vector<cmLocalGenerator*>& lgs,
                           const std::string& outputDir, 
                           const std::string& projectDirIn,
                           const std::string& projectname,
@@ -98,6 +91,7 @@ public:
                             const std::string& fileToOpen,
                             const std::string& sessionFilename);
 
+  std::vector<std::string> Blacklist;
 };
 
 #endif

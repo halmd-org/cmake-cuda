@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddSubDirectoryCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 15:16:57 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,12 +41,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ADD_SUBDIRECTORY";}
+  virtual const char* GetName() { return "add_subdirectory";}
 
   /**
    * Succinct documentation.
@@ -62,7 +63,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ADD_SUBDIRECTORY(source_dir [binary_dir] \n"
+      "  add_subdirectory(source_dir [binary_dir] \n"
       "                   [EXCLUDE_FROM_ALL])\n"
       "Add a subdirectory to the build. The source_dir specifies the "
       "directory in which the source CmakeLists.txt and code files are "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:46 $
-  Version:   $Revision: 1.13.2.1 $
+  Date:      $Date: 2007-09-17 14:40:57 $
+  Version:   $Revision: 1.18 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -65,6 +65,8 @@ cmCTestGenericHandler* cmCTestBuildCommand::InitializeHandler()
       = this->Makefile->GetDefinition("CTEST_BUILD_CONFIGURATION");
     const char* cmakeBuildAdditionalFlags
       = this->Makefile->GetDefinition("CTEST_BUILD_FLAGS");
+    const char* cmakeBuildTarget
+      = this->Makefile->GetDefinition("CTEST_BUILD_TARGET");
     if ( cmakeGeneratorName && *cmakeGeneratorName &&
       cmakeProjectName && *cmakeProjectName )
       {
@@ -90,10 +92,28 @@ cmCTestGenericHandler* cmCTestBuildCommand::InitializeHandler()
       this->GlobalGenerator->FindMakeProgram(this->Makefile);
       const char* cmakeMakeProgram
         = this->Makefile->GetDefinition("CMAKE_MAKE_PROGRAM");
+      if(strlen(cmakeBuildConfiguration) == 0)
+        {
+        const char* config = 0;
+#ifdef CMAKE_INTDIR
+        config = CMAKE_INTDIR;
+#endif
+        if(!config)
+          {
+          config = "Debug";
+          }
+        cmakeBuildConfiguration = config;
+        }
+      
       std::string buildCommand
-        = this->GlobalGenerator->GenerateBuildCommand(cmakeMakeProgram,
-          cmakeProjectName,
-          cmakeBuildAdditionalFlags, 0, cmakeBuildConfiguration, true, false);
+        = this->GlobalGenerator->
+        GenerateBuildCommand(cmakeMakeProgram,
+                             cmakeProjectName,
+                             cmakeBuildAdditionalFlags, cmakeBuildTarget,
+                             cmakeBuildConfiguration, true, false);
+      cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+                 "SetMakeCommand:"
+                 << buildCommand.c_str() << "\n");
       this->CTest->SetCTestConfiguration("MakeCommand", buildCommand.c_str());
       }
     else

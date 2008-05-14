@@ -478,8 +478,8 @@ static yyconst flex_int32_t yy_rule_can_match_eol[15] =
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmListFileLexer.c,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:03 $
-  Version:   $Revision: 1.12.4.1 $
+  Date:      $Date: 2006-08-09 13:45:04 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

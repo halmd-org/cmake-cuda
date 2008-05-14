@@ -111,7 +111,18 @@ IF(NOT KWSYS_NAMESPACE)
   SET(KWSYS_NAMESPACE "kwsys")
   SET(KWSYS_STANDALONE 1)
 ENDIF(NOT KWSYS_NAMESPACE)
+IF(KWSYS_STANDALONE)
+  CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+  IF(COMMAND CMAKE_POLICY)
+    CMAKE_POLICY(SET CMP0003 NEW)
+  ENDIF(COMMAND CMAKE_POLICY)
+ENDIF(KWSYS_STANDALONE)
 
+#-----------------------------------------------------------------------------
+# The project name is that of the specified namespace.
+PROJECT(${KWSYS_NAMESPACE})
+
+# Select library components.
 IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
   SET(KWSYS_ENABLE_C 1)
 
@@ -120,6 +131,7 @@ IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
   SET(KWSYS_USE_Directory 1)
   SET(KWSYS_USE_DynamicLoader 1)
   SET(KWSYS_USE_Glob 1)
+  SET(KWSYS_USE_MD5 1)
   SET(KWSYS_USE_Process 1)
   SET(KWSYS_USE_RegularExpression 1)
   SET(KWSYS_USE_Registry 1)
@@ -129,11 +141,18 @@ IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
   SET(KWSYS_USE_FundamentalType 1)
   SET(KWSYS_USE_Terminal 1)
   SET(KWSYS_USE_IOStream 1)
+  SET(KWSYS_USE_DateStamp 1)
+  SET(KWSYS_USE_String 1)
+  SET(KWSYS_USE_SystemInformation 1)
+  SET(KWSYS_USE_CPU 1)
 ENDIF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
-
-#-----------------------------------------------------------------------------
-# The project name is that of the specified namespace.
-PROJECT(${KWSYS_NAMESPACE})
+  
+# Setup the large file support default.
+IF(KWSYS_LFS_DISABLE)
+  SET(KWSYS_LFS_REQUESTED 0)
+ELSE(KWSYS_LFS_DISABLE)
+  SET(KWSYS_LFS_REQUESTED 1)
+ENDIF(KWSYS_LFS_DISABLE)
 
 # Enable testing if building standalone.
 IF(KWSYS_STANDALONE)
@@ -169,6 +188,14 @@ IF(COMMAND INSTALL)
     STRING(REGEX REPLACE "^/" "" KWSYS_INSTALL_BIN_DIR
       "${KWSYS_LIBRARY_INSTALL_DIR}")
   ENDIF(NOT KWSYS_INSTALL_BIN_DIR)
+
+  # Setup header install rules.
+  SET(KWSYS_INSTALL_INCLUDE_OPTIONS)
+  IF(KWSYS_INSTALL_COMPONENT_NAME_DEVELOPMENT)
+    SET(KWSYS_INSTALL_INCLUDE_OPTIONS ${KWSYS_INSTALL_INCLUDE_OPTIONS}
+      COMPONENT ${KWSYS_INSTALL_COMPONENT_NAME_DEVELOPMENT}
+      )
+  ENDIF(KWSYS_INSTALL_COMPONENT_NAME_DEVELOPMENT)
 
   # Setup library install rules.
   SET(KWSYS_INSTALL_LIBRARY_RULE)
@@ -275,7 +302,6 @@ ENDIF(NOT CMAKE_COMPILER_IS_GNUCXX)
 
 #-----------------------------------------------------------------------------
 # Configure Large File Support.
-SET(KWSYS_LFS_REQUESTED 1)
 SET(KWSYS_LFS_AVAILABLE 0)
 IF(KWSYS_LFS_REQUESTED)
   # Large File Support is requested.
@@ -370,17 +396,17 @@ ELSE(KWSYS_STL_HAS_ALLOCATOR_TEMPLATE)
 ENDIF(KWSYS_STL_HAS_ALLOCATOR_TEMPLATE)
 KWSYS_PLATFORM_CXX_TEST(KWSYS_STL_HAS_ALLOCATOR_OBJECTS
   "Checking whether stl containers support allocator objects." DIRECT)
-IF(KWSYS_IOS_USE_ANSI)
+IF(KWSYS_IOS_USE_ANSI AND NOT WATCOM)
   # ANSI streams always have string operators.
   SET(KWSYS_STL_STRING_HAVE_OSTREAM 1)
   SET(KWSYS_STL_STRING_HAVE_ISTREAM 1)
-ELSE(KWSYS_IOS_USE_ANSI)
+ELSE(KWSYS_IOS_USE_ANSI AND NOT WATCOM)
   # There may not be string operators for old streams.
   KWSYS_PLATFORM_CXX_TEST(KWSYS_STL_STRING_HAVE_OSTREAM
     "Checking whether stl string has ostream operator<<" DIRECT)
   KWSYS_PLATFORM_CXX_TEST(KWSYS_STL_STRING_HAVE_ISTREAM
     "Checking whether stl string has istream operator>>" DIRECT)
-ENDIF(KWSYS_IOS_USE_ANSI)
+ENDIF(KWSYS_IOS_USE_ANSI AND NOT WATCOM)
 SET(KWSYS_PLATFORM_CXX_TEST_DEFINES)
 
 KWSYS_PLATFORM_CXX_TEST(KWSYS_CXX_HAS_NULL_TEMPLATE_ARGS
@@ -530,7 +556,8 @@ FOREACH(header
                    @ONLY IMMEDIATE)
     IF(KWSYS_INSTALL_INCLUDE_DIR)
       INSTALL(FILES ${KWSYS_HEADER_DIR}/stl/${header}.hxx
-        DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/stl)
+        DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/stl
+        ${KWSYS_INSTALL_INCLUDE_OPTIONS})
     ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
     IF(KWSYS_HEADER_INSTALL_DIR)
       INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}/stl
@@ -546,7 +573,8 @@ FOREACH(header
   # Create an install target for the header wrapper.
   IF(KWSYS_INSTALL_INCLUDE_DIR)
     INSTALL(FILES ${KWSYS_HEADER_DIR}/stl/${header}
-      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/stl)
+      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/stl
+      ${KWSYS_INSTALL_INCLUDE_OPTIONS})
   ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
   IF(KWSYS_HEADER_INSTALL_DIR)
     INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}/stl
@@ -558,6 +586,15 @@ ENDFOREACH(header)
 CONFIGURE_FILE(${PROJECT_SOURCE_DIR}/kwsys_cstddef.hxx.in
                ${KWSYS_HEADER_DIR}/cstddef
                @ONLY IMMEDIATE)
+IF(KWSYS_INSTALL_INCLUDE_DIR)
+  INSTALL(FILES ${KWSYS_HEADER_DIR}/cstddef
+    DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}
+    ${KWSYS_INSTALL_INCLUDE_OPTIONS})
+  IF(KWSYS_HEADER_INSTALL_DIR)
+    INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}
+      FILES ${KWSYS_HEADER_DIR}/cstddef)
+  ENDIF(KWSYS_HEADER_INSTALL_DIR)
+ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
 
 #-----------------------------------------------------------------------------
 # Create streams header wrappers to give standard names by which they
@@ -571,7 +608,8 @@ FOREACH(header iostream fstream sstream iosfwd)
   # Create an install target for the header wrapper.
   IF(KWSYS_INSTALL_INCLUDE_DIR)
     INSTALL(FILES ${KWSYS_HEADER_DIR}/ios/${header}
-      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/ios)
+      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}/ios
+      ${KWSYS_INSTALL_INCLUDE_OPTIONS})
   ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
   IF(KWSYS_HEADER_INSTALL_DIR)
     INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}/ios
@@ -605,18 +643,32 @@ ENDIF(KWSYS_USE_Process)
 # Add selected C++ classes.
 SET(cppclasses
   Directory DynamicLoader Glob RegularExpression SystemTools
-  CommandLineArguments Registry IOStream
+  CommandLineArguments Registry IOStream SystemInformation
   )
 FOREACH(cpp ${cppclasses})
   IF(KWSYS_USE_${cpp})
+    # Use the corresponding class.
     SET(KWSYS_CLASSES ${KWSYS_CLASSES} ${cpp})
+
+    # Load component-specific CMake code.
+    IF(EXISTS ${PROJECT_SOURCE_DIR}/kwsys${cpp}.cmake)
+      INCLUDE(${PROJECT_SOURCE_DIR}/kwsys${cpp}.cmake)
+    ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/kwsys${cpp}.cmake)
   ENDIF(KWSYS_USE_${cpp})
 ENDFOREACH(cpp)
 
 # Add selected C components.
-FOREACH(c Process Base64 FundamentalType Terminal System)
+FOREACH(c
+    Process Base64 FundamentalType MD5 Terminal System DateStamp String CPU
+    )
   IF(KWSYS_USE_${c})
+    # Use the corresponding header file.
     SET(KWSYS_H_FILES ${KWSYS_H_FILES} ${c})
+
+    # Load component-specific CMake code.
+    IF(EXISTS ${PROJECT_SOURCE_DIR}/kwsys${c}.cmake)
+      INCLUDE(${PROJECT_SOURCE_DIR}/kwsys${c}.cmake)
+    ENDIF(EXISTS ${PROJECT_SOURCE_DIR}/kwsys${c}.cmake)
   ENDIF(KWSYS_USE_${c})
 ENDFOREACH(c)
 
@@ -651,7 +703,7 @@ IF(KWSYS_USE_Process)
 ENDIF(KWSYS_USE_Process)
 
 # Add selected C sources.
-FOREACH(c Base64 Terminal System)
+FOREACH(c Base64 MD5 Terminal System String)
   IF(KWSYS_USE_${c})
     SET(KWSYS_C_SRCS ${KWSYS_C_SRCS} ${c}.c)
   ENDIF(KWSYS_USE_${c})
@@ -669,7 +721,8 @@ FOREACH(c ${KWSYS_CLASSES})
   # Create an install target for the header.
   IF(KWSYS_INSTALL_INCLUDE_DIR)
     INSTALL(FILES ${KWSYS_HEADER_DIR}/${c}.hxx
-      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE})
+      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}
+      ${KWSYS_INSTALL_INCLUDE_OPTIONS})
   ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
   IF(KWSYS_HEADER_INSTALL_DIR)
     INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}
@@ -686,7 +739,8 @@ FOREACH(h ${KWSYS_H_FILES})
   # Create an install target for the header.
   IF(KWSYS_INSTALL_INCLUDE_DIR)
     INSTALL(FILES ${KWSYS_HEADER_DIR}/${h}.h
-      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE})
+      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}
+      ${KWSYS_INSTALL_INCLUDE_OPTIONS})
   ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
   IF(KWSYS_HEADER_INSTALL_DIR)
     INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}
@@ -703,7 +757,8 @@ FOREACH(h ${KWSYS_HXX_FILES})
   # Create an install target for the header.
   IF(KWSYS_INSTALL_INCLUDE_DIR)
     INSTALL(FILES ${KWSYS_HEADER_DIR}/${h}.hxx
-      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE})
+      DESTINATION ${KWSYS_INSTALL_INCLUDE_DIR}/${KWSYS_NAMESPACE}
+      ${KWSYS_INSTALL_INCLUDE_OPTIONS})
   ENDIF(KWSYS_INSTALL_INCLUDE_DIR)
   IF(KWSYS_HEADER_INSTALL_DIR)
     INSTALL_FILES(${KWSYS_HEADER_INSTALL_DIR}/${KWSYS_NAMESPACE}
@@ -721,6 +776,10 @@ IF(KWSYS_C_SRCS OR KWSYS_CXX_SRCS)
       TARGET_LINK_LIBRARIES(${KWSYS_NAMESPACE} ${CMAKE_DL_LIBS})
     ENDIF(UNIX)
   ENDIF(KWSYS_USE_DynamicLoader)
+  
+  IF(KWSYS_USE_SystemInformation AND WIN32)
+    TARGET_LINK_LIBRARIES(${KWSYS_NAMESPACE} ws2_32)
+  ENDIF(KWSYS_USE_SystemInformation AND WIN32)
 
   # Apply user-defined target properties to the library.
   IF(KWSYS_PROPERTIES_CXX)
@@ -816,42 +875,58 @@ ENDIF(KWSYS_USE_Process)
 # Setup testing if not being built as part of another project.
 IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
   IF(BUILD_TESTING)
-    # C++ tests
-    IF(KWSYS_USE_DynamicLoader)
-      SET(EXTRA_TESTS
-        testDynamicLoader
-        )
-      # If kwsys contains the DynamicLoader, need extra library
-      ADD_LIBRARY(testDynload MODULE testDynload.c)
-    ENDIF(KWSYS_USE_DynamicLoader)
-    FOREACH(test
-        testSystemTools
-        testIOS
-        testHashSTL
-        testCommandLineArguments
-        testCommandLineArguments1
-        testRegistry
-        ${EXTRA_TESTS}
-        )
-      ADD_EXECUTABLE(${test} ${test}.cxx)
-      TARGET_LINK_LIBRARIES(${test} ${KWSYS_NAMESPACE})
-    ENDFOREACH(test)
-    # C tests
-    FOREACH(test
-        testProcess
-        testFail
-        testTerminal
-        )
-      ADD_EXECUTABLE(${test} ${test}.c)
-      TARGET_LINK_LIBRARIES(${test} ${KWSYS_NAMESPACE}_c)
-    ENDFOREACH(test)
-
+    # Compute the location of executables.
     SET(EXEC_DIR "${CMAKE_CURRENT_BINARY_DIR}")
     IF(EXECUTABLE_OUTPUT_PATH)
       SET(EXEC_DIR "${EXECUTABLE_OUTPUT_PATH}")
     ENDIF(EXECUTABLE_OUTPUT_PATH)
 
+    # C tests
+    SET(KWSYS_C_TESTS
+      testEncode
+      testTerminal
+      )
+    IF(COMMAND SET_TESTS_PROPERTIES AND COMMAND GET_TEST_PROPERTY AND KWSYS_STANDALONE)
+      SET(KWSYS_C_TESTS ${KWSYS_C_TESTS} testFail)
+    ENDIF(COMMAND SET_TESTS_PROPERTIES AND COMMAND GET_TEST_PROPERTY AND KWSYS_STANDALONE)
+    CREATE_TEST_SOURCELIST(
+      KWSYS_C_TEST_SRCS ${KWSYS_NAMESPACE}TestsC.c
+      ${KWSYS_C_TESTS}
+      )
+    ADD_EXECUTABLE(${KWSYS_NAMESPACE}TestsC ${KWSYS_C_TEST_SRCS})
+    TARGET_LINK_LIBRARIES(${KWSYS_NAMESPACE}TestsC ${KWSYS_NAMESPACE}_c)
+    FOREACH(test ${KWSYS_C_TESTS})
+      ADD_TEST(kwsys.${test} ${EXEC_DIR}/${KWSYS_NAMESPACE}TestsC ${test} ${KWSYS_TEST_ARGS_${test}})
+    ENDFOREACH(test)
 
+    # C++ tests
+    IF(NOT WATCOM)
+      SET(KWSYS_CXX_TESTS
+        testAutoPtr
+        testHashSTL
+        )
+    ENDIF(NOT WATCOM)
+    SET(KWSYS_CXX_TESTS ${KWSYS_CXX_TESTS}
+      testRegistry
+      testIOS
+      testSystemTools
+      testCommandLineArguments
+      testCommandLineArguments1
+      )
+    IF(KWSYS_USE_SystemInformation)
+      SET(KWSYS_CXX_TESTS ${KWSYS_CXX_TESTS} testSystemInformation)
+    ENDIF(KWSYS_USE_SystemInformation)
+    IF(KWSYS_USE_DynamicLoader)
+      SET(KWSYS_CXX_TESTS ${KWSYS_CXX_TESTS} testDynamicLoader)
+      # If kwsys contains the DynamicLoader, need extra library
+      ADD_LIBRARY(${KWSYS_NAMESPACE}TestDynload MODULE testDynload.c)
+    ENDIF(KWSYS_USE_DynamicLoader)
+    CREATE_TEST_SOURCELIST(
+      KWSYS_CXX_TEST_SRCS ${KWSYS_NAMESPACE}TestsCxx.cxx
+      ${KWSYS_CXX_TESTS}
+      )
+    ADD_EXECUTABLE(${KWSYS_NAMESPACE}TestsCxx ${KWSYS_CXX_TEST_SRCS})
+    TARGET_LINK_LIBRARIES(${KWSYS_NAMESPACE}TestsCxx ${KWSYS_NAMESPACE})
     SET(TEST_SYSTEMTOOLS_BIN_FILE
       "${CMAKE_CURRENT_SOURCE_DIR}/testSystemTools.bin")
     SET(TEST_SYSTEMTOOLS_SRC_FILE
@@ -866,22 +941,8 @@ IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
         "${CMAKE_CURRENT_BINARY_DIR}/ExtraTest.cmake")
       SET_DIRECTORY_PROPERTIES(PROPERTIES TEST_INCLUDE_FILE "${CMAKE_CURRENT_BINARY_DIR}/ExtraTest.cmake")
     ENDIF(CTEST_TEST_KWSYS)
-    ADD_TEST(kwsys.testSystemTools ${EXEC_DIR}/testSystemTools)
-    IF(KWSYS_USE_DynamicLoader)
-      ADD_TEST(kwsys.testDynamicLoader ${EXEC_DIR}/testDynamicLoader)
-    ENDIF(KWSYS_USE_DynamicLoader)
-    ADD_TEST(kwsys.testProcess-1 ${EXEC_DIR}/testProcess 1)
-    ADD_TEST(kwsys.testProcess-2 ${EXEC_DIR}/testProcess 2)
-    ADD_TEST(kwsys.testProcess-3 ${EXEC_DIR}/testProcess 3)
-    ADD_TEST(kwsys.testProcess-4 ${EXEC_DIR}/testProcess 4)
-    ADD_TEST(kwsys.testProcess-5 ${EXEC_DIR}/testProcess 5)
-    ADD_TEST(kwsys.testProcess-6 ${EXEC_DIR}/testProcess 6)
-    IF(NOT CYGWIN)
-      ADD_TEST(kwsys.testProcess-7 ${EXEC_DIR}/testProcess 7)
-    ENDIF(NOT CYGWIN)
-    ADD_TEST(kwsys.testHashSTL ${EXEC_DIR}/testHashSTL)
-    ADD_TEST(kwsys.testRegistry ${EXEC_DIR}/testRegistry)
-    ADD_TEST(kwsys.testCommandLineArguments ${EXEC_DIR}/testCommandLineArguments
+
+    SET(KWSYS_TEST_ARGS_testCommandLineArguments
       --another-bool-variable
       --long3=opt
       --set-bool-arg1
@@ -893,26 +954,42 @@ IF(KWSYS_STANDALONE OR CMake_SOURCE_DIR)
       --some-multi-argument 5 1 8 3 7 1 3 9 7 1
       -N 12.5 -SS=andy -N 1.31 -N 22
       -SS=bill -BBtrue -SS=brad
-      -BBtrue 
+      -BBtrue
       -BBfalse
       -SS=ken
       -A
       -C=test
-      --long2 hello)
-    ADD_TEST(kwsys.testCommandLineArguments1 ${EXEC_DIR}/testCommandLineArguments1
+      --long2 hello
+      )
+    SET(KWSYS_TEST_ARGS_testCommandLineArguments1
       --ignored
       -n 24
       --second-ignored
       "-m=test value"
       third-ignored
       -p
-      some junk at the end)
+      some junk at the end
+      )
+    FOREACH(test ${KWSYS_CXX_TESTS})
+      ADD_TEST(kwsys.${test} ${EXEC_DIR}/${KWSYS_NAMESPACE}TestsCxx ${test} ${KWSYS_TEST_ARGS_${test}})
+    ENDFOREACH(test)
+
+    # Process tests.
+    ADD_EXECUTABLE(${KWSYS_NAMESPACE}TestProcess testProcess.c)
+    TARGET_LINK_LIBRARIES(${KWSYS_NAMESPACE}TestProcess ${KWSYS_NAMESPACE}_c)
+    IF(NOT CYGWIN)
+      SET(KWSYS_TEST_PROCESS_7 7)
+    ENDIF(NOT CYGWIN)
+    FOREACH(n 1 2 3 4 5 6 ${KWSYS_TEST_PROCESS_7})
+      ADD_TEST(kwsys.testProcess-${n} ${EXEC_DIR}/${KWSYS_NAMESPACE}TestProcess ${n})
+    ENDFOREACH(n)
+
+    # Configure some test properties.
     IF(COMMAND SET_TESTS_PROPERTIES AND COMMAND GET_TEST_PROPERTY AND KWSYS_STANDALONE)
-      ADD_TEST(kwsys.testFail ${EXEC_DIR}/testFail)
       # We expect test to fail
       SET_TESTS_PROPERTIES(kwsys.testFail PROPERTIES WILL_FAIL ON)
       GET_TEST_PROPERTY(kwsys.testFail WILL_FAIL wfv)
-      SET_TESTS_PROPERTIES(kwsys.testRegistry PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR;FAIL;Test failed")
+      SET_TESTS_PROPERTIES(kwsys.testRegistry PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR_NOT_VALGRIND;FAIL;Test failed")
       SET_TESTS_PROPERTIES(kwsys.testRegistry PROPERTIES PASS_REGULAR_EXPRESSION "Test passed")
       SET_TESTS_PROPERTIES(kwsys.testFail PROPERTIES MEASUREMENT "Some Key=Some Value")
       MESSAGE(STATUS "GET_TEST_PROPERTY returned: ${wfv}")

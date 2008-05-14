@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmObject.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.1.6.1 $
+  Date:      $Date: 2006-05-12 17:39:34 $
+  Version:   $Revision: 1.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

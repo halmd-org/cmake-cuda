@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLoadCacheCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 19:38:55 $
-  Version:   $Revision: 1.12 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "LOAD_CACHE";}
+  virtual const char* GetName() { return "load_cache";}
 
   /**
    * Succinct documentation.
@@ -60,13 +61,13 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  LOAD_CACHE(pathToCacheFile READ_WITH_PREFIX\n"
+      "  load_cache(pathToCacheFile READ_WITH_PREFIX\n"
       "             prefix entry1...)\n"
       "Read the cache and store the requested entries in variables with "
       "their name prefixed with the given prefix.  "
       "This only reads the values, and does not create entries in the local "
       "project's cache.\n"
-      "  LOAD_CACHE(pathToCacheFile [EXCLUDE entry1...]\n"
+      "  load_cache(pathToCacheFile [EXCLUDE entry1...]\n"
       "             [INCLUDE_INTERNALS entry1...])\n"
       "Load in the values from another cache and store them in the local "
       "project's cache as internal entries.  This is useful for a project "

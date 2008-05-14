@@ -454,8 +454,8 @@ static yyconst flex_int16_t yy_chk[34] =
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommandArgumentLexer.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/06/05 13:30:53 $
-  Version:   $Revision: 1.4.2.3 $
+  Date:      $Date: 2007-09-24 15:16:13 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1046,6 +1046,7 @@ case YY_STATE_EOF(NOESCAPES):
                         "fatal flex scanner internal error--no action found" );
         } /* end of action switch */
                 } /* end of scanning one token */
+return 0; /* this should not happend but it should silence a warning */
 } /* end of cmCommandArgument_yylex */
 
 /* yy_get_next_buffer - try to read in a new buffer

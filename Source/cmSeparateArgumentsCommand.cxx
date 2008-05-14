@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSeparateArgumentsCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.3.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,7 @@
 
 // cmSeparateArgumentsCommand
 bool cmSeparateArgumentsCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() != 1 )
     {
@@ -31,8 +31,7 @@ bool cmSeparateArgumentsCommand
     return true;
     }
   std::string value = cacheValue;
-  cmSystemTools::ReplaceString(value,
-                               " ", ";");
+  cmSystemTools::ReplaceString(value," ", ";");
   this->Makefile->AddDefinition(args[0].c_str(), value.c_str());
   return true;
 }

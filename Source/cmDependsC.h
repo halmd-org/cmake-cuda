@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsC.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.17.2.1 $
+  Date:      $Date: 2007-02-05 14:48:38 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -60,6 +60,9 @@ protected:
   // recursively and which to complain about not finding.
   cmsys::RegularExpression IncludeRegexScan;
   cmsys::RegularExpression IncludeRegexComplain;
+  const std::string IncludeRegexLineString;
+  const std::string IncludeRegexScanString;
+  const std::string IncludeRegexComplainString;
 
 public:
   // Data structures for dependency graph walk.

@@ -1,19 +1,19 @@
 # - Find the KDE3 include and library dirs, KDE preprocessors and define a some macros
 #
 # This module defines the following variables:
-# KDE3_DEFINITIONS         - compiler definitions required for compiling KDE software
-# KDE3_INCLUDE_DIR         - the KDE include directory
-# KDE3_INCLUDE_DIRS        - the KDE and the Qt include directory, for use with INCLUDE_DIRECTORIES()
-# KDE3_LIB_DIR             - the directory where the KDE libraries are installed, for use with LINK_DIRECTORIES()
-# QT_AND_KDECORE_LIBS      - this contains both the Qt and the kdecore library
-# KDE3_DCOPIDL_EXECUTABLE  - the dcopidl executable
-# KDE3_DCOPIDL2CPP_EXECUTABLE - the dcopidl2cpp executable
-# KDE3_KCFGC_EXECUTABLE    - the kconfig_compiler executable
-# KDE3_FOUND               - set to TRUE if all of the above has been found
+#  KDE3_DEFINITIONS         - compiler definitions required for compiling KDE software
+#  KDE3_INCLUDE_DIR         - the KDE include directory
+#  KDE3_INCLUDE_DIRS        - the KDE and the Qt include directory, for use with INCLUDE_DIRECTORIES()
+#  KDE3_LIB_DIR             - the directory where the KDE libraries are installed, for use with LINK_DIRECTORIES()
+#  QT_AND_KDECORE_LIBS      - this contains both the Qt and the kdecore library
+#  KDE3_DCOPIDL_EXECUTABLE  - the dcopidl executable
+#  KDE3_DCOPIDL2CPP_EXECUTABLE - the dcopidl2cpp executable
+#  KDE3_KCFGC_EXECUTABLE    - the kconfig_compiler executable
+#  KDE3_FOUND               - set to TRUE if all of the above has been found
 #
 # The following user adjustable options are provided:
 #
-# KDE3_BUILD_TESTS - enable this to build KDE testcases
+#  KDE3_BUILD_TESTS - enable this to build KDE testcases
 #
 #
 # It also adds the following macros (from KDE3Macros.cmake)

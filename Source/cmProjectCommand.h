@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmProjectCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/10 16:13:14 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -42,12 +42,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "PROJECT";}
+  virtual const char* GetName() {return "project";}
 
   /**
    * Succinct documentation.
@@ -63,7 +64,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  PROJECT(projectname [CXX] [C] [Java])\n"
+      "  project(projectname [CXX] [C] [Java])\n"
       "Sets the name of the project.  "
       "This creates the variables projectname_BINARY_DIR and "
       "projectname_SOURCE_DIR.  "

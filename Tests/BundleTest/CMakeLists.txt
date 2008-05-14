@@ -1,3 +1,4 @@
+cmake_minimum_required (VERSION 2.6)
 PROJECT(BundleTest)
 SET(MACOSX_BUNDLE_INFO_STRING "bundle_info_string")
 SET(CMAKE_MacOSX_Content_COMPILE_OBJECT "\"${CMAKE_COMMAND}\" -E copy_if_different <SOURCE> <OBJECT>")
@@ -36,9 +37,9 @@ ADD_EXECUTABLE(BundleTest
 TARGET_LINK_LIBRARIES(BundleTest BundleTestLib)
 
 # Test bundle installation.
-#INSTALL(TARGETS BundleTestLib DESTINATION Application/BundleTestExe.app/Contents/Plugins)
-INSTALL(TARGETS BundleTestLib DESTINATION Application/SecondBundleExe.app/Contents/Plugins)
-INSTALL(TARGETS BundleTest DESTINATION Application)
+#INSTALL(TARGETS BundleTestLib DESTINATION Applications/BundleTestExe.app/Contents/Plugins)
+INSTALL(TARGETS BundleTestLib DESTINATION Applications/SecondBundleExe.app/Contents/Plugins)
+INSTALL(TARGETS BundleTest DESTINATION Applications)
 
 # Test whether bundles respect the output name.  Since the library is
 # installed into a location that uses this output name this will fail if the
@@ -59,7 +60,7 @@ INCLUDE(CPack)
 
 # test the framework find stuff
 IF(EXISTS /usr/lib/libtcl.dylib
-    AND EXISTS /System/Library/Frameworks/tcl.framework)
+    AND EXISTS /System/Library/Frameworks/Tcl.framework)
   SET(TCL NOTFOUND)
   FIND_LIBRARY(TCL tcl)
   MESSAGE("frame: ${TCL}")
@@ -87,6 +88,6 @@ IF(EXISTS /usr/lib/libtcl.dylib
   ENDIF(NOT "${TCL}" MATCHES .framework)
   MESSAGE("frame: ${TCL}")
 ENDIF(EXISTS /usr/lib/libtcl.dylib
-  AND EXISTS /System/Library/Frameworks/tcl.framework)
+  AND EXISTS /System/Library/Frameworks/Tcl.framework)
 
 SUBDIRS(BundleSubDir)

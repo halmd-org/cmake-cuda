@@ -1,3 +1,19 @@
+/*=========================================================================
+
+  Program:   CMake - Cross-Platform Makefile Generator
+  Module:    $RCSfile: cmCommandArgumentParser.cxx,v $
+  Language:  C++
+  Date:      $Date: 2007-07-27 14:55:24 $
+  Version:   $Revision: 1.13 $
+
+  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
+  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even 
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
 /* A Bison parser, made by GNU Bison 2.1.  */
 
 /* Skeleton parser for Yacc-like parsing with Bison, Copyright (C) 1984,
@@ -33,6 +49,11 @@
    There are some unavoidable exceptions within include files to
    define necessary library symbols; they are noted "INFRINGES ON
    USER NAME SPACE" below.  */
+
+/* turn off some warning as this is generated code */
+#if defined(_MSC_VER)
+#  pragma warning ( disable : 4702 ) /* unreachable code */
+#endif
 
 /* Identify Bison output.  */
 #define YYBISON 1
@@ -102,8 +123,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommandArgumentParser.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.5.2.2 $
+  Date:      $Date: 2007-07-27 14:55:24 $
+  Version:   $Revision: 1.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -162,8 +183,9 @@ YY_DECL;
 static void cmCommandArgumentError(yyscan_t yyscanner, const char* message);
 
 #define YYDEBUG 1
-//#define YYMAXDEPTH 100000
-//#define YYINITDEPTH 10000
+// Set these high so that
+#define YYMAXDEPTH 100000
+#define YYINITDEPTH 10000
 
 
 /* Disable some warnings in the generated code.  */

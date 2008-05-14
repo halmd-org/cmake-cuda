@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceGroupCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:02:07 $
-  Version:   $Revision: 1.16 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,17 +20,11 @@ inline std::vector<std::string> tokenize(const std::string& str,
                                          const std::string& sep)
 {
   std::vector<std::string> tokens;
-  if(str.size() == 0)
-    {
-    tokens.push_back("");
-    return tokens;
-    }
-  std::string::size_type tokstart,tokend;
+  std::string::size_type tokend = 0;
 
-  tokend=0;
   do
     {
-    tokstart=str.find_first_not_of(sep,tokend);
+    std::string::size_type tokstart=str.find_first_not_of(sep, tokend);
     if (tokstart==std::string::npos) 
       {
       break;    // no more tokens
@@ -45,11 +39,17 @@ inline std::vector<std::string> tokenize(const std::string& str,
       tokens.push_back(str.substr(tokstart,tokend-tokstart));
       }
     } while (tokend!=std::string::npos);
+
+  if (tokens.empty())
+    {
+    tokens.push_back("");
+    }
   return tokens;
 }
 
 // cmSourceGroupCommand
-bool cmSourceGroupCommand::InitialPass(std::vector<std::string> const& args)
+bool cmSourceGroupCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1)
     {
@@ -65,18 +65,14 @@ bool cmSourceGroupCommand::InitialPass(std::vector<std::string> const& args)
 
   std::vector<std::string> folders = tokenize(args[0], delimiter);
  
-  const char *parent = NULL;
-  cmSourceGroup* sg = NULL;
-  for(unsigned int i=0;i<folders.size();++i)
+  cmSourceGroup* sg = 0;
+  sg = this->Makefile->GetSourceGroup(folders);
+  if(!sg)
     {
-    sg = this->Makefile->GetSourceGroup(folders[i].c_str());
-    if(!sg)
-      {
-      this->Makefile->AddSourceGroup(folders[i].c_str(), 0, parent);
-      }
-    sg = this->Makefile->GetSourceGroup(folders[i].c_str());
-    parent = folders[i].c_str();
+    this->Makefile->AddSourceGroup(folders);
+    sg = this->Makefile->GetSourceGroup(folders);
     }
+
   if(!sg)
     {
     this->SetError("Could not create or find source group");

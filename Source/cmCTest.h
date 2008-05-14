@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTest.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.92.2.2 $
+  Date:      $Date: 2008-02-03 13:57:41 $
+  Version:   $Revision: 1.100 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -92,7 +92,7 @@ public:
   int TestDirectory(bool memcheck);
 
   ///! what is the configuraiton type, e.g. Debug, Release etc.
-  std::string GetConfigType();
+  std::string const& GetConfigType();
   double GetTimeOut() { return this->TimeOut; }
   void SetTimeOut(double t) { this->TimeOut = t; }
 
@@ -232,7 +232,7 @@ public:
   //! Run command specialized for tests. Returns process status and retVal is
   // return value or exception.
   int RunTest(std::vector<const char*> args, std::string* output, int *retVal,
-    std::ostream* logfile);
+    std::ostream* logfile, double testTimeOut);
 
   /**
    * Execute handler and return its result. If the handler fails, it returns
@@ -301,8 +301,7 @@ public:
   SetOfStrings* GetSubmitFiles() { return &this->SubmitFiles; }
 
   //! Read the custom configuration files and apply them to the current ctest
-  int ReadCustomConfigurationFileTree(const char* dir, cmMakefile* mf,
-    bool fast = false);
+  int ReadCustomConfigurationFileTree(const char* dir, cmMakefile* mf);
 
   std::vector<cmStdString> &GetInitialCommandLineArguments()
   { return this->InitialCommandLineArguments; };
@@ -399,7 +398,7 @@ private:
     const VectorOfStrings& files);
 
   ///! Find the running cmake
-  void FindRunningCMake(const char* arg0);
+  void FindRunningCMake();
 
   //! Check if the argument is the one specified
   bool CheckArgument(const std::string& arg, const char* varg1,

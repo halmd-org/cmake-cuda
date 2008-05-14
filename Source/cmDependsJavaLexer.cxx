@@ -23,6 +23,10 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#if defined(__BEOS__)
+#include <unistd.h>   /* prevents a conflict with a #define later on... */
+#endif
+
 /* end standard C headers. */
 
 /* flex integer type definitions */
@@ -642,8 +646,8 @@ static yyconst flex_int16_t yy_chk[479] =
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsJavaLexer.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.7.2.1 $
+  Date:      $Date: 2007-09-24 15:16:13 $
+  Version:   $Revision: 1.12 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1592,6 +1596,7 @@ case YY_STATE_EOF(string):
       "fatal flex scanner internal error--no action found" );
   } /* end of action switch */
     } /* end of scanning one token */
+return 0; /* this should not happen but it silences a warning*/
 } /* end of cmDependsJava_yylex */
 
 /* yy_get_next_buffer - try to read in a new buffer

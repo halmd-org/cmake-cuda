@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLoadCommandCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:42 $
-  Version:   $Revision: 1.6.6.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "LOAD_COMMAND";}
+  virtual const char* GetName() {return "load_command";}
   
   /**
    * Succinct documentation.
@@ -60,7 +61,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  LOAD_COMMAND(COMMAND_NAME <loc1> [loc2 ...])\n"
+      "  load_command(COMMAND_NAME <loc1> [loc2 ...])\n"
       "The given locations are searched for a library whose name is "
       "cmCOMMAND_NAME.  If found, it is loaded as a module and the command "
       "is added to the set of available CMake commands.  Usually, "

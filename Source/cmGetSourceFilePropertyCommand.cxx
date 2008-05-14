@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetSourceFilePropertyCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/03/22 19:06:52 $
-  Version:   $Revision: 1.9 $
+  Date:      $Date: 2008-01-30 16:21:54 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,8 +19,8 @@
 #include "cmSourceFile.h"
 
 // cmSetSourceFilePropertyCommand
-bool cmGetSourceFilePropertyCommand::InitialPass(
-  std::vector<std::string> const& args)
+bool cmGetSourceFilePropertyCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() != 3 )
     {
@@ -38,7 +38,12 @@ bool cmGetSourceFilePropertyCommand::InitialPass(
     }
   if(sf)
     {
-    const char *prop = sf->GetProperty(args[2].c_str());
+    if(args[2] == "LANGUAGE")
+      {
+      this->Makefile->AddDefinition(var, sf->GetLanguage());
+      return true;
+      }
+    const char *prop = sf->GetPropertyForUser(args[2].c_str());
     if (prop)
       {
       this->Makefile->AddDefinition(var, prop);

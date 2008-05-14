@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestTestHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:49 $
-  Version:   $Revision: 1.41.2.5 $
+  Date:      $Date: 2008-01-31 21:33:07 $
+  Version:   $Revision: 1.68 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -53,12 +53,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SUBDIRS";}
+  virtual const char* GetName() { return "subdirs";}
 
   // Unused methods
   virtual const char* GetTerseDocumentation() { return ""; }
@@ -70,7 +71,8 @@ public:
 };
 
 //----------------------------------------------------------------------
-bool cmCTestSubdirCommand::InitialPass(std::vector<std::string> const& args)
+bool cmCTestSubdirCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -98,14 +100,14 @@ bool cmCTestSubdirCommand::InitialPass(std::vector<std::string> const& args)
       // does the CTestTestfile.cmake exist ?
       testFilename = "CTestTestfile.cmake";
       }
-    else if( cmSystemTools::FileExists("DartTestfile.txt") )
+    else if( cmSystemTools::FileExists("DartTestfile.txt") ) 
       {
       // does the DartTestfile.txt exist ?
       testFilename = "DartTestfile.txt";
       }
     else
       {
-      // No DartTestfile.txt? Who cares...
+      // No CTestTestfile? Who cares...
       cmSystemTools::ChangeDirectory(cwd.c_str());
       continue;
       }
@@ -113,7 +115,7 @@ bool cmCTestSubdirCommand::InitialPass(std::vector<std::string> const& args)
     fname += testFilename;
     bool readit = 
       this->Makefile->ReadListFile(this->Makefile->GetCurrentListFile(),
-      fname.c_str());
+                                   fname.c_str());
     cmSystemTools::ChangeDirectory(cwd.c_str());
     if(!readit)
       {
@@ -122,6 +124,96 @@ bool cmCTestSubdirCommand::InitialPass(std::vector<std::string> const& args)
       this->SetError(m.c_str());
       return false;
       }
+    }
+  return true;
+}
+
+//----------------------------------------------------------------------
+class cmCTestAddSubdirectoryCommand : public cmCommand
+{
+public:
+  /**
+   * This is a virtual constructor for the command.
+   */
+  virtual cmCommand* Clone()
+    {
+    cmCTestAddSubdirectoryCommand* c = new cmCTestAddSubdirectoryCommand;
+    c->TestHandler = this->TestHandler;
+    return c;
+    }
+
+  /**
+   * This is called when the command is first encountered in
+   * the CMakeLists.txt file.
+   */
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &);
+
+  /**
+   * The name of the command as specified in CMakeList.txt.
+   */
+  virtual const char* GetName() { return "add_subdirectory";}
+
+  // Unused methods
+  virtual const char* GetTerseDocumentation() { return ""; }
+  virtual const char* GetFullDocumentation() { return ""; }
+
+  cmTypeMacro(cmCTestAddSubdirectoryCommand, cmCommand);
+
+  cmCTestTestHandler* TestHandler;
+};
+
+//----------------------------------------------------------------------
+bool cmCTestAddSubdirectoryCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
+{
+  if(args.size() < 1 )
+    {
+    this->SetError("called with incorrect number of arguments");
+    return false;
+    }
+
+  std::string cwd = cmSystemTools::GetCurrentWorkingDirectory();
+  cmSystemTools::ChangeDirectory(cwd.c_str());
+  std::string fname = cwd;
+  fname += "/";
+  fname += args[1];
+
+  if ( !cmSystemTools::FileExists(fname.c_str()) )
+    {
+    // No subdirectory? So what...
+    return true;
+    }
+  cmSystemTools::ChangeDirectory(fname.c_str());
+  const char* testFilename;
+  if( cmSystemTools::FileExists("CTestTestfile.cmake") )
+    {
+    // does the CTestTestfile.cmake exist ?
+    testFilename = "CTestTestfile.cmake";
+    }
+  else if( cmSystemTools::FileExists("DartTestfile.txt") )
+    {
+    // does the DartTestfile.txt exist ?
+    testFilename = "DartTestfile.txt";
+    }
+  else
+    {
+    // No CTestTestfile? Who cares...
+    cmSystemTools::ChangeDirectory(cwd.c_str());
+    return true;
+    }
+  fname += "/";
+  fname += testFilename;
+  bool readit = 
+    this->Makefile->ReadListFile(this->Makefile->GetCurrentListFile(),
+                                 fname.c_str());
+  cmSystemTools::ChangeDirectory(cwd.c_str());
+  if(!readit)
+    {
+    std::string m = "Could not find include file: ";
+    m += fname;
+    this->SetError(m.c_str());
+    return false;
     }
   return true;
 }
@@ -144,7 +236,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const&);
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &);
 
   /**
    * The name of the command as specified in CMakeList.txt.
@@ -161,7 +254,8 @@ public:
 };
 
 //----------------------------------------------------------------------
-bool cmCTestAddTestCommand::InitialPass(std::vector<std::string> const& args)
+bool cmCTestAddTestCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if ( args.size() < 2 )
     {
@@ -189,8 +283,9 @@ public:
   /**
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
-   */
-  virtual bool InitialPass(std::vector<std::string> const&);
+  */
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &);
 
   /**
    * The name of the command as specified in CMakeList.txt.
@@ -207,53 +302,10 @@ public:
 };
 
 //----------------------------------------------------------------------
-bool cmCTestSetTestsPropertiesCommand::InitialPass(
-  std::vector<std::string> const& args)
+bool cmCTestSetTestsPropertiesCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   return this->TestHandler->SetTestsProperties(args);
-}
-
-//----------------------------------------------------------------------
-// Try to find an executable, if found fullPath will be set to the full path
-// of where it was found. The directory and filename to search for are passed
-// in as well an a subdir (typically used for configuraitons such as
-// Release/Debug/etc)
-bool TryExecutable(const char *dir, const char *file,
-                   std::string *fullPath, const char *subdir)
-{
-  // try current directory
-  std::string tryPath;
-  if (dir && strcmp(dir,""))
-    {
-    tryPath = dir;
-    tryPath += "/";
-    }
-
-  if (subdir && strcmp(subdir,""))
-    {
-    tryPath += subdir;
-    tryPath += "/";
-    }
-
-  tryPath += file;
-
-  // find the file without an executable extension
-  if(cmSystemTools::FileExists(tryPath.c_str()))
-    {
-    *fullPath = cmSystemTools::CollapseFullPath(tryPath.c_str());
-    return true;
-    }
-
-  // if not found try it with the executable extension
-  tryPath += cmSystemTools::GetExecutableExtension();
-  if(cmSystemTools::FileExists(tryPath.c_str()))
-    {
-    *fullPath = cmSystemTools::CollapseFullPath(tryPath.c_str());
-    return true;
-    }
-
-  // not found at all, return false
-  return false;
 }
 
 //----------------------------------------------------------------------
@@ -446,7 +498,7 @@ int cmCTestTestHandler::ProcessHandler()
     this->UseExcludeRegExp();
     this->SetExcludeRegExp(val);
     }
-
+  
   this->TestResults.clear();
 
   cmCTestLog(this->CTest, HANDLER_OUTPUT,
@@ -559,6 +611,312 @@ int cmCTestTestHandler::ProcessHandler()
 }
 
 //----------------------------------------------------------------------
+void cmCTestTestHandler::ProcessOneTest(cmCTestTestProperties *it,
+                                        std::vector<cmStdString> &passed,
+                                        std::vector<cmStdString> &failed,
+                                        int cnt, int tmsize)
+{
+  const std::string& testname = it->Name;
+  std::vector<std::string>& args = it->Args;
+  cmCTestTestResult cres;
+  cres.Properties = &*it;
+  cres.ExecutionTime = 0;
+  cres.ReturnValue = -1;
+  cres.Status = cmCTestTestHandler::NOT_RUN;
+  cres.TestCount = cnt;  
+  cres.Name = testname;
+  cres.Path = it->Directory.c_str();
+  
+  cmCTestLog(this->CTest, HANDLER_OUTPUT, std::setw(3) << cnt << "/");
+  cmCTestLog(this->CTest, HANDLER_OUTPUT, std::setw(3) << tmsize << " ");
+  if ( this->MemCheck )
+    {
+    cmCTestLog(this->CTest, HANDLER_OUTPUT, "Memory Check");
+    }
+  else
+    {
+    cmCTestLog(this->CTest, HANDLER_OUTPUT, "Testing");
+    }
+  cmCTestLog(this->CTest, HANDLER_OUTPUT, " ");
+  std::string outname = testname;
+  outname.resize(30, ' ');
+  *this->LogFile << cnt << "/" << tmsize << " Testing: " << testname
+                 << std::endl;
+  
+  if ( this->CTest->GetShowOnly() )
+    {
+    cmCTestLog(this->CTest, HANDLER_OUTPUT, outname.c_str() << std::endl);
+    }
+  else
+    {
+    cmCTestLog(this->CTest, HANDLER_OUTPUT, outname.c_str());
+    }
+  
+  cmCTestLog(this->CTest, DEBUG, "Testing " << args[0].c_str() << " ... ");
+  // find the test executable
+  std::string actualCommand = this->FindTheExecutable(args[1].c_str());
+  std::string testCommand
+    = cmSystemTools::ConvertToOutputPath(actualCommand.c_str());
+  
+  // continue if we did not find the executable
+  if (testCommand == "")
+    {
+    *this->LogFile << "Unable to find executable: " << args[1].c_str()
+                   << std::endl;
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "Unable to find executable: "
+               << args[1].c_str() << std::endl);
+    cres.Output = "Unable to find executable: " + args[1];
+    if ( !this->CTest->GetShowOnly() )
+      {
+      cres.FullCommandLine = actualCommand;
+      this->TestResults.push_back( cres );
+      failed.push_back(testname);
+      return;
+      }
+    }
+  
+  // add the arguments
+  std::vector<std::string>::const_iterator j = args.begin();
+  ++j;
+  ++j;
+  std::vector<const char*> arguments;
+  this->GenerateTestCommand(arguments);
+  arguments.push_back(actualCommand.c_str());
+  for(;j != args.end(); ++j)
+    {
+    testCommand += " ";
+    testCommand += cmSystemTools::EscapeSpaces(j->c_str());
+    arguments.push_back(j->c_str());
+    }
+  arguments.push_back(0);
+  
+  /**
+   * Run an executable command and put the stdout in output.
+   */
+  std::string output;
+  int retVal = 0;
+  
+  
+  cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, std::endl
+             << (this->MemCheck?"MemCheck":"Test") 
+             << " command: " << testCommand
+             << std::endl);
+  *this->LogFile << cnt << "/" << tmsize
+                 << " Test: " << testname.c_str() << std::endl;
+  *this->LogFile << "Command: ";
+  std::vector<cmStdString>::size_type ll;
+  for ( ll = 0; ll < arguments.size()-1; ll ++ )
+    {
+    *this->LogFile << "\"" << arguments[ll] << "\" ";
+    }
+  *this->LogFile
+    << std::endl
+    << "Directory: " << it->Directory << std::endl
+    << "\"" << testname.c_str() << "\" start time: "
+    << this->CTest->CurrentTime() << std::endl
+    << "Output:" << std::endl
+    << "----------------------------------------------------------"
+    << std::endl;
+  int res = 0;
+  double clock_start, clock_finish;
+  clock_start = cmSystemTools::GetTime();
+  
+  if ( !this->CTest->GetShowOnly() )
+    {
+    res = this->CTest->RunTest(arguments, &output, &retVal, this->LogFile,
+                               it->Timeout);
+    }
+  
+  clock_finish = cmSystemTools::GetTime();
+  
+  if ( this->LogFile )
+    {
+    double ttime = clock_finish - clock_start;
+    int hours = static_cast<int>(ttime / (60 * 60));
+    int minutes = static_cast<int>(ttime / 60) % 60;
+    int seconds = static_cast<int>(ttime) % 60;
+    char buffer[100];
+    sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
+    *this->LogFile
+      << "----------------------------------------------------------"
+      << std::endl
+      << "\"" << testname.c_str() << "\" end time: "
+      << this->CTest->CurrentTime() << std::endl
+      << "\"" << testname.c_str() << "\" time elapsed: "
+      << buffer << std::endl
+      << "----------------------------------------------------------"
+      << std::endl << std::endl;
+    }
+  
+  cres.ExecutionTime = (double)(clock_finish - clock_start);
+  cres.FullCommandLine = testCommand;
+  std::string reason;
+  if ( !this->CTest->GetShowOnly() )
+    {
+    bool testFailed = false;
+    std::vector<std::pair<cmsys::RegularExpression,
+      std::string> >::iterator passIt;
+    bool forceFail = false;
+    if ( it->RequiredRegularExpressions.size() > 0 )
+      {
+      bool found = false;
+      for ( passIt = it->RequiredRegularExpressions.begin();
+            passIt != it->RequiredRegularExpressions.end();
+            ++ passIt )
+        {
+        if ( passIt->first.find(output.c_str()) )
+          {
+          found = true;
+          }
+        }
+      if ( !found )
+        { 
+        reason = "Required regular expression not found.";
+        reason +=  "Regex=["; 
+        for ( passIt = it->RequiredRegularExpressions.begin();
+            passIt != it->RequiredRegularExpressions.end();
+            ++ passIt )
+          {
+          reason += passIt->second;
+          reason += "\n";
+          }
+        reason += "]";
+        forceFail = true;
+        }
+      }
+    if ( it->ErrorRegularExpressions.size() > 0 )
+      {
+      for ( passIt = it->ErrorRegularExpressions.begin();
+            passIt != it->ErrorRegularExpressions.end();
+            ++ passIt )
+        {
+        if ( passIt->first.find(output.c_str()) )
+          {
+          reason = "Error regular expression found in output.";
+          reason += " Regex=[";
+          reason += passIt->second;
+          reason += "]";
+          forceFail = true;
+          }
+        }
+      }
+    
+    if (res == cmsysProcess_State_Exited &&
+        (retVal == 0 || it->RequiredRegularExpressions.size()) &&
+        !forceFail)
+      {
+      cmCTestLog(this->CTest, HANDLER_OUTPUT,   "   Passed");
+      if ( it->WillFail )
+        {
+        cmCTestLog(this->CTest, HANDLER_OUTPUT,   " - But it should fail!");
+        cres.Status = cmCTestTestHandler::FAILED;
+        testFailed = true;
+        }
+      else
+        {
+        cres.Status = cmCTestTestHandler::COMPLETED;
+        }
+      cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
+      }
+    else
+      {
+      testFailed = true;
+      
+      cres.Status = cmCTestTestHandler::FAILED;
+      if ( res == cmsysProcess_State_Expired )
+        {
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Timeout" << std::endl);
+        cres.Status = cmCTestTestHandler::TIMEOUT;
+        }
+      else if ( res == cmsysProcess_State_Exception )
+        {
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Exception: ");
+        switch ( retVal )
+          {
+          case cmsysProcess_Exception_Fault:
+            cmCTestLog(this->CTest, HANDLER_OUTPUT, "SegFault");
+            cres.Status = cmCTestTestHandler::SEGFAULT;
+            break;
+          case cmsysProcess_Exception_Illegal:
+            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Illegal");
+            cres.Status = cmCTestTestHandler::ILLEGAL;
+            break;
+          case cmsysProcess_Exception_Interrupt:
+            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Interrupt");
+            cres.Status = cmCTestTestHandler::INTERRUPT;
+            break;
+          case cmsysProcess_Exception_Numerical:
+            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Numerical");
+            cres.Status = cmCTestTestHandler::NUMERICAL;
+            break;
+          default:
+            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Other");
+            cres.Status = cmCTestTestHandler::OTHER_FAULT;
+          }
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
+        }
+      else if ( res == cmsysProcess_State_Error )
+        {
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Bad command " << res
+                   << std::endl);
+        cres.Status = cmCTestTestHandler::BAD_COMMAND;
+        }
+      else
+        {
+        // Force fail will also be here?
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Failed " << reason);
+        if ( it->WillFail )
+          {
+          cres.Status = cmCTestTestHandler::COMPLETED;
+          cmCTestLog(this->CTest, HANDLER_OUTPUT, " - supposed to fail");
+          testFailed = false;
+          }
+        cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
+        }
+      }
+    if ( testFailed )
+      {
+      failed.push_back(testname);
+      }
+    else
+      {
+      passed.push_back(testname);
+      }
+    if (!output.empty() && output.find("<DartMeasurement") != output.npos)
+      {
+      if (this->DartStuff.find(output.c_str()))
+        {
+        std::string dartString = this->DartStuff.match(1);
+        cmSystemTools::ReplaceString(output, dartString.c_str(),"");
+        cres.RegressionImages
+          = this->GenerateRegressionImages(dartString);
+        }
+      }
+    }
+
+  // if this is doing MemCheck then all the output needs to be put into
+  // Output since that it what is parsed to by cmCTestMemCheckHandler
+  if(!this->MemCheck)
+    {
+    if ( cres.Status == cmCTestTestHandler::COMPLETED )
+      {
+      this->CleanTestOutput(output, static_cast<size_t>
+                            (this->CustomMaximumPassedTestOutputSize));
+      }
+    else
+      {
+      this->CleanTestOutput(output, static_cast<size_t>
+                            (this->CustomMaximumFailedTestOutputSize));
+      }
+    }
+
+  cres.Output = output;
+  cres.ReturnValue = retVal;
+  cres.CompletionStatus = "Completed";
+  this->TestResults.push_back( cres );
+}
+
+//----------------------------------------------------------------------
 void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
                                           std::vector<cmStdString> &failed)
 {
@@ -569,6 +927,7 @@ void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
   cmCTestTestHandler::ListOfTests::size_type tmsize = this->TestList.size();
 
   this->StartTest = this->CTest->CurrentTime();
+  this->StartTestTime = static_cast<unsigned int>(cmSystemTools::GetTime());
   double elapsed_time_start = cmSystemTools::GetTime();
 
   *this->LogFile << "Start testing: " << this->StartTest << std::endl
@@ -612,27 +971,16 @@ void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
       {
       continue;
       }
-
-    const std::string& testname = it->Name;
-    std::vector<std::string>& args = it->Args;
-    cmCTestTestResult cres;
-    cres.Properties = &*it;
-    cres.ExecutionTime = 0;
-    cres.ReturnValue = -1;
-    cres.Status = cmCTestTestHandler::NOT_RUN;
-    cres.TestCount = cnt;
-
+    
     if (!(last_directory == it->Directory))
       {
       cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
-        "Changing directory into " << it->Directory.c_str() << "\n");
+                 "Changing directory into " << it->Directory.c_str() << "\n");
       *this->LogFile << "Changing directory into: " << it->Directory.c_str()
-        << std::endl;
+                     << std::endl;
       last_directory = it->Directory;
       cmSystemTools::ChangeDirectory(it->Directory.c_str());
       }
-    cres.Name = testname;
-    cres.Path = it->Directory.c_str();
 
     if (this->UseUnion)
       {
@@ -649,281 +997,20 @@ void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
       // is this test in the list of tests to run? If not then skip it
       if ((this->TestsToRun.size() &&
            std::find(this->TestsToRun.begin(),
-             this->TestsToRun.end(), inREcnt)
+                     this->TestsToRun.end(), inREcnt)
            == this->TestsToRun.end()) || !it->IsInBasedOnREOptions)
         {
         continue;
         }
       }
-
-    cmCTestLog(this->CTest, HANDLER_OUTPUT, std::setw(3) << cnt << "/");
-    cmCTestLog(this->CTest, HANDLER_OUTPUT, std::setw(3) << tmsize << " ");
-    if ( this->MemCheck )
-      {
-      cmCTestLog(this->CTest, HANDLER_OUTPUT, "Memory Check");
-      }
-    else
-      {
-      cmCTestLog(this->CTest, HANDLER_OUTPUT, "Testing");
-      }
-    cmCTestLog(this->CTest, HANDLER_OUTPUT, " ");
-    std::string outname = testname;
-    outname.resize(30, ' ');
-    *this->LogFile << cnt << "/" << tmsize << " Testing: " << testname
-      << std::endl;
-
-    if ( this->CTest->GetShowOnly() )
-      {
-      cmCTestLog(this->CTest, HANDLER_OUTPUT, outname.c_str() << std::endl);
-      }
-    else
-      {
-      cmCTestLog(this->CTest, HANDLER_OUTPUT, outname.c_str());
-      }
-
-    cmCTestLog(this->CTest, DEBUG, "Testing " << args[0].c_str() << " ... ");
-    // find the test executable
-    std::string actualCommand = this->FindTheExecutable(args[1].c_str());
-    std::string testCommand
-      = cmSystemTools::ConvertToOutputPath(actualCommand.c_str());
-
-    // continue if we did not find the executable
-    if (testCommand == "")
-      {
-      *this->LogFile << "Unable to find executable: " << args[1].c_str()
-        << std::endl;
-      cmCTestLog(this->CTest, ERROR_MESSAGE, "Unable to find executable: "
-        << args[1].c_str() << std::endl);
-      cres.Output = "Unable to find executable: " + args[1];
-      if ( !this->CTest->GetShowOnly() )
-        {
-        cres.FullCommandLine = actualCommand;
-        this->TestResults.push_back( cres );
-        failed.push_back(testname);
-        continue;
-        }
-      }
-
-    // add the arguments
-    std::vector<std::string>::const_iterator j = args.begin();
-    ++j;
-    ++j;
-    std::vector<const char*> arguments;
-    this->GenerateTestCommand(arguments);
-    arguments.push_back(actualCommand.c_str());
-    for(;j != args.end(); ++j)
-      {
-      testCommand += " ";
-      testCommand += cmSystemTools::EscapeSpaces(j->c_str());
-      arguments.push_back(j->c_str());
-      }
-    arguments.push_back(0);
-
-    /**
-     * Run an executable command and put the stdout in output.
-     */
-    std::string output;
-    int retVal = 0;
-
-
-    cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, std::endl
-      << (this->MemCheck?"MemCheck":"Test") << " command: " << testCommand
-      << std::endl);
-    *this->LogFile << cnt << "/" << tmsize
-      << " Test: " << testname.c_str() << std::endl;
-    *this->LogFile << "Command: ";
-    std::vector<cmStdString>::size_type ll;
-    for ( ll = 0; ll < arguments.size()-1; ll ++ )
-      {
-      *this->LogFile << "\"" << arguments[ll] << "\" ";
-      }
-    *this->LogFile
-      << std::endl
-      << "Directory: " << it->Directory << std::endl
-      << "\"" << testname.c_str() << "\" start time: "
-      << this->CTest->CurrentTime() << std::endl
-      << "Output:" << std::endl
-      << "----------------------------------------------------------"
-      << std::endl;
-    int res = 0;
-    double clock_start, clock_finish;
-    clock_start = cmSystemTools::GetTime();
-
-    if ( !this->CTest->GetShowOnly() )
-      {
-      res = this->CTest->RunTest(arguments, &output, &retVal, this->LogFile);
-      }
-
-    clock_finish = cmSystemTools::GetTime();
-
-    if ( this->LogFile )
-      {
-      double ttime = clock_finish - clock_start;
-      int hours = static_cast<int>(ttime / (60 * 60));
-      int minutes = static_cast<int>(ttime / 60) % 60;
-      int seconds = static_cast<int>(ttime) % 60;
-      char buffer[100];
-      sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
-      *this->LogFile
-        << "----------------------------------------------------------"
-        << std::endl
-        << "\"" << testname.c_str() << "\" end time: "
-        << this->CTest->CurrentTime() << std::endl
-        << "\"" << testname.c_str() << "\" time elapsed: "
-        << buffer << std::endl
-        << "----------------------------------------------------------"
-        << std::endl << std::endl;
-      }
-
-    cres.ExecutionTime = (double)(clock_finish - clock_start);
-    cres.FullCommandLine = testCommand;
-
-    if ( !this->CTest->GetShowOnly() )
-      {
-      bool testFailed = false;
-      std::vector<cmsys::RegularExpression>::iterator passIt;
-      bool forceFail = false;
-      if ( it->RequiredRegularExpressions.size() > 0 )
-        {
-        bool found = false;
-        for ( passIt = it->RequiredRegularExpressions.begin();
-          passIt != it->RequiredRegularExpressions.end();
-          ++ passIt )
-          {
-          if ( passIt->find(output.c_str()) )
-            {
-            found = true;
-            }
-          }
-        if ( !found )
-          {
-          forceFail = true;
-          }
-        }
-      if ( it->ErrorRegularExpressions.size() > 0 )
-        {
-        for ( passIt = it->ErrorRegularExpressions.begin();
-          passIt != it->ErrorRegularExpressions.end();
-          ++ passIt )
-          {
-          if ( passIt->find(output.c_str()) )
-            {
-            forceFail = true;
-            }
-          }
-        }
-
-      if (res == cmsysProcess_State_Exited &&
-          (retVal == 0 || it->RequiredRegularExpressions.size()) &&
-          !forceFail)
-        {
-        cmCTestLog(this->CTest, HANDLER_OUTPUT,   "   Passed");
-        if ( it->WillFail )
-          {
-          cmCTestLog(this->CTest, HANDLER_OUTPUT,   " - But it should fail!");
-          cres.Status = cmCTestTestHandler::FAILED;
-          testFailed = true;
-          }
-        else
-          {
-          cres.Status = cmCTestTestHandler::COMPLETED;
-          }
-        cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
-        }
-      else
-        {
-        testFailed = true;
-
-        cres.Status = cmCTestTestHandler::FAILED;
-        if ( res == cmsysProcess_State_Expired )
-          {
-          cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Timeout" << std::endl);
-          cres.Status = cmCTestTestHandler::TIMEOUT;
-          }
-        else if ( res == cmsysProcess_State_Exception )
-          {
-          cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Exception: ");
-          switch ( retVal )
-            {
-          case cmsysProcess_Exception_Fault:
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, "SegFault");
-            cres.Status = cmCTestTestHandler::SEGFAULT;
-            break;
-          case cmsysProcess_Exception_Illegal:
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Illegal");
-            cres.Status = cmCTestTestHandler::ILLEGAL;
-            break;
-          case cmsysProcess_Exception_Interrupt:
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Interrupt");
-            cres.Status = cmCTestTestHandler::INTERRUPT;
-            break;
-          case cmsysProcess_Exception_Numerical:
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Numerical");
-            cres.Status = cmCTestTestHandler::NUMERICAL;
-            break;
-          default:
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, "Other");
-            cres.Status = cmCTestTestHandler::OTHER_FAULT;
-            }
-           cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
-          }
-        else if ( res == cmsysProcess_State_Error )
-          {
-          cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Bad command " << res
-            << std::endl);
-          cres.Status = cmCTestTestHandler::BAD_COMMAND;
-          }
-        else
-          {
-          // Force fail will also be here?
-          cmCTestLog(this->CTest, HANDLER_OUTPUT, "***Failed");
-          if ( it->WillFail )
-            {
-            cres.Status = cmCTestTestHandler::COMPLETED;
-            cmCTestLog(this->CTest, HANDLER_OUTPUT, " - supposed to fail");
-            testFailed = false;
-            }
-          cmCTestLog(this->CTest, HANDLER_OUTPUT, std::endl);
-          }
-        }
-      if ( testFailed )
-        {
-        failed.push_back(testname);
-        }
-      else
-        {
-        passed.push_back(testname);
-        }
-      if (!output.empty() && output.find("<DartMeasurement") != output.npos)
-        {
-        if (this->DartStuff.find(output.c_str()))
-          {
-          std::string dartString = this->DartStuff.match(1);
-          cmSystemTools::ReplaceString(output, dartString.c_str(),"");
-          cres.RegressionImages
-            = this->GenerateRegressionImages(dartString);
-          }
-        }
-      }
-
-    if ( cres.Status == cmCTestTestHandler::COMPLETED )
-      {
-      this->CleanTestOutput(output, static_cast<size_t>(
-          this->CustomMaximumPassedTestOutputSize));
-      }
-    else
-      {
-      this->CleanTestOutput(output, static_cast<size_t>(
-          this->CustomMaximumFailedTestOutputSize));
-      }
-
-    cres.Output = output;
-    cres.ReturnValue = retVal;
-    cres.CompletionStatus = "Completed";
-    this->TestResults.push_back( cres );
+    
+    // process this one test
+    this->ProcessOneTest(&(*it), passed, failed, cnt, 
+                         static_cast<int>(tmsize));
     }
 
   this->EndTest = this->CTest->CurrentTime();
+  this->EndTestTime = static_cast<unsigned int>(cmSystemTools::GetTime());
   this->ElapsedTestingTime = cmSystemTools::GetTime() - elapsed_time_start;
   if ( this->LogFile )
     {
@@ -948,6 +1035,7 @@ void cmCTestTestHandler::GenerateDartOutput(std::ostream& os)
   this->CTest->StartXML(os);
   os << "<Testing>\n"
     << "\t<StartDateTime>" << this->StartTest << "</StartDateTime>\n"
+    << "\t<StartTestTime>" << this->StartTestTime << "</StartTestTime>\n"
     << "\t<TestList>\n";
   cmCTestTestHandler::TestResultsVector::size_type cc;
   for ( cc = 0; cc < this->TestResults.size(); cc ++ )
@@ -1035,6 +1123,7 @@ void cmCTestTestHandler::GenerateDartOutput(std::ostream& os)
     }
 
   os << "\t<EndDateTime>" << this->EndTest << "</EndDateTime>\n"
+     << "\t<EndTestTime>" << this->EndTestTime << "</EndTestTime>\n"
      << "<ElapsedMinutes>"
      << static_cast<int>(this->ElapsedTestingTime/6)/10.0
      << "</ElapsedMinutes>"
@@ -1067,88 +1156,183 @@ int cmCTestTestHandler::ExecuteCommands(std::vector<cmStdString>& vec)
 // Find the appropriate executable to run for a test
 std::string cmCTestTestHandler::FindTheExecutable(const char *exe)
 {
-  std::string fullPath = "";
-  std::string dir;
-  std::string file;
+  std::string resConfig;
+  std::vector<std::string> extraPaths;
+  std::vector<std::string> failedPaths;
+  return cmCTestTestHandler::FindExecutable(this->CTest,
+                                            exe, resConfig,
+                                            extraPaths,
+                                            failedPaths);
+}
 
-  cmSystemTools::SplitProgramPath(exe, dir, file);
-  // first try to find the executable given a config type subdir if there is
-  // one
-  if(this->CTest->GetConfigType() != "" &&
-    ::TryExecutable(dir.c_str(), file.c_str(), &fullPath,
-      this->CTest->GetConfigType().c_str()))
+// add additional configuraitons to the search path
+void cmCTestTestHandler
+::AddConfigurations(cmCTest *ctest, 
+                    std::vector<std::string> &attempted,
+                    std::vector<std::string> &attemptedConfigs,
+                    std::string filepath,
+                    std::string &filename)
+{   
+  std::string tempPath;
+
+  if (filepath.size())
     {
-    return fullPath;
+    filepath += "/";
+    }
+  tempPath = filepath + filename;
+  attempted.push_back(tempPath);
+  attemptedConfigs.push_back("");
+  
+  if(ctest->GetConfigType().size())
+    {
+    tempPath = filepath;
+    tempPath += ctest->GetConfigType();
+    tempPath += "/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back(ctest->GetConfigType());
+    // If the file is an OSX bundle then the configtyp
+    // will be at the start of the path
+    tempPath = ctest->GetConfigType();
+    tempPath += "/";
+    tempPath += filepath;
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back(ctest->GetConfigType());
+    }
+  else
+    {
+    // no config specified to try some options
+    tempPath = filepath;
+    tempPath += "Release/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back("Release");
+    tempPath = filepath;
+    tempPath += "Debug/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back("Debug");
+    tempPath = filepath;
+    tempPath += "MinSizeRel/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back("MinSizeRel");
+    tempPath = filepath;
+    tempPath += "RelWithDebInfo/";
+    tempPath += filename;
+    attempted.push_back(tempPath);    
+    attemptedConfigs.push_back("RelWithDebInfo");
+    tempPath = filepath;
+    tempPath += "Deployment/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back("Deployment");
+    tempPath = filepath;
+    tempPath += "Development/";
+    tempPath += filename;
+    attempted.push_back(tempPath);
+    attemptedConfigs.push_back("Deployment");
+    }
+}
+
+
+//----------------------------------------------------------------------
+// Find the appropriate executable to run for a test
+std::string cmCTestTestHandler
+::FindExecutable(cmCTest *ctest,
+                 const char *testCommand,
+                 std::string &resultingConfig,
+                 std::vector<std::string> &extraPaths,
+                 std::vector<std::string> &failed)
+{
+  // now run the compiled test if we can find it
+  std::vector<std::string> attempted;
+  std::vector<std::string> attemptedConfigs;
+  std::string tempPath;
+  std::string filepath =
+    cmSystemTools::GetFilenamePath(testCommand);
+  std::string filename =
+    cmSystemTools::GetFilenameName(testCommand);
+
+  cmCTestTestHandler::AddConfigurations(ctest, attempted,
+                                        attemptedConfigs,
+                                        filepath,filename);
+
+  // if extraPaths are provided and we were not passed a full path, try them,
+  // try any extra paths
+  if (filepath.size() == 0)
+    {
+    for (unsigned int i = 0; i < extraPaths.size(); ++i)
+      {
+      std::string filepathExtra =
+        cmSystemTools::GetFilenamePath(extraPaths[i]);
+      std::string filenameExtra =
+        cmSystemTools::GetFilenameName(extraPaths[i]);
+      cmCTestTestHandler::AddConfigurations(ctest,attempted,
+                                            attemptedConfigs,
+                                            filepathExtra,
+                                            filenameExtra);
+      }
     }
 
-  // next try the current directory as the subdir
-  if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"."))
+  // store the final location in fullPath
+  std::string fullPath;
+
+  // now look in the paths we specified above
+  for(unsigned int ai=0;
+      ai < attempted.size() && fullPath.size() == 0; ++ai)
     {
-    return fullPath;
-    }
-
-  // try without the config subdir
-  if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,""))
-    {
-    return fullPath;
-    }
-
-  if ( this->CTest->GetConfigType() == "" )
-    {
-    // No config type, so try to guess it
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"Deployment"))
+    // first check without exe extension
+    if(cmSystemTools::FileExists(attempted[ai].c_str())
+       && !cmSystemTools::FileIsDirectory(attempted[ai].c_str()))
       {
-      return fullPath;
+      fullPath = cmSystemTools::CollapseFullPath(attempted[ai].c_str());
+      resultingConfig = attemptedConfigs[ai];
       }
-
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"Development"))
+    // then try with the exe extension
+    else
       {
-      return fullPath;
-      }
-
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"Release"))
-      {
-      return fullPath;
-      }
-
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"Debug"))
-      {
-      return fullPath;
-      }
-
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"MinSizeRel"))
-      {
-      return fullPath;
-      }
-
-    if (::TryExecutable(dir.c_str(),file.c_str(),&fullPath,"RelWithDebInfo"))
-      {
-      return fullPath;
+      failed.push_back(attempted[ai].c_str());
+      tempPath = attempted[ai];
+      tempPath += cmSystemTools::GetExecutableExtension();
+      if(cmSystemTools::FileExists(tempPath.c_str())
+         && !cmSystemTools::FileIsDirectory(tempPath.c_str()))
+        {
+        fullPath = cmSystemTools::CollapseFullPath(tempPath.c_str());
+        resultingConfig = attemptedConfigs[ai];
+        }
+      else
+        {
+        failed.push_back(tempPath.c_str());
+        }
       }
     }
-
+  
   // if everything else failed, check the users path, but only if a full path
-  // wasn;t specified
-  if (dir.size() == 0)
+  // wasn't specified
+  if (fullPath.size() == 0 && filepath.size() == 0)
     {
-    std::string path = cmSystemTools::FindProgram(file.c_str());
+    std::string path = cmSystemTools::FindProgram(filename.c_str());
     if (path != "")
       {
+      resultingConfig = "";
       return path;
       }
     }
-
-  if ( this->CTest->GetConfigType() != "" )
+  if(fullPath.size() == 0)
     {
-    dir += "/";
-    dir += this->CTest->GetConfigType();
-    dir += "/";
-    dir += file;
-    cmSystemTools::Error("config type specified on the command line, but "
-      "test executable not found.",
-      dir.c_str());
-    return "";
+    cmCTestLog(ctest, HANDLER_OUTPUT,
+               "Could not find executable " << testCommand << "\n"
+               << "Looked in the following places:\n");
+    for(std::vector<std::string>::iterator i = failed.begin();
+        i != failed.end(); ++i)
+      {
+      cmCTestLog(ctest, HANDLER_OUTPUT,
+                 i->c_str() << "\n");
+      }
     }
+  
   return fullPath;
 }
 
@@ -1180,16 +1364,23 @@ void cmCTestTestHandler::GetListOfTests()
   newCom1->TestHandler = this;
   cm.AddCommand(newCom1);
 
-  // Add handler for SUBDIR
-  cmCTestSubdirCommand* newCom2 = new cmCTestSubdirCommand;
+  // Add handler for SUBDIRS
+  cmCTestSubdirCommand* newCom2 = 
+    new cmCTestSubdirCommand;
   newCom2->TestHandler = this;
   cm.AddCommand(newCom2);
 
-  // Add handler for SET_SOURCE_FILES_PROPERTIES
-  cmCTestSetTestsPropertiesCommand* newCom3
-    = new cmCTestSetTestsPropertiesCommand;
+  // Add handler for ADD_SUBDIRECTORY
+  cmCTestAddSubdirectoryCommand* newCom3 = 
+    new cmCTestAddSubdirectoryCommand;
   newCom3->TestHandler = this;
   cm.AddCommand(newCom3);
+
+  // Add handler for SET_SOURCE_FILES_PROPERTIES
+  cmCTestSetTestsPropertiesCommand* newCom4
+    = new cmCTestSetTestsPropertiesCommand;
+  newCom4->TestHandler = this;
+  cm.AddCommand(newCom4);
 
   const char* testFilename;
   if( cmSystemTools::FileExists("CTestTestfile.cmake") )
@@ -1647,6 +1838,10 @@ bool cmCTestTestHandler::SetTestsProperties(
             {
             rtit->WillFail = cmSystemTools::IsOn(val.c_str());
             }
+          if ( key == "TIMEOUT" )
+            {
+            rtit->Timeout = atof(val.c_str());
+            }
           if ( key == "FAIL_REGULAR_EXPRESSION" )
             {
             std::vector<std::string> lval;
@@ -1655,7 +1850,9 @@ bool cmCTestTestHandler::SetTestsProperties(
             for ( crit = lval.begin(); crit != lval.end(); ++ crit )
               {
               rtit->ErrorRegularExpressions.push_back(
-                cmsys::RegularExpression(crit->c_str()));
+                std::pair<cmsys::RegularExpression, std::string>(
+                  cmsys::RegularExpression(crit->c_str()),
+                  std::string(crit->c_str())));
               }
             }
           if ( key == "MEASUREMENT" )
@@ -1680,7 +1877,9 @@ bool cmCTestTestHandler::SetTestsProperties(
             for ( crit = lval.begin(); crit != lval.end(); ++ crit )
               {
               rtit->RequiredRegularExpressions.push_back(
-                cmsys::RegularExpression(crit->c_str()));
+                std::pair<cmsys::RegularExpression, std::string>(
+                  cmsys::RegularExpression(crit->c_str()),
+                  std::string(crit->c_str())));
               }
             }
           }
@@ -1751,6 +1950,7 @@ bool cmCTestTestHandler::AddTest(const std::vector<std::string>& args)
   
   test.IsInBasedOnREOptions = true;
   test.WillFail = false;
+  test.Timeout = 0;
   if (this->UseIncludeRegExpFlag &&
     !this->IncludeTestsRegularExpression.find(testname.c_str()))
     {

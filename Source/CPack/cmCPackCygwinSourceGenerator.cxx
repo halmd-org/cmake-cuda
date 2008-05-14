@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackCygwinSourceGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:22:02 $
-  Version:   $Revision: 1.3.2.1 $
+  Date:      $Date: 2008-03-13 01:54:27 $
+  Version:   $Revision: 1.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -124,7 +124,14 @@ int cmCPackCygwinSourceGenerator::CompressFiles(const char* outFileName,
   std::string outerTarFile
     = this->GetOption("CPACK_TEMPORARY_DIRECTORY");
   outerTarFile += "-";
-  outerTarFile += this->GetOption("CPACK_CYGWIN_PATCH_NUMBER");
+  const char* patch = this->GetOption("CPACK_CYGWIN_PATCH_NUMBER");
+  if(!patch)
+    {
+    cmCPackLogger(cmCPackLog::LOG_WARNING, "CPACK_CYGWIN_PATCH_NUMBER"
+                  << " not specified, defaulting to 1\n");
+    patch = "1";
+    }
+  outerTarFile += patch;
   outerTarFile += "-src.tar";
   std::string buildScript = cmSystemTools::GetFilenameName(
     this->GetOption("CPACK_CYGWIN_BUILD_SCRIPT"));
@@ -166,7 +173,7 @@ int cmCPackCygwinSourceGenerator::CompressFiles(const char* outFileName,
   return 1;
 }
 
-const char* cmCPackCygwinSourceGenerator::GetInstallPrefix()
+const char* cmCPackCygwinSourceGenerator::GetPackagingInstallPrefix()
 {
   this->InstallPrefix = "/";
   this->InstallPrefix += this->GetOption("CPACK_PACKAGE_FILE_NAME");
@@ -176,7 +183,14 @@ const char* cmCPackCygwinSourceGenerator::GetInstallPrefix()
 const char* cmCPackCygwinSourceGenerator::GetOutputExtension()
 {
   this->OutputExtension = "-";
-  this->OutputExtension += this->GetOption("CPACK_CYGWIN_PATCH_NUMBER");
+  const char* patch = this->GetOption("CPACK_CYGWIN_PATCH_NUMBER"); 
+  if(!patch)
+    {
+    cmCPackLogger(cmCPackLog::LOG_WARNING, "CPACK_CYGWIN_PATCH_NUMBER"
+                  << " not specified, defaulting to 1\n");
+    patch = "1";
+    }
+  this->OutputExtension += patch;
   this->OutputExtension += "-src.tar.bz2";
   return this->OutputExtension.c_str();
 }

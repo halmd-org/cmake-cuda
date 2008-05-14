@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: ccmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:07 $
-  Version:   $Revision: 1.32.6.1 $
+  Date:      $Date: 2007-12-13 22:56:50 $
+  Version:   $Revision: 1.37 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -23,12 +23,12 @@
 #include <sys/ioctl.h>
 
 #include "cmCursesMainForm.h"
+#include "cmCursesStandardIncludes.h"
 
-#include <curses.h>
 #include <form.h>
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationName[] =
+static const char * cmDocumentationName[][3] =
 {
   {0,
    "  ccmake - Curses Interface for CMake.", 0},
@@ -36,7 +36,7 @@ static const cmDocumentationEntry cmDocumentationName[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationUsage[] =
+static const char * cmDocumentationUsage[][3] =
 {
   {0,
    "  ccmake <path-to-source>\n"
@@ -45,7 +45,7 @@ static const cmDocumentationEntry cmDocumentationUsage[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationDescription[] =
+static const char * cmDocumentationDescription[][3] =
 {
   {0,
    "The \"ccmake\" executable is the CMake curses interface.  Project "
@@ -57,14 +57,14 @@ static const cmDocumentationEntry cmDocumentationDescription[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationOptions[] =
+static const char * cmDocumentationOptions[][3] =
 {
   CMAKE_STANDARD_OPTIONS_TABLE,
   {0,0,0}
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationSeeAlso[] =
+static const char * cmDocumentationSeeAlso[][3] =
 {
   {0, "cmake", 0},
   {0, "ctest", 0},
@@ -105,21 +105,25 @@ void CMakeErrorHandler(const char* message, const char* title, bool&, void* clie
 
 int main(int argc, char** argv)
 {
+  cmSystemTools::FindExecutableDirectory(argv[0]);
   cmDocumentation doc;
   if(doc.CheckOptions(argc, argv))
     {
     cmake hcm;
     std::vector<cmDocumentationEntry> commands;
+    std::vector<cmDocumentationEntry> compatCommands;
     std::vector<cmDocumentationEntry> generators;
-    hcm.GetCommandDocumentation(commands);
+    hcm.GetCommandDocumentation(commands, true, false);
+    hcm.GetCommandDocumentation(compatCommands, false, true);
     hcm.GetGeneratorDocumentation(generators);
     doc.SetName("ccmake");
-    doc.SetNameSection(cmDocumentationName);
-    doc.SetUsageSection(cmDocumentationUsage);
-    doc.SetDescriptionSection(cmDocumentationDescription);
-    doc.SetGeneratorsSection(&generators[0]);
-    doc.SetOptionsSection(cmDocumentationOptions);
-    doc.SetCommandsSection(&commands[0]);
+    doc.SetSection("Name",cmDocumentationName);
+    doc.SetSection("Usage",cmDocumentationUsage);
+    doc.SetSection("Description",cmDocumentationDescription);
+    doc.SetSection("Generators",generators);
+    doc.SetSection("Options",cmDocumentationOptions);
+    doc.SetSection("Command",commands);
+    doc.SetSection("Compatibility Commands",compatCommands);
     doc.SetSeeAlsoList(cmDocumentationSeeAlso);
     return doc.PrintRequestedDocumentation(std::cout)? 0:1;
     }  

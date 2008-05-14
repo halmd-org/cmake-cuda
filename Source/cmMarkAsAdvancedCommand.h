@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMarkAsAdvancedCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/17 14:31:43 $
-  Version:   $Revision: 1.9 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.12 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "MARK_AS_ADVANCED";}
+  virtual const char* GetName() {return "mark_as_advanced";}
   
   /**
    * Succinct documentation.
@@ -60,7 +61,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  MARK_AS_ADVANCED([CLEAR|FORCE] VAR VAR2 VAR...)\n"
+      "  mark_as_advanced([CLEAR|FORCE] VAR VAR2 VAR...)\n"
       "Mark the named cached variables as advanced.  An advanced variable "
       "will not be displayed in any of the cmake GUIs unless the show "
       "advanced option is on.  "
@@ -69,9 +70,18 @@ public:
       "If FORCE is the first argument, then the variable is made advanced.  "
       "If neither FORCE nor CLEAR is specified, new values will be marked as "
       "advanced, but if the variable already has an advanced/non-advanced "
-      "state, it will not be changed.";
+      "state, it will not be changed.\n"
+      "It does nothing in script mode.";
     }
-  
+
+  /**
+   * This determines if the command is invoked when in script mode.
+   * mark_as_advanced() will have no effect in script mode, but this will
+   * make many of the modules usable in cmake/ctest scripts, (among them
+   * FindUnixMake.cmake used by the CTEST_BUILD command.
+  */
+  virtual bool IsScriptable() { return true; }
+
   cmTypeMacro(cmMarkAsAdvancedCommand, cmCommand);
 };
 

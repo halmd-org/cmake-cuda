@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallScriptGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/04/13 02:04:50 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2007-10-15 11:08:10 $
+  Version:   $Revision: 1.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,9 @@
 
 //----------------------------------------------------------------------------
 cmInstallScriptGenerator
-::cmInstallScriptGenerator(const char* script, bool code):
+::cmInstallScriptGenerator(const char* script, bool code,
+                           const char* component) :
+  cmInstallGenerator(0, std::vector<std::string>(), component),
   Script(script), Code(code)
 {
 }
@@ -32,12 +34,19 @@ cmInstallScriptGenerator
 //----------------------------------------------------------------------------
 void cmInstallScriptGenerator::GenerateScript(std::ostream& os)
 {
+  Indent indent;
+  std::string component_test =
+    this->CreateComponentTest(this->Component.c_str());
+  os << indent << "IF(" << component_test << ")\n";
+
   if(this->Code)
     {
-    os << this->Script << "\n";
+    os << indent.Next() << this->Script << "\n";
     }
   else
     {
-    os << "INCLUDE(\"" << this->Script << "\")\n";
+    os << indent.Next() << "INCLUDE(\"" << this->Script << "\")\n";
     }
+
+  os << indent << "ENDIF(" << component_test << ")\n\n";
 }

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmStandardIncludes.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:06 $
-  Version:   $Revision: 1.62.2.2 $
+  Date:      $Date: 2008-02-24 19:05:11 $
+  Version:   $Revision: 1.72 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -37,6 +37,9 @@
   CMAKE_TO_STRING(CMake_VERSION_MAJOR) "." \
   CMAKE_TO_STRING(CMake_VERSION_MINOR) "." \
   CMAKE_TO_STRING(CMake_VERSION_PATCH)
+
+#define CMake_VERSION_ENCODE(major, minor, patch) \
+  ((major)*0x10000u + (minor)*0x100u + (patch))
 
 #ifdef _MSC_VER
 #pragma warning ( disable : 4786 )
@@ -80,6 +83,7 @@ public:
 // support the large integer types.
 #if defined(CMAKE_BUILD_WITH_CMAKE)
 # include <cmsys/IOStream.hxx>
+# undef GetCurrentDirectory // Borland <iosfwd> includes windows.h
 #endif
 
 // Avoid warnings in system headers.
@@ -316,9 +320,16 @@ extern void operator << (std::ostream&, const cmOStringStream&);
 /** Standard documentation entry for cmDocumentation's formatting.  */
 struct cmDocumentationEntry
 {
-  const char* name;
-  const char* brief;
-  const char* full;
+  std::string Name;
+  std::string Brief;
+  std::string Full;
+  cmDocumentationEntry(){};
+  cmDocumentationEntry(const char *doc[3])
+  { if (doc[0]) this->Name = doc[0]; 
+  if (doc[1]) this->Brief = doc[1]; 
+  if (doc[2]) this->Full = doc[2]; };
+  cmDocumentationEntry(const char *n, const char *b, const char *f)
+  { if (n) this->Name = n; if (b) this->Brief = b; if (f) this->Full = f; };
 };
 
 /** Data structure to represent a single command line.  */

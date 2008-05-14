@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddDependenciesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/08/03 20:10:59 $
-  Version:   $Revision: 1.8 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ADD_DEPENDENCIES";}
+  virtual const char* GetName() { return "add_dependencies";}
 
   /**
    * Succinct documentation.
@@ -60,7 +61,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ADD_DEPENDENCIES(target-name depend-target1\n"
+      "  add_dependencies(target-name depend-target1\n"
       "                   depend-target2 ...)\n"
       "Make a top-level target depend on other top-level targets.  A "
       "top-level target is one created by ADD_EXECUTABLE, ADD_LIBRARY, "

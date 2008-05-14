@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCustomCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.17.2.1 $
+  Date:      $Date: 2007-09-17 14:50:46 $
+  Version:   $Revision: 1.23 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -68,10 +68,12 @@ public:
   bool GetEscapeAllowMakeVars() const;
   void SetEscapeAllowMakeVars(bool b);
 
-  /** set get the used status of the command */ 
-  void SetUsed() { this->Used = true;}; 
-  bool IsUsed() { return this->Used;};
- 
+  typedef std::pair<cmStdString, cmStdString> ImplicitDependsPair;
+  class ImplicitDependsList: public std::vector<ImplicitDependsPair> {};
+  void SetImplicitDepends(ImplicitDependsList const&);
+  void AppendImplicitDepends(ImplicitDependsList const&);
+  ImplicitDependsList const& GetImplicitDepends() const;
+
 private:
   std::vector<std::string> Outputs;
   std::vector<std::string> Depends;
@@ -81,7 +83,7 @@ private:
   std::string WorkingDirectory;
   bool EscapeAllowMakeVars;
   bool EscapeOldStyle;
-  bool Used;
+  ImplicitDependsList ImplicitDepends;
 };
 
 #endif

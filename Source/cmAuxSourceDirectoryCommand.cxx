@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAuxSourceDirectoryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:08 $
-  Version:   $Revision: 1.20.2.1 $
+  Date:      $Date: 2008-05-01 16:35:39 $
+  Version:   $Revision: 1.26.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,7 +21,7 @@
 
 // cmAuxSourceDirectoryCommand
 bool cmAuxSourceDirectoryCommand::InitialPass
-(std::vector<std::string> const& args)
+(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2 || args.size() > 2)
     {
@@ -32,9 +32,17 @@ bool cmAuxSourceDirectoryCommand::InitialPass
   std::string sourceListValue;
   std::string templateDirectory = args[0];
   this->Makefile->AddExtraDirectory(templateDirectory.c_str());
-  std::string tdir = this->Makefile->GetCurrentDirectory();
-  tdir += "/";
-  tdir += templateDirectory;
+  std::string tdir;
+  if(!cmSystemTools::FileIsFullPath(templateDirectory.c_str()))
+    {
+    tdir = this->Makefile->GetCurrentDirectory();
+    tdir += "/";
+    tdir += templateDirectory;
+    }
+  else
+    {
+    tdir = templateDirectory;
+    }
 
   // was the list already populated
   const char *def = this->Makefile->GetDefinition(args[1].c_str());  
@@ -56,9 +64,9 @@ bool cmAuxSourceDirectoryCommand::InitialPass
       if( dotpos != std::string::npos )
         {
         std::string ext = file.substr(dotpos+1);
-        file = file.substr(0, dotpos);
+        std::string base = file.substr(0, dotpos);
         // Process only source files
-        if( file.size() != 0
+        if( base.size() != 0
             && std::find( this->Makefile->GetSourceExtensions().begin(),
                           this->Makefile->GetSourceExtensions().end(), ext )
                  != this->Makefile->GetSourceExtensions().end() )
@@ -68,20 +76,14 @@ bool cmAuxSourceDirectoryCommand::InitialPass
           fullname += file;
           // add the file as a class file so 
           // depends can be done
-          cmSourceFile cmfile;
-          cmfile.SetName(fullname.c_str(), 
-                         this->Makefile->GetCurrentDirectory(),
-                         this->Makefile->GetSourceExtensions(),
-                         this->Makefile->GetHeaderExtensions());
-          cmfile.SetProperty("ABSTRACT","0");
-          this->Makefile->AddSource(cmfile);
-          if (sourceListValue.size() > 0)
+          cmSourceFile* sf =
+            this->Makefile->GetOrCreateSource(fullname.c_str());
+          sf->SetProperty("ABSTRACT","0");
+          if(!sourceListValue.empty())
             {
             sourceListValue += ";";
             }
-          sourceListValue += cmfile.GetSourceName();
-          sourceListValue += ".";
-          sourceListValue += cmfile.GetSourceExtension();
+          sourceListValue += fullname;
           }
         }
       }

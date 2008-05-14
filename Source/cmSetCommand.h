@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/17 15:28:35 $
-  Version:   $Revision: 1.16 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,7 +39,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -49,7 +50,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "SET";}
+  virtual const char* GetName() {return "set";}
   
   /**
    * Succinct documentation.
@@ -65,26 +66,34 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  SET(VAR [VALUE] [CACHE TYPE DOCSTRING [FORCE]])\n"
-      "Within CMake sets VAR to the value VALUE.  VALUE is expanded before "
-      "VAR is set to it.  If CACHE is present, then the VAR is put in the "
-      "cache. TYPE and DOCSTRING are required. TYPE is used by the CMake GUI "
-      "to choose a widget with which the user sets a value.  The value for "
-      "TYPE may be one of\n"
+      "  set(<variable> <value> [[CACHE <type> <docstring> [FORCE]] | "
+      "PARENT_SCOPE])\n"
+      "Within CMake sets <variable> to the value <value>.  <value> is expanded"
+      "  before <variable> is set to it.  If CACHE is present, then the "
+      "<variable> is put in the cache. <type> and <docstring> are then "
+      "required. <type> is used by the CMake GUI to choose a widget with "
+      "which the user sets a value.  The value for <type> may be one of\n"
       "  FILEPATH = File chooser dialog.\n"
       "  PATH     = Directory chooser dialog.\n"
       "  STRING   = Arbitrary string.\n"
       "  BOOL     = Boolean ON/OFF checkbox.\n"
       "  INTERNAL = No GUI entry (used for persistent variables).\n"
-      "If TYPE is INTERNAL, then the VALUE is always written into the cache, "
-      "replacing any values existing in the cache.  If it is not a cache "
-      "variable, then this always writes into the current makefile. The "
+      "If <type> is INTERNAL, then the <value> is always written into the "
+      "cache, replacing any values existing in the cache.  If it is not a "
+      "cache variable, then this always writes into the current makefile. The "
       "FORCE option will overwrite the cache value removing any changes by "
       "the user.\n"
-      "  SET(VAR VALUE1 ... VALUEN).\n"
-      "In this case VAR is set to a semicolon separated list of values.\n"
-      "VAR can be an environment variable such as:\n"
-      "  SET( ENV{PATH} /home/martink )\n"
+      "If PARENT_SCOPE is present, the variable will be set in the scope "
+      "above the current scope. Each new directory or function creates a new "
+      "scope. This command will set the value of a variable into the parent "
+      "directory or calling function (whichever is applicable to the case at "
+      "hand) If VALUE is not specified then the variable is removed from the "
+      "parent scope.\n"
+      "  set(<variable> <value1> ... <valueN>)\n"
+      "In this case <variable> is set to a semicolon separated list of "
+      "values.\n"
+      "<variable> can be an environment variable such as:\n"
+      "  set( ENV{PATH} /home/martink )\n"
       "in which case the environment variable will be set.";
     }
   

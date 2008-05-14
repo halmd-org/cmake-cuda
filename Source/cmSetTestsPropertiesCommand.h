@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetTestsPropertiesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,12 +31,13 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SET_TESTS_PROPERTIES";}
+  virtual const char* GetName() { return "set_tests_properties";}
 
   /**
    * Succinct documentation.
@@ -52,7 +53,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  SET_TESTS_PROPERTIES(test1 [test2...] PROPERTIES prop1 value1 prop2"
+      "  set_tests_properties(test1 [test2...] PROPERTIES prop1 value1 prop2"
       " value2)\n"
       "Set a property for the tests. If the property is not found, CMake "
       "will report an error. The properties include:\n"
@@ -71,6 +72,11 @@ public:
     }
 
   cmTypeMacro(cmSetTestsPropertiesCommand, cmCommand);
+
+  static bool SetOneTest(const char *tname, 
+                         std::vector<std::string> &propertyPairs,
+                         cmMakefile *mf,
+                         std::string &errors);
 };
 
 

@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___ 
  *                             \___|\___/|_| \_\_____|
  *
- * $Id: sepheaders.c,v 1.1 2005/06/24 13:02:16 andy Exp $
+ * $Id: sepheaders.c,v 1.2 2007-04-15 15:56:07 andy Exp $
  */
 
 /* to make this work under windows, use the win32-functions from the
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
   curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1);
 
   /* shut up completely */
-  curl_easy_setopt(curl_handle, CURLOPT_MUTE, 1);
+  //curl_easy_setopt(curl_handle, CURLOPT_MUTE, 1);
 
   /* send all data to this function  */
   curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);

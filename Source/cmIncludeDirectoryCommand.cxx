@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeDirectoryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.18.2.3 $
+  Date:      $Date: 2008-03-08 14:50:56 $
+  Version:   $Revision: 1.30 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,7 @@
 
 // cmIncludeDirectoryCommand
 bool cmIncludeDirectoryCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -50,27 +50,81 @@ bool cmIncludeDirectoryCommand
       }
     if(i->size() == 0)
       {
-      cmSystemTools::Error
-        ("Empty Include Directory Passed into INCLUDE_DIRECTORIES command.");
+      this->SetError("given empty-string as include directory.");
+      return false;
       }
-    std::string unixPath = *i;
-    if (!cmSystemTools::IsOff(unixPath.c_str()))
+
+    this->AddDirectory(i->c_str(),before,system);
+
+    }
+  return true;
+}
+
+// do a lot of cleanup on the arguments because this is one place where folks
+// sometimes take the output of a program and pass it directly into this
+// command not thinking that a single argument could be filled with spaces
+// and newlines etc liek below:
+//
+// "   /foo/bar
+//    /boo/hoo /dingle/berry "
+//
+// ideally that should be three seperate arguments but when sucking the
+// output from a program and passing it into a command the cleanup doesn't
+// always happen
+//
+void cmIncludeDirectoryCommand::AddDirectory(const char *i, 
+                                             bool before, 
+                                             bool system)
+{
+  // break apart any line feed arguments
+  std::string ret = i;
+  std::string::size_type pos = 0;
+  if((pos = ret.find('\n', pos)) != std::string::npos)
+    {
+    if (pos)
       {
-    cmSystemTools::ConvertToUnixSlashes(unixPath);
-    if(!cmSystemTools::FileIsFullPath(unixPath.c_str()))
+      this->AddDirectory(ret.substr(0,pos).c_str(), before, system);
+      }
+    if (ret.size()-pos-1)
+      {
+      this->AddDirectory(ret.substr(pos+1,ret.size()-pos-1).c_str(),
+                         before, system);
+      }
+    return;
+    }
+
+  // remove any leading or trailing spaces and \r
+  pos = ret.size()-1;
+  while(ret[pos] == ' ' || ret[pos] == '\r')
+    {
+    ret.erase(pos);
+    pos--;
+    }
+  pos = 0;
+  while(ret.size() && ret[pos] == ' ' || ret[pos] == '\r')
+    {
+    ret.erase(pos,1);
+    }
+  if (!ret.size())
+    {
+    return;
+    }
+  
+  if (!cmSystemTools::IsOff(ret.c_str()))
+    {
+    cmSystemTools::ConvertToUnixSlashes(ret);
+    if(!cmSystemTools::FileIsFullPath(ret.c_str()))
       {
       std::string tmp = this->Makefile->GetStartDirectory();
       tmp += "/";
-      tmp += unixPath;
-      unixPath = tmp;
-      }
-      }
-    this->Makefile->AddIncludeDirectory(unixPath.c_str(), before);
-    if(system)
-      {
-      this->Makefile->AddSystemIncludeDirectory(unixPath.c_str());
+      tmp += ret;
+      ret = tmp;
       }
     }
-  return true;
+  this->Makefile->AddIncludeDirectory(ret.c_str(), before);
+  if(system)
+    {
+    this->Makefile->AddSystemIncludeDirectory(ret.c_str());
+    }
 }
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddCustomTargetCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.21.2.1 $
+  Date:      $Date: 2008-03-07 22:05:06 $
+  Version:   $Revision: 1.37 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,8 +17,9 @@
 #include "cmAddCustomTargetCommand.h"
 
 // cmAddCustomTargetCommand
-bool cmAddCustomTargetCommand::InitialPass(
-  std::vector<std::string> const& args)
+bool cmAddCustomTargetCommand
+::InitialPass(std::vector<std::string> const& args,
+              cmExecutionStatus&)
 {
   if(args.size() < 1 )
     {
@@ -29,14 +30,7 @@ bool cmAddCustomTargetCommand::InitialPass(
   // Check the target name.
   if(args[0].find_first_of("/\\") != args[0].npos)
     {
-    int major = 0;
-    int minor = 0;
-    if(const char* versionValue =
-       this->Makefile->GetDefinition("CMAKE_BACKWARDS_COMPATIBILITY"))
-      {
-      sscanf(versionValue, "%d.%d", &major, &minor);
-      }
-    if(!major || major > 3 || (major == 2 && minor > 2))
+    if(!this->Makefile->NeedBackwardsCompatibility(2,2))
       {
       cmOStringStream e;
       e << "called with invalid target name \"" << args[0]
@@ -73,13 +67,13 @@ bool cmAddCustomTargetCommand::InitialPass(
   tdoing doing = doing_command;
 
   // Look for the ALL option.
-  bool all = false;
+  bool excludeFromAll = true;
   unsigned int start = 1;
   if(args.size() > 1)
     {
     if(args[1] == "ALL")
       {
-      all = true;
+      excludeFromAll = false;
       start = 2;
       }
     }
@@ -158,9 +152,19 @@ bool cmAddCustomTargetCommand::InitialPass(
     currentLine.clear();
     }
 
+  // Enforce name uniqueness.
+  {
+  std::string msg;
+  if(!this->Makefile->EnforceUniqueName(args[0], msg, true))
+    {
+    this->SetError(msg.c_str());
+    return false;
+    }
+  }
+
   // Add the utility target to the makefile.
   bool escapeOldStyle = !verbatim;
-  this->Makefile->AddUtilityCommand(args[0].c_str(), all,
+  this->Makefile->AddUtilityCommand(args[0].c_str(), excludeFromAll,
                                     working_directory.c_str(), depends,
                                     commandLines, escapeOldStyle, comment);
 

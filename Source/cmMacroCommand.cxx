@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMacroCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/12/01 20:32:48 $
-  Version:   $Revision: 1.25.2.5 $
+  Date:      $Date: 2008-03-07 13:40:36 $
+  Version:   $Revision: 1.36 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -48,9 +48,11 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args);
+  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args, 
+                                 cmExecutionStatus &);
 
-  virtual bool InitialPass(std::vector<std::string> const&) { return false; };
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &) { return false; };
 
   /**
    * The name of the command as specified in CMakeList.txt.
@@ -83,7 +85,8 @@ public:
 
 
 bool cmMacroHelperCommand::InvokeInitialPass
-(const std::vector<cmListFileArgument>& args)
+(const std::vector<cmListFileArgument>& args,
+ cmExecutionStatus &inStatus)
 {
   // Expand the argument list to the macro.
   std::vector<std::string> expandedArgs;
@@ -233,32 +236,32 @@ bool cmMacroHelperCommand::InvokeInitialPass
         }
       newLFF.Arguments.push_back(arg);
       }
-    if(!this->Makefile->ExecuteCommand(newLFF))
+    cmExecutionStatus status;
+    if(!this->Makefile->ExecuteCommand(newLFF, status) ||
+       status.GetNestedError())
       {
-      if(args.size())
-        {
-        arg.FilePath = args[0].FilePath;
-        arg.Line = args[0].Line;
-        }
-      else
-        {
-        arg.FilePath =  "Unknown";
-        arg.Line = 0;
-        }
-      cmOStringStream error;
-      error << "Error in cmake code at\n"
-            << arg.FilePath << ":" << arg.Line << ":\n"
-            << "A command failed during the invocation of macro \""
-            << this->Args[0].c_str() << "\".";
-      cmSystemTools::Error(error.str().c_str());
+      // The error message should have already included the call stack
+      // so we do not need to report an error here.
+      inStatus.SetNestedError(true);
       return false;
+      }
+    if (status.GetReturnInvoked())
+      {
+      inStatus.SetReturnInvoked(true);
+      return true;
+      }
+    if (status.GetBreakInvoked())
+      {
+      inStatus.SetBreakInvoked(true);
+      return true;
       }
     }
   return true;
 }
 
 bool cmMacroFunctionBlocker::
-IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf)
+IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
+                  cmExecutionStatus &)
 {
   // record commands until we hit the ENDMACRO
   // at the ENDMACRO call we shift gears and start looking for invocations
@@ -314,9 +317,10 @@ ShouldRemove(const cmListFileFunction& lff, cmMakefile &mf)
     {
     std::vector<std::string> expandedArguments;
     mf.ExpandArguments(lff.Arguments, expandedArguments);
-    if ((!expandedArguments.empty() && 
-        (expandedArguments[0] == this->Args[0]))
-        || mf.IsOn("CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS"))
+    // if the endmacro has arguments make sure they
+    // match the arguments of the macro
+    if ((expandedArguments.empty() ||
+         (expandedArguments[0] == this->Args[0])))
       {
       return true;
       }
@@ -336,7 +340,8 @@ ScopeEnded(cmMakefile &mf)
     this->Args[0].c_str());
 }
 
-bool cmMacroCommand::InitialPass(std::vector<std::string> const& args)
+bool cmMacroCommand::InitialPass(std::vector<std::string> const& args,
+                                 cmExecutionStatus &)
 {
   if(args.size() < 1)
     {

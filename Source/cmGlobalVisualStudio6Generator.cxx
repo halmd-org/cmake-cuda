@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio6Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.58.2.5 $
+  Date:      $Date: 2008-01-28 13:38:35 $
+  Version:   $Revision: 1.75 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,7 +25,9 @@ cmGlobalVisualStudio6Generator::cmGlobalVisualStudio6Generator()
 }
 
 void cmGlobalVisualStudio6Generator
-::EnableLanguage(std::vector<std::string>const& lang, cmMakefile *mf)
+::EnableLanguage(std::vector<std::string>const& lang, 
+                 cmMakefile *mf, 
+                 bool optional)
 {
   mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
   mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
@@ -34,7 +36,7 @@ void cmGlobalVisualStudio6Generator
   mf->AddDefinition("CMAKE_GENERATOR_Fortran", "ifort");
   mf->AddDefinition("MSVC60", "1");
   this->GenerateConfigurations(mf);
-  this->cmGlobalGenerator::EnableLanguage(lang, mf);
+  this->cmGlobalGenerator::EnableLanguage(lang, mf, optional);
 }
 
 void cmGlobalVisualStudio6Generator::GenerateConfigurations(cmMakefile* mf)
@@ -160,27 +162,9 @@ cmLocalGenerator *cmGlobalVisualStudio6Generator::CreateLocalGenerator()
 
 void cmGlobalVisualStudio6Generator::Generate()
 {
-  // add a special target that depends on ALL projects for easy build
-  // of one configuration only.
-  std::vector<std::string> no_depends;
-  const char* no_working_dir = 0;
-  std::map<cmStdString, std::vector<cmLocalGenerator*> >::iterator it;
-  for(it = this->ProjectMap.begin(); it!= this->ProjectMap.end(); ++it)
-    {
-    std::vector<cmLocalGenerator*>& gen = it->second;
-    // add the ALL_BUILD to the first local generator of each project
-    if(gen.size())
-      {
-      gen[0]->GetMakefile()->AddUtilityCommand("ALL_BUILD", false, 
-                                               no_depends, 
-                                               no_working_dir,
-                          "echo", "Build all projects");
-      }
-    }
-  
   // first do the superclass method
-  this->cmGlobalGenerator::Generate();
-  
+  this->cmGlobalVisualStudioGenerator::Generate();
+
   // Now write out the DSW
   this->OutputDSWFile();
 }
@@ -188,7 +172,7 @@ void cmGlobalVisualStudio6Generator::Generate()
 // Write a DSW file to the stream
 void cmGlobalVisualStudio6Generator
 ::WriteDSWFile(std::ostream& fout,cmLocalGenerator* root,
-                                                  std::vector<cmLocalGenerator*>& generators)
+               std::vector<cmLocalGenerator*>& generators)
 {
   // Write out the header for a DSW file
   this->WriteDSWHeader(fout);
@@ -226,9 +210,8 @@ void cmGlobalVisualStudio6Generator
       static_cast<cmLocalVisualStudio6Generator *>(generators[i])
       ->GetCreatedProjectNames();
     cmTargets &tgts = generators[i]->GetMakefile()->GetTargets();
-    cmTargets::iterator l = tgts.begin();
-    for(std::vector<std::string>::iterator si = dspnames.begin(); 
-        l != tgts.end(); ++l)
+    std::vector<std::string>::iterator si = dspnames.begin(); 
+    for(cmTargets::iterator l = tgts.begin(); l != tgts.end(); ++l)
       {
       // special handling for the current makefile
       if(mf == generators[0]->GetMakefile())
@@ -247,7 +230,7 @@ void cmGlobalVisualStudio6Generator
             for(cmTargets::iterator al = atgts.begin();
                 al != atgts.end(); ++al)
               {
-              if (al->second.IsInAll())
+              if (!al->second.GetPropertyAsBool("EXCLUDE_FROM_ALL"))
                 {
                 if (al->second.GetType() == cmTarget::UTILITY ||
                     al->second.GetType() == cmTarget::GLOBAL_TARGET)
@@ -275,9 +258,6 @@ void cmGlobalVisualStudio6Generator
         }
       else 
         {
-        if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-            && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS))
-          {
           bool skip = false;
           // skip ALL_BUILD and RUN_TESTS if they have already been added
           if(l->first == "ALL_BUILD" )
@@ -351,7 +331,6 @@ void cmGlobalVisualStudio6Generator
             this->WriteProject(fout, si->c_str(), dir.c_str(),l->second);
             }
           ++si;
-          }
         }
       }
     }
@@ -362,7 +341,7 @@ void cmGlobalVisualStudio6Generator
 
 void cmGlobalVisualStudio6Generator
 ::OutputDSWFile(cmLocalGenerator* root, 
-                                                   std::vector<cmLocalGenerator*>& generators)
+                std::vector<cmLocalGenerator*>& generators)
 {
   if(generators.size() == 0)
     {
@@ -438,12 +417,7 @@ void cmGlobalVisualStudio6Generator::WriteProject(std::ostream& fout,
     {
     if(*i != dspname)
       {
-      std::string depName = *i;
-      if(strncmp(depName.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-        {
-        depName.erase(depName.begin(), depName.begin() + 27);
-        }
-          
+      std::string depName = this->GetUtilityForTarget(target, i->c_str());
       fout << "Begin Project Dependency\n";
       fout << "Project_Dep_Name " << depName << "\n";
       fout << "End Project Dependency\n";
@@ -509,9 +483,9 @@ void cmGlobalVisualStudio6Generator::WriteDSWHeader(std::ostream& fout)
 void cmGlobalVisualStudio6Generator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates Visual Studio 6 project files.";
-  entry.full = "";
+  entry.Name = this->GetName();
+  entry.Brief = "Generates Visual Studio 6 project files.";
+  entry.Full = "";
 }
 
 //----------------------------------------------------------------------------

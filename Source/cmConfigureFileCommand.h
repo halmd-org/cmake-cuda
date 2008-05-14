@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmConfigureFileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:01:59 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.22 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,12 +33,13 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CONFIGURE_FILE";}
+  virtual const char* GetName() { return "configure_file";}
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -59,9 +60,9 @@ public:
   virtual const char* GetFullDocumentation()
     {
       return
-        "  CONFIGURE_FILE(InputFile OutputFile\n"
+        "  configure_file(InputFile OutputFile\n"
         "                 [COPYONLY] [ESCAPE_QUOTES] [@ONLY])\n"
-        "The Input and Ouput files have to have full paths.  "
+        "The Input and Output files have to have full paths.  "
         "This command replaces any variables in the input file referenced as "
         "${VAR} or @VAR@ with their values as determined by CMake.  If a "
         "variable is not defined, it will be replaced with nothing.  "

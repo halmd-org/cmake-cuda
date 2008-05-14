@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmWriteFileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/17 16:46:16 $
-  Version:   $Revision: 1.8 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.12 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -38,7 +38,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -48,14 +49,14 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "WRITE_FILE";}
+  virtual const char* GetName() { return "write_file";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Write a message to a file.";
+    return "Deprecated. Use the file(WRITE ) command instead.";
     }
   
   /**
@@ -64,18 +65,24 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  WRITE_FILE(filename \"message to write\"... [APPEND])\n"
+      "  write_file(filename \"message to write\"... [APPEND])\n"
       "The first argument is the file name, the rest of the arguments are "
       "messages to write. If the argument APPEND is specified, then "
       "the message will be appended.\n"
-      "NOTE 1: FILE WRITE and FILE APPEND do exactly the same as this one "
-      "but add some more functionality.\n"
-      "NOTE 2: When using WRITE_FILE the produced file cannot be used as an "
+      "NOTE 1: file(WRITE ... and file(APPEND ... do exactly the same as "
+      "this one but add some more functionality.\n"
+      "NOTE 2: When using write_file the produced file cannot be used as an "
       "input to CMake (CONFIGURE_FILE, source file ...) because it will "
-      "lead to an infinite loop. Use CONFIGURE_FILE if you want to generate "
+      "lead to an infinite loop. Use configure_file if you want to generate "
       "input files to CMake.";
     }
   
+  /** This command is kept for compatibility with older CMake versions. */
+  virtual bool IsDiscouraged()
+    {
+    return true;
+    }
+
   cmTypeMacro(cmWriteFileCommand, cmCommand);
 };
 

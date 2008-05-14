@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallDirectoryGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:58:11 $
-  Version:   $Revision: 1.2.2.1 $
+  Date:      $Date: 2008-01-28 13:38:35 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -27,9 +27,8 @@ cmInstallDirectoryGenerator
                               std::vector<std::string> const& configurations,
                               const char* component,
                               const char* literal_args):
-  Directories(dirs), Destination(dest),
+  cmInstallGenerator(dest, configurations, component), Directories(dirs),
   FilePermissions(file_permissions), DirPermissions(dir_permissions),
-  Configurations(configurations), Component(component),
   LiteralArguments(literal_args)
 {
 }
@@ -41,21 +40,19 @@ cmInstallDirectoryGenerator
 }
 
 //----------------------------------------------------------------------------
-void cmInstallDirectoryGenerator::GenerateScript(std::ostream& os)
+void
+cmInstallDirectoryGenerator::GenerateScriptActions(std::ostream& os,
+                                                   Indent const& indent)
 {
   // Write code to install the directories.
-  for(std::vector<std::string>::const_iterator di = this->Directories.begin();
-      di != this->Directories.end(); ++di)
-    {
-    bool not_optional = false;
-    const char* no_properties = 0;
-    const char* no_rename = 0;
-    this->AddInstallRule(os, this->Destination.c_str(),
-                         cmTarget::INSTALL_DIRECTORY, di->c_str(),
-                         not_optional, no_properties,
-                         this->FilePermissions.c_str(),
-                         this->DirPermissions.c_str(),
-                         this->Configurations, this->Component.c_str(),
-                         no_rename, this->LiteralArguments.c_str());
-    }
+  bool not_optional = false;
+  const char* no_properties = 0;
+  const char* no_rename = 0;
+  this->AddInstallRule(os, cmTarget::INSTALL_DIRECTORY,
+                       this->Directories,
+                       not_optional, no_properties,
+                       this->FilePermissions.c_str(),
+                       this->DirPermissions.c_str(),
+                       no_rename, this->LiteralArguments.c_str(),
+                       indent);
 }

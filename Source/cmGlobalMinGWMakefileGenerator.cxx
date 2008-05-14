@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalMinGWMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.4.2.5 $
+  Date:      $Date: 2007-10-22 16:48:39 $
+  Version:   $Revision: 1.12 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -27,7 +27,9 @@ cmGlobalMinGWMakefileGenerator::cmGlobalMinGWMakefileGenerator()
 }
 
 void cmGlobalMinGWMakefileGenerator
-::EnableLanguage(std::vector<std::string>const& l, cmMakefile *mf)
+::EnableLanguage(std::vector<std::string>const& l, 
+                 cmMakefile *mf, 
+                 bool optional)
 { 
   this->FindMakeProgram(mf);
   std::string makeProgram = mf->GetRequiredDefinition("CMAKE_MAKE_PROGRAM");
@@ -49,7 +51,7 @@ void cmGlobalMinGWMakefileGenerator
     }
   mf->AddDefinition("CMAKE_GENERATOR_CC", gcc.c_str());
   mf->AddDefinition("CMAKE_GENERATOR_CXX", gxx.c_str());
-  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf);
+  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
 }
 
 ///! Create a local generator appropriate to this Global Generator
@@ -61,6 +63,7 @@ cmLocalGenerator *cmGlobalMinGWMakefileGenerator::CreateLocalGenerator()
   lg->SetIgnoreLibPrefix(true);
   lg->SetPassMakeflags(false);
   lg->SetUnixCD(true);
+  lg->SetMinGWMake(true);
 
   // mingw32-make has trouble running code like
   //
@@ -80,8 +83,8 @@ cmLocalGenerator *cmGlobalMinGWMakefileGenerator::CreateLocalGenerator()
 void cmGlobalMinGWMakefileGenerator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates a make file for use with mingw32-make.";
-  entry.full = "The makefiles generated use cmd.exe as the shell.  "
+  entry.Name = this->GetName();
+  entry.Brief = "Generates a make file for use with mingw32-make.";
+  entry.Full = "The makefiles generated use cmd.exe as the shell.  "
     "They do not require msys or a unix shell.";
 }

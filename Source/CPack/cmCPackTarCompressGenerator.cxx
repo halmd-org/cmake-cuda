@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackTarCompressGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/10/27 02:57:00 $
-  Version:   $Revision: 1.3.2.7 $
+  Date:      $Date: 2007-07-31 02:51:21 $
+  Version:   $Revision: 1.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -104,7 +104,7 @@ int cmCPackTarCompress_Data_Open(void *client_data, const char* pathname,
   if ( !cmcompress_compress_start(&mydata->CMCompressStream) )
     {
     return -1;
-      }
+    }
 
 
   if ( !cmCPackTarCompressGeneratorForward::GenerateHeader(
@@ -134,10 +134,10 @@ int cmCPackTarCompress_Data_Close(void *client_data)
   cmCPackTarCompress_Data *mydata = (cmCPackTarCompress_Data*)client_data;
 
   if ( !cmcompress_compress_finalize(&mydata->CMCompressStream) )
-      {
+    {
     delete mydata->OutputStream;
     return -1;
-      }
+    }
 
   delete mydata->OutputStream;
   mydata->OutputStream = 0;
@@ -174,7 +174,7 @@ int cmCPackTarCompressGenerator::CompressFiles(const char* outFileName,
   char* realName = new char[ strlen(outFileName) + 1 ];
   std::auto_ptr<char> realNamePtr(realName);
   strcpy(realName, outFileName);
-  int flags = O_WRONLY | O_CREAT;
+  int flags = O_WRONLY | O_CREAT;  
   int options = 0;
   if(this->GeneratorVerbose)
     {
@@ -182,19 +182,20 @@ int cmCPackTarCompressGenerator::CompressFiles(const char* outFileName,
     }
 #ifdef __CYGWIN__
   options |= TAR_GNU;
-#endif
+#endif 
   if (tar_open(&t, realName,
-               &compressType,
-               flags, 0644, options) == -1)
-      {
-      cmCPackLogger(cmCPackLog::LOG_ERROR, "Problem with tar_open(): "
-                    << strerror(errno) << std::endl);
-      return 0;
-      }
+      &compressType,
+      flags, 0644,
+      options) == -1)
+    {
+    cmCPackLogger(cmCPackLog::LOG_ERROR, "Problem with tar_open(): "
+      << strerror(errno) << std::endl);
+    return 0;
+    }
 
   std::vector<std::string>::const_iterator fileIt;
   for ( fileIt = files.begin(); fileIt != files.end(); ++ fileIt )
-      {
+    {
     std::string rp = cmSystemTools::RelativePath(toplevel, fileIt->c_str());
     strncpy(pathname, fileIt->c_str(), sizeof(pathname));
     pathname[sizeof(pathname)-1] = 0;
@@ -216,7 +217,7 @@ int cmCPackTarCompressGenerator::CompressFiles(const char* outFileName,
       << strerror(errno) << std::endl);
     tar_close(t);
     return 0;
-      }
+    }
 
   if (tar_close(t) != 0)
     {

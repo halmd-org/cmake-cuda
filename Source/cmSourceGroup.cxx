@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceGroup.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:02:07 $
-  Version:   $Revision: 1.18 $
+  Date:      $Date: 2007-08-24 18:21:49 $
+  Version:   $Revision: 1.19 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -104,14 +104,6 @@ cmSourceGroup *cmSourceGroup::lookupChild(const char* name)
     if(sgName == name)
       {
       return &(*iter); // if it so return it 
-      }
-    // if the descendend isn't the one where looking for ask it's traverse
-    cmSourceGroup *result = iter->lookupChild(name);
-                
-    // if one of it's descendeds is the one we're looking for return it 
-    if(result)
-      {
-      return result;
       }
     }
 

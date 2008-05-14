@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmProjectCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.22.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.25 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,8 @@
 #include "cmProjectCommand.h"
 
 // cmProjectCommand
-bool cmProjectCommand::InitialPass(std::vector<std::string> const& args)
+bool cmProjectCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -33,12 +34,12 @@ bool cmProjectCommand::InitialPass(std::vector<std::string> const& args)
   
   this->Makefile->AddCacheDefinition
     (bindir.c_str(),
-                                 this->Makefile->GetCurrentOutputDirectory(),
-                                 "Value Computed by CMake", cmCacheManager::STATIC);
+     this->Makefile->GetCurrentOutputDirectory(),
+     "Value Computed by CMake", cmCacheManager::STATIC);
   this->Makefile->AddCacheDefinition
     (srcdir.c_str(),
-                                 this->Makefile->GetCurrentDirectory(),
-                                 "Value Computed by CMake", cmCacheManager::STATIC);
+     this->Makefile->GetCurrentDirectory(),
+     "Value Computed by CMake", cmCacheManager::STATIC);
   
   bindir = "PROJECT_BINARY_DIR";
   srcdir = "PROJECT_SOURCE_DIR";
@@ -72,7 +73,7 @@ bool cmProjectCommand::InitialPass(std::vector<std::string> const& args)
     languages.push_back("C");
     languages.push_back("CXX");
     }
-  this->Makefile->EnableLanguage(languages);
+  this->Makefile->EnableLanguage(languages, false);
   return true;
 }
 

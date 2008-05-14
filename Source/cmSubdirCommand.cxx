@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSubdirCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.16.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.19 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,8 @@
 #include "cmSubdirCommand.h"
 
 // cmSubdirCommand
-bool cmSubdirCommand::InitialPass(std::vector<std::string> const& args)
+bool cmSubdirCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -25,7 +26,7 @@ bool cmSubdirCommand::InitialPass(std::vector<std::string> const& args)
     return false;
     }
   bool res = true;
-  bool intoplevel = true;
+  bool excludeFromAll = false;
   bool preorder = false;
 
   for(std::vector<std::string>::const_iterator i = args.begin();
@@ -33,7 +34,7 @@ bool cmSubdirCommand::InitialPass(std::vector<std::string> const& args)
     {
     if(*i == "EXCLUDE_FROM_ALL")
       {
-      intoplevel = false;
+      excludeFromAll = true;
       continue;
       }
     if(*i == "PREORDER")
@@ -52,7 +53,7 @@ bool cmSubdirCommand::InitialPass(std::vector<std::string> const& args)
         std::string(this->Makefile->GetCurrentOutputDirectory()) + 
         "/" + i->c_str();
       this->Makefile->AddSubDirectory(srcPath.c_str(), binPath.c_str(),
-                                  intoplevel, preorder, false);
+                                  excludeFromAll, preorder, false);
       }
     // otherwise it is a full path
     else if ( cmSystemTools::FileIsDirectory(i->c_str()) )
@@ -63,7 +64,7 @@ bool cmSubdirCommand::InitialPass(std::vector<std::string> const& args)
         std::string(this->Makefile->GetCurrentOutputDirectory()) + 
         "/" + cmSystemTools::GetFilenameName(i->c_str());
       this->Makefile->AddSubDirectory(i->c_str(), binPath.c_str(),
-                                  intoplevel, preorder, false);
+                                  excludeFromAll, preorder, false);
       }
     else
       {

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindFileCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.28.2.1 $
+  Date:      $Date: 2007-10-10 15:47:43 $
+  Version:   $Revision: 1.30 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,7 +21,7 @@ cmFindFileCommand::cmFindFileCommand()
 {
   this->IncludeFileInPath = true;
   cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "FIND_PATH", "FIND_FILE");
+                               "FIND_PATH", "find_file");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "directory containing the named file", 
                                "full path to named file");

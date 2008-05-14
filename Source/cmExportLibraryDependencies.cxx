@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExportLibraryDependencies.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.14.2.1 $
+  Date:      $Date: 2008-05-01 16:35:39 $
+  Version:   $Revision: 1.22.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,16 +19,13 @@
 #include "cmLocalGenerator.h"
 #include "cmGeneratedFileStream.h"
 #include "cmake.h"
+#include "cmVersion.h"
 
 #include <cmsys/auto_ptr.hxx>
 
-// cmExecutableCommand
 bool cmExportLibraryDependenciesCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
-  // First argument is the name of the test Second argument is the name of
-  // the executable to run (a target or external program) Remaining arguments
-  // are the arguments to pass to the executable
   if(args.size() < 1 )
     {
     this->SetError("called with incorrect number of arguments");
@@ -36,38 +33,40 @@ bool cmExportLibraryDependenciesCommand
     }
   
   // store the arguments for the final pass
-  // also expand any CMake variables
-
-  this->Args = args;
+  this->Filename = args[0];
+  this->Append = false;
+  if(args.size() > 1)
+    {
+    if(args[1] == "APPEND")
+      {
+      this->Append = true;
+      }
+    }
   return true;
 }
 
 
 void cmExportLibraryDependenciesCommand::FinalPass()
 {
-  // Create a full path filename for output
-  std::string fname = this->Args[0];
-  bool append = false;
-  if(this->Args.size() > 1)
-    {
-    if(this->Args[1] == "APPEND")
-      {
-      append = true;
-      }
-    }
+  // export_library_dependencies() shouldn't modify anything
+  // ensure this by calling a const method
+  this->ConstFinalPass();
+}
 
+void cmExportLibraryDependenciesCommand::ConstFinalPass() const
+{
   // Use copy-if-different if not appending.
   cmsys::auto_ptr<std::ofstream> foutPtr;
-  if(append)
+  if(this->Append)
     {
     cmsys::auto_ptr<std::ofstream> ap(
-      new std::ofstream(fname.c_str(), std::ios::app));
+      new std::ofstream(this->Filename.c_str(), std::ios::app));
     foutPtr = ap;
     }
   else
     {
     cmsys::auto_ptr<cmGeneratedFileStream> ap(
-      new cmGeneratedFileStream(fname.c_str(), true));
+      new cmGeneratedFileStream(this->Filename.c_str(), true));
     ap->SetCopyIfDifferent(true);
     foutPtr = ap;
     }
@@ -75,51 +74,136 @@ void cmExportLibraryDependenciesCommand::FinalPass()
 
   if (!fout)
     {
-    cmSystemTools::Error("Error Writing ", fname.c_str());
+    cmSystemTools::Error("Error Writing ", this->Filename.c_str());
     cmSystemTools::ReportLastSystemError("");
     return;
     }
+
+  // Collect dependency information about all library targets built in
+  // the project.
   cmake* cm = this->Makefile->GetCMakeInstance();
   cmGlobalGenerator* global = cm->GetGlobalGenerator();
-  std::vector<cmLocalGenerator *> locals;
-  global->GetLocalGenerators(locals);
-  std::string libDepName;
-  for(std::vector<cmLocalGenerator *>::iterator i = locals.begin();
+  const std::vector<cmLocalGenerator *>& locals = global->GetLocalGenerators();
+  std::map<cmStdString, cmStdString> libDepsOld;
+  std::map<cmStdString, cmStdString> libDepsNew;
+  std::map<cmStdString, cmStdString> libTypes;
+  for(std::vector<cmLocalGenerator *>::const_iterator i = locals.begin();
       i != locals.end(); ++i)
     {
-    cmLocalGenerator* gen = *i;
-    cmTargets &tgts = gen->GetMakefile()->GetTargets();  
-    std::vector<std::string> depends;
-    const char *defType;
-    for(cmTargets::iterator l = tgts.begin();
+    const cmLocalGenerator* gen = *i;
+    const cmTargets &tgts = gen->GetMakefile()->GetTargets();
+    for(cmTargets::const_iterator l = tgts.begin();
         l != tgts.end(); ++l)
       {
-      if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-          && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS))
+      // Get the current target.
+      cmTarget const& target = l->second;
+
+      // Skip non-library targets.
+      if(target.GetType() < cmTarget::STATIC_LIBRARY
+         || target.GetType() > cmTarget::MODULE_LIBRARY)
         {
-        libDepName = l->first;
-        libDepName += "_LIB_DEPENDS";
-        const char* def = this->Makefile->GetDefinition(libDepName.c_str());
-        if(def)
+        continue;
+        }
+
+      // Construct the dependency variable name.
+      std::string targetEntry = target.GetName();
+      targetEntry += "_LIB_DEPENDS";
+
+      // Construct the dependency variable value.  It is safe to use
+      // the target GetLinkLibraries method here because this code is
+      // called at the end of configure but before generate so library
+      // dependencies have yet to be analyzed.  Therefore the value
+      // will be the direct link dependencies.
+      std::string valueOld;
+      std::string valueNew;
+      cmTarget::LinkLibraryVectorType const& libs = target.GetLinkLibraries();
+      for(cmTarget::LinkLibraryVectorType::const_iterator li = libs.begin();
+          li != libs.end(); ++li)
+        {
+        std::string ltVar = li->first;
+        ltVar += "_LINK_TYPE";
+        std::string ltValue;
+        switch(li->second)
           {
-          fout << "SET(" << libDepName << " \"" << def << "\")\n";
-          // now for each dependency, check for link type
-          cmSystemTools::ExpandListArgument(def, depends);
-          for(std::vector<std::string>::const_iterator d = depends.begin();
-              d != depends.end(); ++d)
+          case cmTarget::GENERAL:
+            valueNew += "general;";
+            ltValue = "general";
+            break;
+          case cmTarget::DEBUG:
+            valueNew += "debug;";
+            ltValue = "debug";
+            break;
+          case cmTarget::OPTIMIZED:
+            valueNew += "optimized;";
+            ltValue = "optimized";
+            break;
+          }
+        std::string lib = li->first;
+        if(cmTarget* libtgt = global->FindTarget(0, lib.c_str()))
+          {
+          // Handle simple output name changes.  This command is
+          // deprecated so we do not support full target name
+          // translation (which requires per-configuration info).
+          if(const char* outname = libtgt->GetProperty("OUTPUT_NAME"))
             {
-            libDepName = *d;
-            libDepName += "_LINK_TYPE";
-            defType = this->Makefile->GetDefinition(libDepName.c_str());
-            libDepName = cmSystemTools::EscapeSpaces(libDepName.c_str());
-            if(defType)
-              {
-              fout << "SET(" << libDepName << " \"" << defType << "\")\n";
-              }
+            lib = outname;
             }
           }
+        valueOld += lib;
+        valueOld += ";";
+        valueNew += lib;
+        valueNew += ";";
+
+        std::string& ltEntry = libTypes[ltVar];
+        if(ltEntry.empty())
+          {
+          ltEntry = ltValue;
+          }
+        else if(ltEntry != ltValue)
+          {
+          ltEntry = "general";
+          }
         }
+      libDepsNew[targetEntry] = valueNew;
+      libDepsOld[targetEntry] = valueOld;
       }
     }
+
+  // Generate dependency information for both old and new style CMake
+  // versions.
+  const char* vertest =
+    "\"${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}\" GREATER 2.4";
+  fout << "# Generated by CMake " <<  cmVersion::GetCMakeVersion() << "\n\n";
+  fout << "IF(" << vertest << ")\n";
+  fout << "  # Information for CMake 2.6 and above.\n";
+  for(std::map<cmStdString, cmStdString>::const_iterator
+        i = libDepsNew.begin();
+      i != libDepsNew.end(); ++i)
+    {
+    if(!i->second.empty())
+      {
+      fout << "  SET(\"" << i->first << "\" \"" << i->second << "\")\n";
+      }
+    }
+  fout << "ELSE(" << vertest << ")\n";
+  fout << "  # Information for CMake 2.4 and lower.\n";
+  for(std::map<cmStdString, cmStdString>::const_iterator
+        i = libDepsOld.begin();
+      i != libDepsOld.end(); ++i)
+    {
+    if(!i->second.empty())
+      {
+      fout << "  SET(\"" << i->first << "\" \"" << i->second << "\")\n";
+      }
+    }
+  for(std::map<cmStdString, cmStdString>::const_iterator i = libTypes.begin();
+      i != libTypes.end(); ++i)
+    {
+    if(i->second != "general")
+      {
+      fout << "  SET(\"" << i->first << "\" \"" << i->second << "\")\n";
+      }
+    }
+  fout << "ENDIF(" << vertest << ")\n";
   return;
 }

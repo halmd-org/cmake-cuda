@@ -47,10 +47,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# $Id: FindSubversion.cmake,v 1.1.2.1 2006/11/13 17:59:54 hoffman Exp $
+# $Id: FindSubversion.cmake,v 1.2.2.2 2008-03-26 18:08:24 hoffman Exp $
 
 SET(Subversion_FOUND FALSE)
 SET(Subversion_SVN_FOUND FALSE)
+
+# the subversion commands should be executed with the C locale, otherwise
+# the message (which are parsed) may be translated, Alex
+SET(_Subversion_SAVED_LC_ALL "$ENV{LC_ALL}" )
+SET(ENV{LC_ALL} C)
 
 FIND_PROGRAM(Subversion_SVN_EXECUTABLE svn
   DOC "subversion command line client")
@@ -62,7 +67,7 @@ IF(Subversion_SVN_EXECUTABLE)
 
   MACRO(Subversion_WC_INFO dir prefix)
     EXECUTE_PROCESS(COMMAND ${Subversion_SVN_EXECUTABLE} --version
-      WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+      WORKING_DIRECTORY ${dir}
       OUTPUT_VARIABLE Subversion_VERSION_SVN
       OUTPUT_STRIP_TRAILING_WHITESPACE)
 
@@ -104,6 +109,9 @@ IF(Subversion_SVN_EXECUTABLE)
   ENDMACRO(Subversion_WC_INFO)
 
 ENDIF(Subversion_SVN_EXECUTABLE)
+
+# restore the previous LC_ALL
+SET(ENV{LC_ALL} ${_Subversion_SAVED_LC_ALL})
 
 IF(NOT Subversion_FOUND)
   IF(NOT Subversion_FIND_QUIETLY)

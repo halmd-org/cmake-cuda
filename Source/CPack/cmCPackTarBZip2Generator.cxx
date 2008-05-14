@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackTarBZip2Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:21:32 $
-  Version:   $Revision: 1.1.2.3 $
+  Date:      $Date: 2007-02-02 21:52:20 $
+  Version:   $Revision: 1.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -111,7 +111,7 @@ int cmCPackTarBZip2Generator::CompressFiles(const char* outFileName,
     {
     return 0;
     }
-
+  
   std::string compressOutFile = packageDirFileName + ".bz2";
   if ( !cmSystemTools::SameFile(compressOutFile.c_str(), outFileName ) )
     {

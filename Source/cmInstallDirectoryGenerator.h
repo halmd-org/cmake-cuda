@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallDirectoryGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:58:11 $
-  Version:   $Revision: 1.2.2.1 $
+  Date:      $Date: 2007-07-02 18:56:57 $
+  Version:   $Revision: 1.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -35,13 +35,11 @@ public:
   virtual ~cmInstallDirectoryGenerator();
 
 protected:
-  virtual void GenerateScript(std::ostream& os);
+  typedef cmInstallGeneratorIndent Indent;
+  virtual void GenerateScriptActions(std::ostream& os, Indent const& indent);
   std::vector<std::string> Directories;
-  std::string Destination;
   std::string FilePermissions;
   std::string DirPermissions;
-  std::vector<std::string> Configurations;
-  std::string Component;
   std::string LiteralArguments;
 };
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmVersion.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/11/28 21:03:52 $
-  Version:   $Revision: 1.517.2.2 $
+  Date:      $Date: 2007-11-15 02:17:53 $
+  Version:   $Revision: 1.1027 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,45 +16,12 @@
 =========================================================================*/
 #include "cmVersion.h"
 
+#include <cmsys/DateStamp.h>
+
 std::string cmVersion::GetReleaseVersion()
 {
 #if CMake_VERSION_MINOR & 1
-  std::string cver = "$Date: 2006/11/28 21:03:52 $";
-  std::string res = "";
-  std::string::size_type cc, len = cver.size();
-  bool aftercol = false;
-  int cnt = 0;
-  for ( cc = 0; cc < len; cc ++ )
-    {
-    if ( aftercol )
-      {
-      char ch = cver[cc];
-      switch ( ch )
-        {
-      case ' ': 
-      case ':':
-      case '/':
-      case '-':
-      case '$':
-        break;
-      default:
-        res += ch;
-        cnt ++;
-        }
-      if ( cnt >= 8 )
-        {
-        return res;
-        }
-      }
-    else
-      {
-      if ( cver[cc] == ':' )
-        {
-        aftercol = true;
-        }
-      }
-    }
-  return res;
+  return cmsys_DATE_STAMP_STRING_FULL;
 #else
 # if CMake_VERSION_PATCH == 1
   return "1-beta";

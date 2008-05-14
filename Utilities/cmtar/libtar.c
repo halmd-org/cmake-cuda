@@ -99,8 +99,13 @@ static int libtar_gzopen(void* call_data, const char *pathname,
     return -1;
     }
 
-#if !defined(_WIN32) || defined(__CYGWIN__)
-  if ((oflags & O_CREAT) && fchmod(fd, mode))
+#if defined(__BEOS__) && !defined(__ZETA__)  /* no fchmod on BeOS...do pathname instead. */
+  if ((oflags & O_CREAT) && chmod(pathname, mode & 07777))
+    {
+    return -1;
+    }
+#elif !defined(_WIN32) || defined(__CYGWIN__)
+  if ((oflags & O_CREAT) && fchmod(fd, mode & 07777))
     {
     return -1;
     }
@@ -125,13 +130,13 @@ static int libtar_gzclose(void* call_data)
 static ssize_t libtar_gzread(void* call_data, void* buf, size_t count)
 {
   struct gzStruct* gzf = (struct gzStruct*)call_data;
-  return gzread(gzf->GZFile, buf, count);
+  return gzread(gzf->GZFile, buf, (unsigned int)count);
 }
 
 static ssize_t libtar_gzwrite(void* call_data, const void* buf, size_t count)
 {
   struct gzStruct* gzf = (struct gzStruct*)call_data;
-  return gzwrite(gzf->GZFile, (void*)buf, count);
+  return gzwrite(gzf->GZFile, (void*)buf, (unsigned int)count);
 }
 
 tartype_t gztype = { 

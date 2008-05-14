@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetSourceFilesPropertiesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2007/08/09 19:31:35 $
-  Version:   $Revision: 1.9.2.3 $
+  Date:      $Date: 2008-03-01 02:33:04 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,12 +31,13 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SET_SOURCE_FILES_PROPERTIES";}
+  virtual const char* GetName() { return "set_source_files_properties";}
 
   /**
    * Succinct documentation.
@@ -52,7 +53,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
       return
-        "  SET_SOURCE_FILES_PROPERTIES(file1 file2 ...\n"
+        "  set_source_files_properties(file1 file2 ...\n"
         "                              PROPERTIES prop1 value1\n"
         "                              prop2 value2 ...)\n"
         "Set properties on a file. The syntax for the command is to list all "
@@ -68,13 +69,12 @@ public:
         "added to a target.  Obviously, "
         "it must be created (presumably by a custom command) before the "
         "target is built.  "
-        "If the HEADER_FILE_ONLY (boolean) property is true then dependency "
-        "information is not created for that file (this is set "
-        "automatically, based on the file's name's extension and is probably "
-        "only used by Makefiles).  "
+        "If the HEADER_FILE_ONLY (boolean) property is true then the "
+        "file is not compiled.  This is useful if you want to add extra "
+        "non build files to an IDE. "
         "OBJECT_DEPENDS (string) adds dependencies to the object file.  "
         "COMPILE_FLAGS (string) is passed to the compiler as additional "
-        "command line arguments when the source file is compiled.  " 
+        "command line arguments when the source file is compiled.  "
         "LANGUAGE (string) CXX|C will change the default compiler used "
         "to compile the source file. The languages used need to be enabled " 
         "in the PROJECT command. "
@@ -85,6 +85,13 @@ public:
     }
   
   cmTypeMacro(cmSetSourceFilesPropertiesCommand, cmCommand);
+
+  static bool RunCommand(cmMakefile *mf,
+                         std::vector<std::string>::const_iterator filebeg,
+                         std::vector<std::string>::const_iterator fileend,
+                         std::vector<std::string>::const_iterator propbeg,
+                         std::vector<std::string>::const_iterator propend,
+                         std::string &errors);
 };
 
 

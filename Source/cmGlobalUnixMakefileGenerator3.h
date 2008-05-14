@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator3
   Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.h,v $
   Language:  C++
-  Date:      $Date: 2007/01/03 15:19:03 $
-  Version:   $Revision: 1.27.2.6 $
+  Date:      $Date: 2008-02-14 21:42:29 $
+  Version:   $Revision: 1.55 $
 
   Copyright (c) 2005 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -77,7 +77,7 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages,
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
 
   /**
    * Generate the all required files for building this project/tree. This
@@ -98,22 +98,9 @@ public:
   void WriteConvenienceRules(std::ostream& ruleFileStream, 
                              std::set<cmStdString> &emitted);
 
-  /** In order to support parallel builds for custom commands with
-      multiple outputs the outputs are given a serial order, and only
-      the first output actually has the build rule.  Other outputs
-      just depend on the first one.  The check-build-system step must
-      remove a dependee if the depender is missing to make sure both
-      are regenerated properly.  This method is used by the local
-      makefile generators to register such pairs.  */
-  void AddMultipleOutputPair(const char* depender, const char* dependee);
-
-  /** Support for multiple custom command outputs.  Called during
-      check-build-system step.  */
-  virtual void CheckMultipleOutputs(cmMakefile* mf, bool verbose);
-
-  /** Get the command to use for a non-symbolic target file that has
-      no rule.  This is used for multiple output dependencies.  */
-  std::string GetEmptyCommandHack() { return this->EmptyCommandsHack; }
+  /** Get the command to use for a target that has no rule.  This is
+      used for multiple output dependencies and for cmake_force.  */
+  std::string GetEmptyRuleHackCommand() { return this->EmptyRuleHackCommand; }
 
   /** Get the fake dependency to use when a rule has no real commands
       or dependencies.  */
@@ -127,21 +114,27 @@ public:
    const char* config, bool ignoreErrors, bool fast);
 
   // returns some progress informaiton
-  int GetTargetTotalNumberOfActions(cmTarget& target,
+  int GetTargetTotalNumberOfActions(cmTarget & target,
                                     std::set<cmStdString> &emitted);
   unsigned long GetNumberOfProgressActionsInAll
   (cmLocalUnixMakefileGenerator3 *lg);
 
-  // what targets does the specified target depend on
-  std::vector<cmTarget *>& GetTargetDepends(cmTarget& target);
+  /**
+   * If true, the CMake variable CMAKE_VERBOSE_MAKEFILES doesn't have effect
+   * anymore. Set it to true when writing a generator where short output
+   * doesn't make sense, e.g. because the full output is parsed by an
+   * IDE/editor.
+   */
+  bool GetForceVerboseMakefiles() { return this->ForceVerboseMakefiles; }
+  void SetForceVerboseMakefiles(bool enable) 
+    {this->ForceVerboseMakefiles=enable;}
 
 protected:
   void WriteMainMakefile2();
   void WriteMainCMakefile();
-  
-  void WriteConvenienceRules2(std::ostream& ruleFileStream, 
-                              cmLocalUnixMakefileGenerator3 *,
-                              bool exclude);
+
+  void WriteConvenienceRules2(std::ostream& ruleFileStream,
+                              cmLocalUnixMakefileGenerator3*);
 
   void WriteDirectoryRule2(std::ostream& ruleFileStream,
                            cmLocalUnixMakefileGenerator3* lg,
@@ -152,24 +145,24 @@ protected:
 
   void AppendGlobalTargetDepends(std::vector<std::string>& depends,
                                  cmTarget& target);
-  void AppendAnyGlobalDepend(std::vector<std::string>& depends, 
-                             const char* name, 
-                             std::set<cmStdString>& emitted,
-                             cmTarget &target);
 
   // does this generator need a requires step for any of its targets
-  bool NeedRequiresStep(cmLocalUnixMakefileGenerator3 *lg, const char *);
+  bool NeedRequiresStep(cmTarget const&);
 
   // Setup target names
   virtual const char* GetAllTargetName()          { return "all"; }
   virtual const char* GetInstallTargetName()      { return "install"; }
   virtual const char* GetInstallLocalTargetName() { return "install/local"; }
+  virtual const char* GetInstallStripTargetName() { return "install/strip"; }
   virtual const char* GetPreinstallTargetName()   { return "preinstall"; }
   virtual const char* GetTestTargetName()         { return "test"; }
   virtual const char* GetPackageTargetName()      { return "package"; }
   virtual const char* GetPackageSourceTargetName(){ return "package_source"; }
   virtual const char* GetEditCacheTargetName()    { return "edit_cache"; }
   virtual const char* GetRebuildCacheTargetName() { return "rebuild_cache"; }
+  virtual const char* GetCleanTargetName()        { return "clean"; }
+
+  virtual bool CheckALLOW_DUPLICATE_CUSTOM_TARGETS() { return true; }
 
   // Some make programs (Borland) do not keep a rule if there are no
   // dependencies or commands.  This is a problem for creating rules
@@ -178,17 +171,13 @@ protected:
   // that can be added.
   std::string EmptyRuleHackDepends;
 
-  // Some make programs (Watcom) do not like rules with no commands
-  // for non-symbolic targets.  If non-empty this variable holds a
-  // bogus command that may be put in the rule to satisfy the make
-  // program.
-  std::string EmptyCommandsHack;
+  // Some make programs (Watcom) do not like rules with no commands.
+  // If non-empty this variable holds a bogus command that may be put
+  // in the rule to satisfy the make program.
+  std::string EmptyRuleHackCommand;
 
-  typedef std::map<cmStdString, cmStdString> MultipleOutputPairsType;
-  MultipleOutputPairsType MultipleOutputPairs;
-
-  std::map<cmStdString, std::vector<cmTarget *> > TargetDependencies;
   std::map<cmStdString, int > TargetSourceFileCount;
+  bool ForceVerboseMakefiles;
 };
 
 #endif

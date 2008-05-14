@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmVariableRequiresCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/16 14:33:23 $
-  Version:   $Revision: 1.11 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -38,19 +38,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "VARIABLE_REQUIRES";}
+  virtual const char* GetName() { return "variable_requires";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Assert satisfaction of an option's required variables.";
+    return "Deprecated. Use the if() command instead.";
     }
   
   /**
@@ -59,7 +60,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  VARIABLE_REQUIRES(TEST_VARIABLE RESULT_VARIABLE\n"
+      "Assert satisfaction of an option's required variables.\n"
+      "  variable_requires(TEST_VARIABLE RESULT_VARIABLE\n"
       "                    REQUIRED_VARIABLE1\n"
       "                    REQUIRED_VARIABLE2 ...)\n"
       "The first argument (TEST_VARIABLE) is the name of the variable to be "
@@ -72,6 +74,12 @@ public:
       "is reported.";
     }
   
+  /** This command is kept for compatibility with older CMake versions. */
+  virtual bool IsDiscouraged()
+    {
+    return true;
+    }
+
   cmTypeMacro(cmVariableRequiresCommand, cmCommand);
 };
 

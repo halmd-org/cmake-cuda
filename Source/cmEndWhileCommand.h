@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmEndWhileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 15:37:02 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,13 +39,15 @@ public:
    * Override cmCommand::InvokeInitialPass to get arguments before
    * expansion.
    */
-  virtual bool InvokeInitialPass(std::vector<cmListFileArgument> const&);
+  virtual bool InvokeInitialPass(std::vector<cmListFileArgument> const&,
+                                 cmExecutionStatus &status);
   
   /**
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const&) {return false;}
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &) {return false;}
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -55,14 +57,14 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ENDWHILE";}
+  virtual const char* GetName() { return "endwhile";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Ends a list of commands in a WHILE block.";
+    return "Ends a list of commands in a while block.";
     }
   
   /**
@@ -71,8 +73,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ENDWHILE(expression)\n"
-      "See the WHILE command.";
+      "  endwhile(expression)\n"
+      "See the while command.";
     }
   
   cmTypeMacro(cmEndWhileCommand, cmCommand);

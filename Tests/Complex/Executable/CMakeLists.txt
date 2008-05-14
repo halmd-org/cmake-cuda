@@ -12,6 +12,7 @@ IF(COMPLEX_TEST_CMAKELIB)
   LINK_DIRECTORIES(${Complex_BINARY_DIR}/../../Source/kwsys)
   LINK_DIRECTORIES(${Complex_BINARY_DIR}/../../Utilities/cmexpat)
   LINK_DIRECTORIES(${Complex_BINARY_DIR}/../../Utilities/cmzlib)
+  LINK_DIRECTORIES(${Complex_BINARY_DIR}/../../Utilities/cmcurl)
   LINK_DIRECTORIES(${Complex_BINARY_DIR}/../../Utilities/cmtar)
 ENDIF(COMPLEX_TEST_CMAKELIB)
 
@@ -19,12 +20,16 @@ ENDIF(COMPLEX_TEST_CMAKELIB)
 SET(COMPLEX_LIBS CMakeTestLibrary;CMakeTestLibraryShared;CMakeTestCLibraryShared)
 LINK_LIBRARIES(${COMPLEX_LIBS})
 
+# Test forcing a .cxx file to not build.
+SET_SOURCE_FILES_PROPERTIES(complex_nobuild.cxx PROPERTIES
+  HEADER_FILE_ONLY 1)
+
 ADD_EXECUTABLE(A A.cxx A.hh A.h A.txt)
 ADD_EXECUTABLE(complex complex testcflags.c )
 #  Sub1/NameConflictTest.c Sub2/NameConflictTest.c)
-ADD_EXECUTABLE(complex.file complex.file.cxx)
+ADD_EXECUTABLE(complex.file complex.file.cxx complex_nobuild.cxx)
 IF(COMPLEX_TEST_CMAKELIB)
-  TARGET_LINK_LIBRARIES(complex CMakeLib cmsys cmexpat cmzlib cmtar)
+  TARGET_LINK_LIBRARIES(complex CMakeLib cmsys cmexpat cmzlib cmtar cmcurl)
 ENDIF(COMPLEX_TEST_CMAKELIB)
 
 IF (UNIX)
@@ -87,7 +92,9 @@ ADD_CUSTOM_COMMAND(TARGET complex POST_BUILD
                         "${Complex_BINARY_DIR}/Executable/postbuild2.txt")
 
 SET_SOURCE_FILES_PROPERTIES(complex
-  COMPILE_FLAGS "-DFILE_HAS_EXTRA_COMPILE_FLAGS"
+  COMPILE_FLAGS
+  "-DFILE_HAS_EXTRA_COMPILE_FLAGS"
+  #" -DFILE_DEFINE_STRING=\\\"hello\\\""
   OBJECT_DEPENDS ${Complex_BINARY_DIR}/cmTestGeneratedHeader.h
 )
 SET_TARGET_PROPERTIES(complex PROPERTIES COMPILE_FLAGS "-DCOMPLEX_TARGET_FLAG")

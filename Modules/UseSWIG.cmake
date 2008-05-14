@@ -48,9 +48,14 @@ ENDMACRO(SWIG_MODULE_INITIALIZE)
 #
 
 MACRO(SWIG_GET_EXTRA_OUTPUT_FILES language outfiles generatedpath infile)
-  FOREACH(it ${SWIG_PYTHON_EXTRA_FILE_EXTENSION})
+  GET_SOURCE_FILE_PROPERTY(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename
+    ${infile} SWIG_MODULE_NAME)
+  IF(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename STREQUAL "NOTFOUND")
+    GET_FILENAME_COMPONENT(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename "${infile}" NAME_WE)
+  ENDIF(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename STREQUAL "NOTFOUND")
+  FOREACH(it ${SWIG_${language}_EXTRA_FILE_EXTENSION})
     SET(${outfiles} ${${outfiles}}
-      "${generatedpath}/${infile}.${it}")
+      "${generatedpath}/${SWIG_GET_EXTRA_OUTPUT_FILES_module_basename}.${it}")
   ENDFOREACH(it)
 ENDMACRO(SWIG_GET_EXTRA_OUTPUT_FILES)
 
@@ -105,7 +110,7 @@ MACRO(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
   SWIG_GET_EXTRA_OUTPUT_FILES(${SWIG_MODULE_${name}_LANGUAGE}
     swig_extra_generated_files
     "${swig_outdir}"
-    "${swig_source_file_name_we}")
+    "${infile}")
   SET(swig_generated_file_fullname
     "${swig_generated_file_fullname}/${swig_source_file_name_we}")
   # add the language into the name of the file (i.e. TCL_wrap)
@@ -138,21 +143,21 @@ MACRO(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
   IF(SWIG_MODULE_${name}_EXTRA_FLAGS)
     SET(swig_extra_flags ${swig_extra_flags} ${SWIG_MODULE_${name}_EXTRA_FLAGS})
   ENDIF(SWIG_MODULE_${name}_EXTRA_FLAGS)
-    ADD_CUSTOM_COMMAND(
+  ADD_CUSTOM_COMMAND(
     OUTPUT "${swig_generated_file_fullname}" ${swig_extra_generated_files}
-      COMMAND "${SWIG_EXECUTABLE}"
-      ARGS "-${SWIG_MODULE_${name}_SWIG_LANGUAGE_FLAG}"
-      ${swig_source_file_flags}
-      ${CMAKE_SWIG_FLAGS}
+    COMMAND "${SWIG_EXECUTABLE}"
+    ARGS "-${SWIG_MODULE_${name}_SWIG_LANGUAGE_FLAG}"
+    ${swig_source_file_flags}
+    ${CMAKE_SWIG_FLAGS}
     -outdir ${swig_outdir}
-      ${swig_special_flags}
-      ${swig_extra_flags}
-      ${swig_include_dirs}
-      -o "${swig_generated_file_fullname}"
-      "${swig_source_file_fullname}"
-      MAIN_DEPENDENCY "${swig_source_file_fullname}"
-      DEPENDS ${SWIG_MODULE_${name}_EXTRA_DEPS}
-      COMMENT "Swig source") 
+    ${swig_special_flags}
+    ${swig_extra_flags}
+    ${swig_include_dirs}
+    -o "${swig_generated_file_fullname}"
+    "${swig_source_file_fullname}"
+    MAIN_DEPENDENCY "${swig_source_file_fullname}"
+    DEPENDS ${SWIG_MODULE_${name}_EXTRA_DEPS}
+    COMMENT "Swig source") 
   SET_SOURCE_FILES_PROPERTIES("${swig_generated_file_fullname}" ${swig_extra_generated_files}
     PROPERTIES GENERATED 1)
   SET(${outfiles} "${swig_generated_file_fullname}" ${swig_extra_generated_files})

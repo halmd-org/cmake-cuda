@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExportLibraryDependencies.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2008-02-20 18:36:38 $
+  Version:   $Revision: 1.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,7 +40,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This is called at the end after all the information
@@ -51,15 +52,14 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "EXPORT_LIBRARY_DEPENDENCIES";}
+  virtual const char* GetName() { return "export_library_dependencies";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return 
-      "Write out the dependency information for all targets of a project.";
+    return "Deprecated.  Use INSTALL(EXPORT) or EXPORT command.";
     }
   
   /**
@@ -68,20 +68,36 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  EXPORT_LIBRARY_DEPENDENCIES(FILE [APPEND])\n"
-      "Create a file that can be included into a CMake listfile with the "
-      "INCLUDE command.  The file will contain a number of SET commands "
-      "that will set all the variables needed for library dependency "
+      "This command generates an old-style library dependencies file.  "
+      "Projects requiring CMake 2.6 or later should not use the command.  "
+      "Use instead the install(EXPORT) command to help export targets "
+      "from an installation tree and the export() command to export targets "
+      "from a build tree.\n"
+      "The old-style library dependencies file does not take into account "
+      "per-configuration names of libraries or the LINK_INTERFACE_LIBRARIES "
+      "target property.\n"
+      "  export_library_dependencies(<file> [APPEND])\n"
+      "Create a file named <file> that can be included into a CMake listfile "
+      "with the INCLUDE command.  The file will contain a number of SET "
+      "commands that will set all the variables needed for library dependency "
       "information.  This should be the last command in the top level "
       "CMakeLists.txt file of the project.  If the APPEND option is "
       "specified, the SET commands will be appended to the given file "
       "instead of replacing it.";
     }
+
+  /** This command is kept for compatibility with older CMake versions. */
+  virtual bool IsDiscouraged()
+    {
+    return true;
+    }
   
   cmTypeMacro(cmExportLibraryDependenciesCommand, cmCommand);
 
 private:
-  std::vector<std::string> Args;
+  std::string Filename;
+  bool Append;
+  void ConstFinalPass() const;
 };
 
 

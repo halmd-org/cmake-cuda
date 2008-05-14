@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmForEachCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:43 $
-  Version:   $Revision: 1.21.2.2 $
+  Date:      $Date: 2008-02-29 17:18:11 $
+  Version:   $Revision: 1.27 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,22 +17,23 @@
 #include "cmForEachCommand.h"
 
 bool cmForEachFunctionBlocker::
-IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf) 
+IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
+                  cmExecutionStatus &inStatus)
 {
-  // Prevent recusion and don't let this blobker block its own
+  // Prevent recusion and don't let this blocker block its own
   // commands.
   if (this->Executing)
     {
     return false;
     }
-  
+
   if (!cmSystemTools::Strucmp(lff.Name.c_str(),"foreach"))
     {
     // record the number of nested foreach commands
     this->Depth++;
     }
   else if (!cmSystemTools::Strucmp(lff.Name.c_str(),"endforeach"))
-      {
+    {
     // if this is the endofreach for this statement
     if (!this->Depth) 
       {
@@ -54,9 +55,26 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf)
         // set the variable to the loop value
         mf.AddDefinition(this->Args[0].c_str(),j->c_str());
         // Invoke all the functions that were collected in the block.
+        cmExecutionStatus status;
         for(unsigned int c = 0; c < this->Functions.size(); ++c)
           {
-          mf.ExecuteCommand(this->Functions[c]);
+          status.Clear();
+          mf.ExecuteCommand(this->Functions[c],status);
+          if (status.GetReturnInvoked())
+            {
+            inStatus.SetReturnInvoked(true);
+            // restore the variable to its prior value
+            mf.AddDefinition(this->Args[0].c_str(),oldDef.c_str());
+            mf.RemoveFunctionBlocker(lff);
+            return true;
+            }
+          if (status.GetBreakInvoked())
+            {
+            // restore the variable to its prior value
+            mf.AddDefinition(this->Args[0].c_str(),oldDef.c_str());
+            mf.RemoveFunctionBlocker(lff);
+            return true;
+            }
           }
         }
       // restore the variable to its prior value
@@ -70,7 +88,7 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf)
       this->Depth--;
       }
     }
-
+  
   // record the command
   this->Functions.push_back(lff);
   
@@ -85,9 +103,10 @@ ShouldRemove(const cmListFileFunction& lff, cmMakefile& mf)
     {
     std::vector<std::string> expandedArguments;
     mf.ExpandArguments(lff.Arguments, expandedArguments);
-    if ((!expandedArguments.empty() && 
-         (expandedArguments[0] == this->Args[0]))
-        || mf.IsOn("CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS"))
+    // if the endforeach has arguments then make sure
+    // they match the begin foreach arguments
+    if ((expandedArguments.empty() ||
+         (expandedArguments[0] == this->Args[0])))
       {
       return true;
       }
@@ -104,7 +123,8 @@ ScopeEnded(cmMakefile &mf)
                        mf.GetCurrentDirectory());
 }
 
-bool cmForEachCommand::InitialPass(std::vector<std::string> const& args)
+bool cmForEachCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1)
     {

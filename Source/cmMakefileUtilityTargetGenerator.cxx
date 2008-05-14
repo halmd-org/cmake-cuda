@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileUtilityTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/01/03 15:19:03 $
-  Version:   $Revision: 1.2.2.2 $
+  Date:      $Date: 2008-02-18 21:38:34 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -23,6 +23,13 @@
 #include "cmSourceFile.h"
 #include "cmTarget.h"
 
+//----------------------------------------------------------------------------
+cmMakefileUtilityTargetGenerator
+::cmMakefileUtilityTargetGenerator(cmTarget* target):
+  cmMakefileTargetGenerator(target)
+{
+  this->CustomCommandDriver = OnUtility;
+}
 
 //----------------------------------------------------------------------------
 void cmMakefileUtilityTargetGenerator::WriteRuleFiles()
@@ -42,21 +49,25 @@ void cmMakefileUtilityTargetGenerator::WriteRuleFiles()
   // Utility targets store their rules in pre- and post-build commands.
   this->LocalGenerator->AppendCustomDepends
     (depends, this->Target->GetPreBuildCommands());
+
   this->LocalGenerator->AppendCustomDepends
     (depends, this->Target->GetPostBuildCommands());
+
   this->LocalGenerator->AppendCustomCommands
     (commands, this->Target->GetPreBuildCommands());
+
+  // Depend on all custom command outputs for sources
+  this->DriveCustomCommands(depends);
+
   this->LocalGenerator->AppendCustomCommands
     (commands, this->Target->GetPostBuildCommands());
 
   // Add dependencies on targets that must be built first.
   this->AppendTargetDepends(depends);
-  
+
   // Add a dependency on the rule file itself.
-  std::string relPath = this->LocalGenerator->GetHomeRelativeOutputPath();
-  std::string objTarget = relPath;
-  objTarget += this->BuildFileName;
-  this->LocalGenerator->AppendRuleDepend(depends, objTarget.c_str());
+  this->LocalGenerator->AppendRuleDepend(depends,
+                                         this->BuildFileNameFull.c_str());
 
   // If the rule is empty add the special empty rule dependency needed
   // by some make tools.
@@ -79,6 +90,10 @@ void cmMakefileUtilityTargetGenerator::WriteRuleFiles()
 
   // Write clean target
   this->WriteTargetCleanRules();
+
+  // Write the dependency generation rule.  This must be done last so
+  // that multiple output pair information is available.
+  this->WriteTargetDependRules();
 
   // close the streams
   this->CloseFileStreams();

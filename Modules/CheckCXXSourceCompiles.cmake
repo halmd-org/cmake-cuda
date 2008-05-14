@@ -14,7 +14,7 @@
 
 MACRO(CHECK_CXX_SOURCE_COMPILES SOURCE VAR)
   IF("${VAR}" MATCHES "^${VAR}$")
-    SET(MACRO_CHECK_FUNCTION_DEFINITIONS 
+    SET(MACRO_CHECK_FUNCTION_DEFINITIONS
       "-D${VAR} ${CMAKE_REQUIRED_FLAGS}")
     IF(CMAKE_REQUIRED_LIBRARIES)
       SET(CHECK_CXX_SOURCE_COMPILES_ADD_LIBRARIES
@@ -43,14 +43,14 @@ MACRO(CHECK_CXX_SOURCE_COMPILES SOURCE VAR)
     IF(${VAR})
       SET(${VAR} 1 CACHE INTERNAL "Test ${VAR}")
       MESSAGE(STATUS "Performing Test ${VAR} - Success")
-      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log 
+      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
         "Performing C++ SOURCE FILE Test ${VAR} succeded with the following output:\n"
         "${OUTPUT}\n"
         "Source file was:\n${SOURCE}\n")
     ELSE(${VAR})
       MESSAGE(STATUS "Performing Test ${VAR} - Failed")
       SET(${VAR} "" CACHE INTERNAL "Test ${VAR}")
-      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log 
+      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
         "Performing C++ SOURCE FILE Test ${VAR} failed with the following output:\n"
         "${OUTPUT}\n"
         "Source file was:\n${SOURCE}\n")

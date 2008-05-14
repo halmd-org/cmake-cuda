@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetTargetPropertiesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/11/10 15:12:55 $
-  Version:   $Revision: 1.21.2.6 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.31 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,12 +31,13 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SET_TARGET_PROPERTIES";}
+  virtual const char* GetName() { return "set_target_properties";}  
 
   /**
    * Succinct documentation.
@@ -47,12 +48,19 @@ public:
     }
   
   /**
+   *  Used by this command and cmSetPropertiesCommand
+   */
+  static bool SetOneTarget(const char *tname, 
+                           std::vector<std::string> &propertyPairs, 
+                           cmMakefile *mf);
+
+  /**
    * Longer documentation.
    */
   virtual const char* GetFullDocumentation()
     {
       return
-        "  SET_TARGET_PROPERTIES(target1 target2 ...\n"
+        "  set_target_properties(target1 target2 ...\n"
         "                        PROPERTIES prop1 value1\n"
         "                        prop2 value2 ...)\n"
         "Set properties on a target. The syntax for the command is to "

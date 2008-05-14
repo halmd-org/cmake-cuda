@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetFilenameComponentCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.11.6.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,7 +40,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -50,7 +51,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "GET_FILENAME_COMPONENT";}
+  virtual const char* GetName() { return "get_filename_component";}
 
   /**
    * Succinct documentation.
@@ -66,7 +67,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  GET_FILENAME_COMPONENT(VarName FileName\n"
+      "  get_filename_component(VarName FileName\n"
       "                         PATH|ABSOLUTE|NAME|EXT|NAME_WE\n"
       "                         [CACHE])\n"
       "Set VarName to be the path (PATH), file name (NAME), file "
@@ -76,7 +77,7 @@ public:
       "trailing slashes. The longest file extension is always considered. "
       "If the optional CACHE argument is specified, the result variable is "
       "added to the cache.\n"
-      "  GET_FILENAME_COMPONENT(VarName FileName\n"
+      "  get_filename_component(VarName FileName\n"
       "                         PROGRAM [PROGRAM_ARGS ArgVar]\n"
       "                         [CACHE])\n"
       "The program in FileName will be found in the system search path or "

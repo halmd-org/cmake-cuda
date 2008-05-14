@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeExternalMSProjectCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 20:05:57 $
-  Version:   $Revision: 1.5.12.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,12 +41,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "INCLUDE_EXTERNAL_MSPROJECT";}
+  virtual const char* GetName() {return "include_external_msproject";}
 
   /**
    * Succinct documentation.
@@ -62,7 +63,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  INCLUDE_EXTERNAL_MSPROJECT(projectname location\n"
+      "  include_external_msproject(projectname location\n"
       "                             dep1 dep2 ...)\n"
       "Includes an external Microsoft project in the generated workspace "
       "file.  Currently does nothing on UNIX.";

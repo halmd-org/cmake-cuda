@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmElseCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 15:33:41 $
-  Version:   $Revision: 1.12 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,7 +39,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -49,14 +50,14 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ELSE";}
+  virtual const char* GetName() { return "else";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Starts the ELSE portion of an IF block.";
+    return "Starts the else portion of an if block.";
     }
   
   /**
@@ -65,8 +66,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ELSE(expression)\n"
-      "See the IF command.";
+      "  else(expression)\n"
+      "See the if command.";
     }
   
   cmTypeMacro(cmElseCommand, cmCommand);

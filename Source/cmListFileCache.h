@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmListFileCache.h,v $
   Language:  C++
-  Date:      $Date: 2007/05/17 18:41:52 $
-  Version:   $Revision: 1.17.2.1 $
+  Date:      $Date: 2008-03-13 17:48:57 $
+  Version:   $Revision: 1.21 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -26,9 +26,11 @@
  * cmake list files.
  */
 
+class cmMakefile;
+ 
 struct cmListFileArgument
 {
-  cmListFileArgument(): Value(), Quoted(false), FilePath(), Line(0) {}
+  cmListFileArgument(): Value(), Quoted(false), FilePath(0), Line(0) {}
   cmListFileArgument(const cmListFileArgument& r):
     Value(r.Value), Quoted(r.Quoted), FilePath(r.FilePath), Line(r.Line) {}
   cmListFileArgument(const std::string& v, bool q, const char* file,
@@ -44,17 +46,25 @@ struct cmListFileArgument
     }
   std::string Value;
   bool Quoted;
+  const char* FilePath;
+  long Line;
+};
+
+struct cmListFileContext
+{
+  std::string Name;
   std::string FilePath;
   long Line;
 };
 
-struct cmListFileFunction
+std::ostream& operator<<(std::ostream&, cmListFileContext const&);
+
+struct cmListFileFunction: public cmListFileContext
 {
-  std::string Name;
   std::vector<cmListFileArgument> Arguments;
-  const char* FilePath;
-  long Line;
 };
+
+class cmListFileBacktrace: public std::vector<cmListFileContext> {};
 
 struct cmListFile
 {
@@ -62,7 +72,9 @@ struct cmListFile
     :ModifiedTime(0) 
     {
     }
-  bool ParseFile(const char* path, bool requireProjectCommand);
+  bool ParseFile(const char* path, 
+                 bool topLevel,
+                 cmMakefile *mf);
 
   long int ModifiedTime;
   std::vector<cmListFileFunction> Functions;

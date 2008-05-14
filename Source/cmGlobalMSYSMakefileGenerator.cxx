@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalMSYSMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.7.2.4 $
+  Date:      $Date: 2007-10-22 16:48:39 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -50,7 +50,9 @@ cmGlobalMSYSMakefileGenerator::FindMinGW(std::string const& makeloc)
 }
 
 void cmGlobalMSYSMakefileGenerator
-::EnableLanguage(std::vector<std::string>const& l, cmMakefile *mf)
+::EnableLanguage(std::vector<std::string>const& l, 
+                 cmMakefile *mf, 
+                 bool optional)
 {
   this->FindMakeProgram(mf);
   std::string makeProgram = mf->GetRequiredDefinition("CMAKE_MAKE_PROGRAM");
@@ -75,12 +77,12 @@ void cmGlobalMSYSMakefileGenerator
   mf->AddDefinition("MSYS", "1");
   mf->AddDefinition("CMAKE_GENERATOR_CC", gcc.c_str());
   mf->AddDefinition("CMAKE_GENERATOR_CXX", gxx.c_str());
-  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf);
+  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
   if(!mf->IsSet("CMAKE_AR") && !this->CMakeInstance->GetIsInTryCompile())
     {
     cmSystemTools::Error
       ("CMAKE_AR was not found, please set to archive program. ",
-                         mf->GetDefinition("CMAKE_AR"));
+       mf->GetDefinition("CMAKE_AR"));
     }
 }
 
@@ -101,8 +103,8 @@ cmLocalGenerator *cmGlobalMSYSMakefileGenerator::CreateLocalGenerator()
 void cmGlobalMSYSMakefileGenerator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates MSYS makefiles.";
-  entry.full = "The makefiles use /bin/sh as the shell.  "
+  entry.Name = this->GetName();
+  entry.Brief = "Generates MSYS makefiles.";
+  entry.Full = "The makefiles use /bin/sh as the shell.  "
     "They require msys to be installed on the machine.";
 }

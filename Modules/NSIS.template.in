@@ -17,6 +17,7 @@
   Var DO_NOT_ADD_TO_PATH
   Var ADD_TO_PATH_ALL_USERS
   Var ADD_TO_PATH_CURRENT_USER
+  Var INSTALL_DESKTOP
 
 ;--------------------------------
 ;Include Modern UI
@@ -93,7 +94,7 @@ FunctionEnd
 !verbose 3
 !include "WinMessages.NSH"
 !verbose 4
- 
+
 ;----------------------------------------
 ; based upon a script of "Written by KiCHiK 2003-01-18 05:57:02"
 ;----------------------------------------
@@ -200,7 +201,7 @@ Function AddToPath
     Pop $1
     Pop $0
 FunctionEnd
- 
+
  
 ; RemoveFromPath - Remove a given dir from the path
 ;     Input: head of the stack
@@ -292,7 +293,7 @@ FunctionEnd
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Uninstall sutff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
- 
+
 ###########################################
 #            Utility Functions            #
 ###########################################
@@ -407,11 +408,8 @@ FunctionEnd
 
 ;--------------------------------
 ; Define some macro setting for the gui
-
-  !define CPACK_PACKAGE_ICON@CPACK_PACKAGE_ICON@
-  !ifndef CPACK_PACKAGE_ICON
-  !define MUI_HEADERIMAGE_BITMAP "@CPACK_PACKAGE_ICON@"
-  !endif
+@CPACK_NSIS_INSTALLER_MUI_ICON_CODE@
+@CPACK_NSIS_INSTALLER_ICON_CODE@
 
 ;--------------------------------
 ;Pages
@@ -452,17 +450,6 @@ FunctionEnd
 ;--------------------------------
 ;Installer Sections
 
-Section "Add to path"
-  Push $INSTDIR\bin
-  ;Read a value from an InstallOptions INI file
-  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
-  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
-  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
-    Call AddToPath
-  doNotAddToPath:
-SectionEnd
-
 Section "Installer Section" InstSection
 
   ;Use the entire tree produced by the INSTALL target.  Keep the
@@ -501,12 +488,13 @@ Section "Installer Section" InstSection
   Push "Contact"
   Push "@CPACK_NSIS_CONTACT@"
   Call ConditionalAddToRegisty
-
+  !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
-    
+  
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
 @CPACK_NSIS_CREATE_ICONS@
+@CPACK_NSIS_CREATE_ICONS_EXTRA@
   CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 
   ; Write special uninstall registry entries
@@ -522,12 +510,27 @@ Section "Installer Section" InstSection
   Push "AddToPathCurrentUser"
   Push "$ADD_TO_PATH_CURRENT_USER"
   Call ConditionalAddToRegisty
+  Push "InstallToDesktop"
+  Push "$INSTALL_DESKTOP"
+  Call ConditionalAddToRegisty
 
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
   
   !insertmacro MUI_STARTMENU_WRITE_END
 
 SectionEnd
+
+Section "Add to path"
+  Push $INSTDIR\bin
+  ;Read a value from an InstallOptions INI file
+  !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_ALL_USERS "NSIS.InstallOptions.ini" "Field 3" "State"
+  !insertmacro MUI_INSTALLOPTIONS_READ $ADD_TO_PATH_CURRENT_USER "NSIS.InstallOptions.ini" "Field 4" "State"
+  StrCmp $DO_NOT_ADD_TO_PATH "1" doNotAddToPath 0
+    Call AddToPath
+  doNotAddToPath:
+SectionEnd
+
 
 ;--------------------------------
 ; Create custom pages
@@ -576,6 +579,9 @@ Section "Uninstall"
   ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_DIRECTORY@" "AddToPathCurrentUser"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
+  ReadRegStr $INSTALL_DESKTOP SHCTX \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_DIRECTORY@" "InstallToDesktop"
+  ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
 @CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS@
 
@@ -598,6 +604,7 @@ Section "Uninstall"
     
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
 @CPACK_NSIS_DELETE_ICONS@
+@CPACK_NSIS_DELETE_ICONS_EXTRA@
   
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -616,7 +623,7 @@ Section "Uninstall"
   ; try to fix it.
   StrCpy $MUI_TEMP "$START_MENU"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
-@CPACK_NSIS_DELETE_ICONS@
+@CPACK_NSIS_DELETE_ICONS_EXTRA@
   
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"

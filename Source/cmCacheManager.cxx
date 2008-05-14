@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCacheManager.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:43 $
-  Version:   $Revision: 1.92.2.2 $
+  Date:      $Date: 2008-01-29 22:30:48 $
+  Version:   $Revision: 1.100 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,6 +20,7 @@
 #include "cmCacheManager.h"
 #include "cmMakefile.h"
 #include "cmake.h"
+#include "cmVersion.h"
 
 #include <cmsys/Directory.hxx>
 #include <cmsys/Glob.hxx>
@@ -40,6 +41,12 @@ const char* cmCacheManagerTypes[] =
   "UNINITIALIZED",
   0
 };
+
+cmCacheManager::cmCacheManager()
+{
+  this->CacheMajorVersion = 0;
+  this->CacheMinorVersion = 0;
+}
 
 const char* cmCacheManager::TypeToString(cmCacheManager::CacheEntryType type)
 {
@@ -223,7 +230,15 @@ bool cmCacheManager::LoadCache(const char* path,
       }
     while(realbuffer[0] == '/' && realbuffer[1] == '/')
       {
-      e.Properties["HELPSTRING"] += &realbuffer[2];
+      if ((realbuffer[2] == '\\') && (realbuffer[3]=='n'))
+        {
+        e.Properties["HELPSTRING"] += "\n";
+        e.Properties["HELPSTRING"] += &realbuffer[4];
+        }
+      else
+        {
+        e.Properties["HELPSTRING"] += &realbuffer[2];
+        }
       cmSystemTools::GetLineFromStream(fin, buffer);
       realbuffer = buffer.c_str();
       if(!fin)
@@ -311,10 +326,27 @@ bool cmCacheManager::LoadCache(const char* path,
                            ". Offending entry: ", realbuffer);
       }
     }
-  // if CMAKE version not found in the list file
-  // add them as version 0.0
-  if(!this->GetCacheValue("CMAKE_CACHE_MINOR_VERSION"))
+  this->CacheMajorVersion = 0;
+  this->CacheMinorVersion = 0;
+  if(const char* cmajor = this->GetCacheValue("CMAKE_CACHE_MAJOR_VERSION"))
     {
+    unsigned int v=0;
+    if(sscanf(cmajor, "%u", &v) == 1)
+      {
+      this->CacheMajorVersion = v;
+      }
+    if(const char* cminor = this->GetCacheValue("CMAKE_CACHE_MINOR_VERSION"))
+      {
+      if(sscanf(cminor, "%u", &v) == 1)
+        {
+        this->CacheMinorVersion = v;
+        }
+      }
+    }
+  else
+    {
+    // CMake version not found in the list file.
+    // Set as version 0.0
     this->AddCacheEntry("CMAKE_CACHE_MINOR_VERSION", "0",
                         "Minor version of cmake used to create the "
                         "current loaded cache", cmCacheManager::INTERNAL);
@@ -370,17 +402,17 @@ bool cmCacheManager::SaveCache(const char* path)
   // before writing the cache, update the version numbers
   // to the
   char temp[1024];
-  sprintf(temp, "%d", cmMakefile::GetMinorVersion());
+  sprintf(temp, "%d", cmVersion::GetMinorVersion());
   this->AddCacheEntry("CMAKE_CACHE_MINOR_VERSION", temp,
                       "Minor version of cmake used to create the "
                       "current loaded cache", cmCacheManager::INTERNAL);
-  sprintf(temp, "%d", cmMakefile::GetMajorVersion());
+  sprintf(temp, "%d", cmVersion::GetMajorVersion());
   this->AddCacheEntry("CMAKE_CACHE_MAJOR_VERSION", temp,
                       "Major version of cmake used to create the "
                       "current loaded cache", cmCacheManager::INTERNAL);
 
   this->AddCacheEntry("CMAKE_CACHE_RELEASE_VERSION",
-                      cmMakefile::GetReleaseVersion(),
+                      cmVersion::GetReleaseVersion().c_str(),
                       "Major version of cmake used to create the "
                       "current loaded cache", cmCacheManager::INTERNAL);
 
@@ -430,7 +462,7 @@ bool cmCacheManager::SaveCache(const char* path)
     {
     const CacheEntry& ce = (*i).second; 
     CacheEntryType t = ce.Type;
-    if(t == cmCacheManager::UNINITIALIZED || !ce.Initialized)
+    if(!ce.Initialized)
       {
       /*
         // This should be added in, but is not for now.
@@ -656,27 +688,22 @@ void cmCacheManager::OutputHelpString(std::ofstream& fout,
     }
   std::string oneLine;
   std::string::size_type pos = 0;
-  std::string::size_type nextBreak = 60;
-  bool done = false;
-
-  while(!done)
+  for (std::string::size_type i=0; i<=end; i++)
     {
-    if(nextBreak >= end)
+    if ((i==end) 
+        || (helpString[i]=='\n')
+        || ((i-pos >= 60) && (helpString[i]==' ')))
       {
-      nextBreak = end;
-      done = true;
-      }
-    else
-      {
-      while(nextBreak < end && helpString[nextBreak] != ' ')
+      fout << "//";
+      if (helpString[pos] == '\n')
         {
-        nextBreak++;
+        pos++;
+        fout << "\\n";
         }
+      oneLine = helpString.substr(pos, i - pos);
+      fout << oneLine.c_str() << "\n";
+      pos = i;
       }
-    oneLine = helpString.substr(pos, nextBreak - pos);
-    fout << "//" << oneLine.c_str() << "\n";
-    pos = nextBreak;
-    nextBreak += 60;
     }
 }
 
@@ -770,7 +797,7 @@ void cmCacheManager::AddCacheEntry(const char* key,
   else
     {
     e.Properties["HELPSTRING"] = 
-      "(This variable does not exists and should not be used)";
+      "(This variable does not exist and should not be used)";
     }
   this->Cache[key] = e;
 }
@@ -945,4 +972,22 @@ bool cmCacheManager::CacheIterator::PropertyExists(const char* property) const
     return false;
     }
   return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmCacheManager::NeedCacheCompatibility(int major, int minor)
+{
+  // Compatibility is not needed if the cache version is zero because
+  // the cache was created or modified by the user.
+  if(this->CacheMajorVersion == 0)
+    {
+    return false;
+    }
+
+  // Compatibility is needed if the cache version is equal to or lower
+  // than the given version.
+  unsigned int actual_compat =
+    CMake_VERSION_ENCODE(this->CacheMajorVersion, this->CacheMinorVersion, 0);
+  return (actual_compat &&
+          actual_compat <= CMake_VERSION_ENCODE(major, minor, 0));
 }

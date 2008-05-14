@@ -1,11 +1,14 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+IF(COMMAND CMAKE_POLICY)
+  CMAKE_POLICY(SET CMP0003 NEW)
+ENDIF(COMMAND CMAKE_POLICY)
 PROJECT(LIBCURL C)
 
 INCLUDE_REGULAR_EXPRESSION("^.*$")
 
 # Setup package meta-data
 SET(PACKAGE "curl")
-SET(VERSION "7.12.1")
+SET(VERSION "7.16.1")
 SET(PACKAGE_TARNAME "curl")
 SET(PACKAGE_BUGREPORT " ")
 SET(PACKAGE_NAME "curl")
@@ -35,9 +38,16 @@ INCLUDE (CheckIncludeFile)
 INCLUDE (CheckIncludeFiles)
 INCLUDE (CheckLibraryExists)
 INCLUDE (CheckSymbolExists)
-INCLUDE (CheckTypeSize)
+# if crosscompiling is on, the CHECK_TYPE_SIZE macro coming with cmake uses
+# TRY_COMPILE instead of TRY_RUN which makes crosscompiling easier, Alex
+IF(CMAKE_CROSSCOMPILING)  
+  INCLUDE ("${CMAKE_ROOT}/Modules/CheckTypeSize.cmake")
+ELSE(CMAKE_CROSSCOMPILING)
+  INCLUDE (CheckTypeSize)
+ENDIF(CMAKE_CROSSCOMPILING)
 
 SET(libCurl_SRCS
+  #  amigaos.c - does not build on AmigaOS
   base64.c
   connect.c
   content_encoding.c
@@ -48,15 +58,15 @@ SET(libCurl_SRCS
   file.c
   formdata.c
   ftp.c
-  getdate.c
   getenv.c
   getinfo.c
+  gtls.c
   hash.c
   hostares.c
   hostasyn.c
-  hostip.c
   hostip4.c
   hostip6.c
+  hostip.c
   hostsyn.c
   hostthre.c
   http.c
@@ -68,20 +78,33 @@ SET(libCurl_SRCS
   inet_ntop.c
   inet_pton.c
   krb4.c
+  ldap.c
   llist.c
   md5.c
-  memdebug.c
+#  memdebug.c -not used
   mprintf.c
   multi.c
   netrc.c
+  # nwlib.c - Not used
+  parsedate.c
   progress.c
+  security.c
+  select.c
   sendf.c
   share.c
+  socks.c
   speedcheck.c
+  splay.c
+  ssh.c
+  sslgen.c
   ssluse.c
+  strdup.c
   strequal.c
   strerror.c
+  # strtok.c - specify later
+  # strtoofft.c - specify later
   telnet.c
+  tftp.c
   timeval.c
   transfer.c
   url.c
@@ -131,9 +154,16 @@ ENDMACRO(CHECK_LIBRARY_EXISTS_CONCAT)
 
 # Check for all needed libraries
 CHECK_LIBRARY_EXISTS_CONCAT("dl"     dlopen       HAVE_LIBDL)
-CHECK_LIBRARY_EXISTS_CONCAT("ucb"    gethostname  HAVE_LIBUCB)
+#CHECK_LIBRARY_EXISTS_CONCAT("ucb"    gethostname  HAVE_LIBUCB)
 CHECK_LIBRARY_EXISTS_CONCAT("socket" connect      HAVE_LIBSOCKET)
 CHECK_LIBRARY_EXISTS("c" gethostbyname "" NOT_NEED_LIBNSL)
+
+# Yellowtab Zeta needs different libraries than BeOS 5.
+IF(BEOS)
+  SET(NOT_NEED_LIBNSL 1)
+  CHECK_LIBRARY_EXISTS_CONCAT("bind" gethostbyname HAVE_LIBBIND)
+  CHECK_LIBRARY_EXISTS_CONCAT("bnetapi" closesocket HAVE_LIBBNETAPI)
+ENDIF(BEOS)
 
 IF(NOT NOT_NEED_LIBNSL)
   CHECK_LIBRARY_EXISTS_CONCAT("nsl"    gethostbyname  HAVE_LIBNSL)
@@ -145,12 +175,15 @@ IF(NOT CURL_SPECIAL_LIBZ)
   CHECK_LIBRARY_EXISTS_CONCAT("z"      inflateEnd   HAVE_LIBZ)
 ENDIF(NOT CURL_SPECIAL_LIBZ)
 
-#OPTION(CMAKE_USE_OPENSSL "Use OpenSSL code. Experimental" OFF)
+OPTION(CMAKE_USE_OPENSSL "Use OpenSSL code. Experimental" ON)
 MARK_AS_ADVANCED(CMAKE_USE_OPENSSL)
 IF(CMAKE_USE_OPENSSL)
   CHECK_LIBRARY_EXISTS_CONCAT("crypto" CRYPTO_lock  HAVE_LIBCRYPTO)
   CHECK_LIBRARY_EXISTS_CONCAT("ssl"    SSL_connect  HAVE_LIBSSL)
 ENDIF(CMAKE_USE_OPENSSL)
+
+# Check for idn
+CHECK_LIBRARY_EXISTS_CONCAT("idn" idna_to_ascii_lz HAVE_LIBIDN)
 
 # Check for symbol dlopen (same as HAVE_LIBDL)
 CHECK_LIBRARY_EXISTS("${CURL_LIBS}" dlopen "" HAVE_DLOPEN)
@@ -165,6 +198,8 @@ IF(CURL_SPECIAL_LIBZ)
   SET(HAVE_ZLIB_H 0)
 ENDIF(CURL_SPECIAL_LIBZ)
 
+# do we have process.h
+CHECK_INCLUDE_FILE("process.h" HAVE_PROCESS_H)
 
 # If we have features.h, then do the _BSD_SOURCE magic
 CHECK_INCLUDE_FILE("features.h"       HAVE_FEATURES_H)
@@ -195,7 +230,15 @@ MACRO(CHECK_INCLUDE_FILE_CONCAT FILE VARIABLE)
 ENDMACRO(CHECK_INCLUDE_FILE_CONCAT)
 
 # Check for header files
+IF(NOT UNIX)
+  CHECK_INCLUDE_FILE_CONCAT("ws2tcpip.h"     HAVE_WS2TCPIP_H)
+  CHECK_INCLUDE_FILE_CONCAT("winsock2.h"     HAVE_WINSOCK2_H)
+ENDIF(NOT UNIX)
 CHECK_INCLUDE_FILE_CONCAT("stdio.h"          HAVE_STDIO_H)
+IF(NOT UNIX)
+  CHECK_INCLUDE_FILE_CONCAT("windows.h"      HAVE_WINDOWS_H)
+  CHECK_INCLUDE_FILE_CONCAT("winsock.h"      HAVE_WINSOCK_H)
+ENDIF(NOT UNIX)
 CHECK_INCLUDE_FILE_CONCAT("stddef.h"         HAVE_STDDEF_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/types.h"      HAVE_SYS_TYPES_H)
 CHECK_INCLUDE_FILE_CONCAT("inttypes.h"       HAVE_INTTYPES_H)
@@ -219,6 +262,7 @@ IF(CMAKE_USE_OPENSSL)
   CHECK_INCLUDE_FILE_CONCAT("openssl/ssl.h"    HAVE_OPENSSL_SSL_H)
   CHECK_INCLUDE_FILE_CONCAT("openssl/err.h"    HAVE_OPENSSL_ERR_H)
   CHECK_INCLUDE_FILE_CONCAT("openssl/rand.h"   HAVE_OPENSSL_RAND_H)
+  CHECK_INCLUDE_FILE_CONCAT("openssl/pkcs12.h" HAVE_OPENSSL_PKCS12_H)
 ENDIF(CMAKE_USE_OPENSSL)
 
 IF(NOT CURL_SPECIAL_LIBZ)
@@ -243,26 +287,35 @@ CHECK_INCLUDE_FILE_CONCAT("strings.h"       HAVE_STRINGS_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/param.h"     HAVE_SYS_PARAM_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/stat.h"      HAVE_SYS_STAT_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/time.h"      HAVE_SYS_TIME_H)
+CHECK_INCLUDE_FILE_CONCAT("sys/resource.h"  HAVE_SYS_RESOURCE_H)
 CHECK_INCLUDE_FILE_CONCAT("termios.h"       HAVE_TERMIOS_H)
 CHECK_INCLUDE_FILE_CONCAT("termio.h"        HAVE_TERMIO_H)
 CHECK_INCLUDE_FILE_CONCAT("io.h"            HAVE_IO_H)
 CHECK_INCLUDE_FILE_CONCAT("time.h"          HAVE_TIME_H)
 CHECK_INCLUDE_FILE_CONCAT("unistd.h"        HAVE_UNISTD_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/utime.h"     HAVE_SYS_UTIME_H)
-CHECK_INCLUDE_FILE_CONCAT("winsock.h"       HAVE_WINSOCK_H)
 CHECK_INCLUDE_FILE_CONCAT("sockio.h"        HAVE_SOCKIO_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/sockio.h"    HAVE_SYS_SOCKIO_H)
 CHECK_INCLUDE_FILE_CONCAT("x509.h"          HAVE_X509_H)
+CHECK_INCLUDE_FILE_CONCAT("locale.h"        HAVE_LOCALE_H)
 CHECK_INCLUDE_FILE_CONCAT("setjmp.h"        HAVE_SETJMP_H)
 CHECK_INCLUDE_FILE_CONCAT("signal.h"        HAVE_SIGNAL_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/ioctl.h"     HAVE_SYS_IOCTL_H)
 CHECK_INCLUDE_FILE_CONCAT("sys/utsname.h"   HAVE_SYS_UTSNAME_H)
+CHECK_INCLUDE_FILE_CONCAT("idn-free.h"      HAVE_IDN_FREE_H)
+CHECK_INCLUDE_FILE_CONCAT("idna.h"          HAVE_IDNA_H)
+CHECK_INCLUDE_FILE_CONCAT("tld.h"           HAVE_TLD_H)
+CHECK_INCLUDE_FILE_CONCAT("arpa/tftp.h"     HAVE_ARPA_TFTP_H)
+CHECK_INCLUDE_FILE_CONCAT("errno.h"         HAVE_ERRNO_H)
+CHECK_INCLUDE_FILE_CONCAT("libgen.h"        HAVE_LIBGEN_H)
+CHECK_INCLUDE_FILE_CONCAT("sys/filio.h"     HAVE_SYS_FILIO_H)
 CHECK_TYPE_SIZE(size_t  SIZEOF_SIZE_T)
 CHECK_TYPE_SIZE(ssize_t  SIZEOF_SSIZE_T)
 CHECK_TYPE_SIZE("long long"  SIZEOF_LONG_LONG)
 CHECK_TYPE_SIZE("long"  SIZEOF_LONG)
 CHECK_TYPE_SIZE("__int64"  SIZEOF___INT64)
 CHECK_TYPE_SIZE("long double"  SIZEOF_LONG_DOUBLE)
+CHECK_TYPE_SIZE("time_t"  SIZEOF_TIME_T)
 IF(NOT HAVE_SIZEOF_SSIZE_T)
   IF(SIZEOF_LONG EQUAL SIZEOF_SIZE_T)
     SET(ssize_t long)
@@ -274,12 +327,51 @@ ENDIF(NOT HAVE_SIZEOF_SSIZE_T)
 
 IF(HAVE_SIZEOF_LONG_LONG)
   SET(HAVE_LONGLONG 1)
+  SET(HAVE_LL 1)
 ENDIF(HAVE_SIZEOF_LONG_LONG)
 
 FIND_FILE(RANDOM_FILE urandom /dev)
 MARK_AS_ADVANCED(RANDOM_FILE)
 
+#strtoll \
+#socket \
+#select \
+#strdup \
+#strstr \
+#strtok_r \
+#uname \
+#strcasecmp \
+#stricmp \
+#strcmpi \
+#gethostbyaddr \
+#gettimeofday \
+#inet_addr \
+#inet_ntoa \
+#inet_pton \
+#perror \
+#closesocket \
+#siginterrupt \
+#sigaction \
+#signal \
+#getpass_r \
+#strlcat \
+#getpwuid \
+#geteuid \
+#dlopen \
+#utime \
+#sigsetjmp \
+#basename \
+#setlocale \
+#ftruncate \
+#pipe \
+#poll \
+#getprotobyname \
+#getrlimit \
+#setrlimit \
+#fork
+
 # Check for some functions that are used
+CHECK_SYMBOL_EXISTS(basename      "${CURL_INCLUDES}" HAVE_BASENAME)
 CHECK_SYMBOL_EXISTS(socket        "${CURL_INCLUDES}" HAVE_SOCKET)
 CHECK_SYMBOL_EXISTS(poll          "${CURL_INCLUDES}" HAVE_POLL)
 CHECK_SYMBOL_EXISTS(select        "${CURL_INCLUDES}" HAVE_SELECT)
@@ -292,6 +384,7 @@ CHECK_SYMBOL_EXISTS(strcasecmp    "${CURL_INCLUDES}" HAVE_STRCASECMP)
 CHECK_SYMBOL_EXISTS(stricmp       "${CURL_INCLUDES}" HAVE_STRICMP)
 CHECK_SYMBOL_EXISTS(strcmpi       "${CURL_INCLUDES}" HAVE_STRCMPI)
 CHECK_SYMBOL_EXISTS(strncmpi      "${CURL_INCLUDES}" HAVE_STRNCMPI)
+CHECK_SYMBOL_EXISTS(basename      "${CURL_INCLUDES}" HAVE_BASENAME)
 IF(NOT HAVE_STRNCMPI)
   SET(HAVE_STRCMPI)
 ENDIF(NOT HAVE_STRNCMPI)
@@ -331,12 +424,22 @@ CHECK_SYMBOL_EXISTS(SIGALRM       "${CURL_INCLUDES}" HAVE_SIGNAL_MACRO)
 IF(HAVE_SIGNAL_FUNC AND HAVE_SIGNAL_MACRO)
   SET(HAVE_SIGNAL 1)
 ENDIF(HAVE_SIGNAL_FUNC AND HAVE_SIGNAL_MACRO)
-CHECK_SYMBOL_EXISTS(uname         "${CURL_INCLUDES}" HAVE_UNAME)
-CHECK_SYMBOL_EXISTS(strtoll       "${CURL_INCLUDES}" HAVE_STRTOLL)
-CHECK_SYMBOL_EXISTS(_strtoi64     "${CURL_INCLUDES}" HAVE__STRTOI64)
-CHECK_SYMBOL_EXISTS(strerror_r    "${CURL_INCLUDES}" HAVE_STRERROR_R)
-CHECK_SYMBOL_EXISTS(siginterrupt  "${CURL_INCLUDES}" HAVE_SIGINTERRUPT)
-CHECK_SYMBOL_EXISTS(perror        "${CURL_INCLUDES}" HAVE_PERROR)
+CHECK_SYMBOL_EXISTS(uname          "${CURL_INCLUDES}" HAVE_UNAME)
+CHECK_SYMBOL_EXISTS(strtoll        "${CURL_INCLUDES}" HAVE_STRTOLL)
+CHECK_SYMBOL_EXISTS(_strtoi64      "${CURL_INCLUDES}" HAVE__STRTOI64)
+CHECK_SYMBOL_EXISTS(strerror_r     "${CURL_INCLUDES}" HAVE_STRERROR_R)
+CHECK_SYMBOL_EXISTS(siginterrupt   "${CURL_INCLUDES}" HAVE_SIGINTERRUPT)
+CHECK_SYMBOL_EXISTS(perror         "${CURL_INCLUDES}" HAVE_PERROR)
+CHECK_SYMBOL_EXISTS(fork           "${CURL_INCLUDES}" HAVE_FORK)
+CHECK_SYMBOL_EXISTS(pipe           "${CURL_INCLUDES}" HAVE_PIPE)
+CHECK_SYMBOL_EXISTS(ftruncate      "${CURL_INCLUDES}" HAVE_FTRUNCATE)
+CHECK_SYMBOL_EXISTS(getprotobyname "${CURL_INCLUDES}" HAVE_GETPROTOBYNAME)
+CHECK_SYMBOL_EXISTS(getrlimit      "${CURL_INCLUDES}" HAVE_GETRLIMIT)
+CHECK_SYMBOL_EXISTS(idn_free       "${CURL_INCLUDES}" HAVE_IDN_FREE)
+CHECK_SYMBOL_EXISTS(idna_strerror  "${CURL_INCLUDES}" HAVE_IDNA_STRERROR)
+CHECK_SYMBOL_EXISTS(tld_strerror   "${CURL_INCLUDES}" HAVE_TLD_STRERROR)
+CHECK_SYMBOL_EXISTS(setlocale      "${CURL_INCLUDES}" HAVE_SETLOCALE)
+CHECK_SYMBOL_EXISTS(setrlimit      "${CURL_INCLUDES}" HAVE_SETRLIMIT)
 
 # only build compat strtok if we need to
 IF (NOT HAVE_STRTOK_R)
@@ -344,6 +447,8 @@ IF (NOT HAVE_STRTOK_R)
     strtok.c
     )
 ENDIF (NOT HAVE_STRTOK_R)
+
+# only build compat strtoofft if we need to
 IF(NOT HAVE_STRTOLL AND NOT HAVE__STRTOI64)
   SET(libCurl_SRCS ${libCurl_SRCS}
     strtoofft.c
@@ -397,6 +502,7 @@ MACRO(CURL_INTERNAL_TEST CURL_TEST)
     ENDIF(${CURL_TEST})
   ENDIF("${CURL_TEST}" MATCHES "^${CURL_TEST}$")
 ENDMACRO(CURL_INTERNAL_TEST) 
+
 MACRO(CURL_INTERNAL_TEST_RUN CURL_TEST)
   IF("${CURL_TEST}_COMPILE" MATCHES "^${CURL_TEST}_COMPILE$")
     SET(MACRO_CHECK_FUNCTION_DEFINITIONS 
@@ -478,7 +584,6 @@ ENDIF(HAVE_FILE_OFFSET_BITS)
 FOREACH(CURL_TEST 
     HAVE_GLIBC_STRERROR_R
     HAVE_POSIX_STRERROR_R
-    HAVE_LONG_LONG_CONSTANT
     )
   CURL_INTERNAL_TEST_RUN(${CURL_TEST})
 ENDFOREACH(CURL_TEST)
@@ -581,11 +686,14 @@ IF(CMAKE_COMPILER_IS_GNUCC AND APPLE)
     COMPILE_FLAGS ${MPRINTF_COMPILE_FLAGS})
 ENDIF(CMAKE_COMPILER_IS_GNUCC AND APPLE)
 
+INCLUDE(CMake/OtherTests.cmake)
+
 # The rest of the build
 
 INCLUDE_DIRECTORIES(${LIBCURL_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${LIBCURL_BINARY_DIR})
-ADD_DEFINITIONS(-DHAVE_CONFIG_H)
+ADD_DEFINITIONS(-DHAVE_CONFIG_H
+  -DCURL_STATICLIB)
 CONFIGURE_FILE(${LIBCURL_SOURCE_DIR}/config.h.in
   ${LIBCURL_BINARY_DIR}/config.h)
 

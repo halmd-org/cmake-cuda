@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmForEachCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:43 $
-  Version:   $Revision: 1.15.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.19 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -32,7 +32,8 @@ public:
   cmForEachFunctionBlocker() {this->Executing = false; Depth = 0;}
   virtual ~cmForEachFunctionBlocker() {}
   virtual bool IsFunctionBlocked(const cmListFileFunction& lff,
-                                 cmMakefile &mf);
+                                 cmMakefile &mf,
+                                 cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction& lff, cmMakefile &mf);
   virtual void ScopeEnded(cmMakefile &mf);
   
@@ -63,7 +64,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -73,7 +75,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "FOREACH";}
+  virtual const char* GetName() { return "foreach";}
 
   /**
    * Succinct documentation.
@@ -89,17 +91,17 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  FOREACH(loop_var arg1 arg2 ...)\n"
+      "  foreach(loop_var arg1 arg2 ...)\n"
       "    COMMAND1(ARGS ...)\n"
       "    COMMAND2(ARGS ...)\n"
       "    ...\n"
-      "  ENDFOREACH(loop_var)\n"
-      "  FOREACH(loop_var RANGE total)\n"
-      "  FOREACH(loop_var RANGE start stop [step])\n"
-      "All commands between FOREACH and the matching ENDFOREACH are recorded "
-      "without being invoked.  Once the ENDFOREACH is evaluated, the "
+      "  endforeach(loop_var)\n"
+      "  foreach(loop_var RANGE total)\n"
+      "  foreach(loop_var RANGE start stop [step])\n"
+      "All commands between foreach and the matching endforeach are recorded "
+      "without being invoked.  Once the endforeach is evaluated, the "
       "recorded list of commands is invoked once for each argument listed "
-      "in the original FOREACH command.  Before each iteration of the loop "
+      "in the original foreach command.  Before each iteration of the loop "
       "\"${loop_var}\" will be set as a variable with "
       "the current value in the list.\n"
       "Foreach can also iterate over a generated range of numbers. "

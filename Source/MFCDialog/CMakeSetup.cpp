@@ -7,10 +7,11 @@
 #include "CMakeCommandLineInfo.h" 
 #include "../cmDocumentation.h"
 #include "../cmake.h"
+#include "../cmSystemTools.h"
 
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationName[] =
+static const char * cmDocumentationName[][3] =
 {
   {0,
    "  CMakeSetup - CMake Windows GUI.", 0},
@@ -18,7 +19,7 @@ static const cmDocumentationEntry cmDocumentationName[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationUsage[] =
+static const char * cmDocumentationUsage[][3] =
 {
   {0,
    "  CMakeSetup [options]\n"
@@ -28,7 +29,7 @@ static const cmDocumentationEntry cmDocumentationUsage[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationDescription[] =
+static const char * cmDocumentationDescription[][3] =
 {
   {0,
    "The \"CMakeSetup\" executable is the CMake Windows GUI.  Project "
@@ -40,7 +41,7 @@ static const cmDocumentationEntry cmDocumentationDescription[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationOptions[] =
+static const char * cmDocumentationOptions[][3] =
 {
   {"-A[on|off]", "Enable/disable display of advanced cache values.",
    "There are two categories of CMake cache values: non-advanced and "
@@ -101,6 +102,7 @@ BOOL CMakeSetup::InitInstance()
 #endif
   CMakeCommandLineInfo cmdInfo;
   ParseCommandLine(cmdInfo);
+  cmSystemTools::FindExecutableDirectory(cmdInfo.GetArgV()[0]);
 
   // Check for documentation options.  If there are no arguments skip
   // the check because the GUI should be displayed instead of showing
@@ -111,17 +113,27 @@ BOOL CMakeSetup::InitInstance()
     {
     // Construct and print requested documentation.
     cmake hcm;
+    hcm.AddCMakePaths();
+    doc.SetCMakeRoot(hcm.GetCacheDefinition("CMAKE_ROOT"));
     std::vector<cmDocumentationEntry> commands;
+    std::vector<cmDocumentationEntry> compatCommands;
+    std::map<std::string,cmDocumentationSection *> propDocs;
+
     std::vector<cmDocumentationEntry> generators;
-    hcm.GetCommandDocumentation(commands);
+    hcm.GetCommandDocumentation(commands, true, false);
+    hcm.GetCommandDocumentation(compatCommands, false, true);
     hcm.GetGeneratorDocumentation(generators);
-    doc.SetName("CMakeSetup");
-    doc.SetNameSection(cmDocumentationName);
-    doc.SetUsageSection(cmDocumentationUsage);
-    doc.SetDescriptionSection(cmDocumentationDescription);
-    doc.SetGeneratorsSection(&generators[0]);
-    doc.SetOptionsSection(cmDocumentationOptions);
-    doc.SetCommandsSection(&commands[0]);
+    hcm.GetPropertiesDocumentation(propDocs);
+    doc.SetName("cmake");
+    doc.SetSection("Name",cmDocumentationName);
+    doc.SetSection("Usage",cmDocumentationUsage);
+    doc.SetSection("Description",cmDocumentationDescription);
+    doc.AppendSection("Generators",generators);
+    doc.PrependSection("Options",cmDocumentationOptions);
+    doc.SetSection("Commands",commands);
+    doc.SetSection("Compatilbility Commands", compatCommands);
+    doc.SetSections(propDocs);
+
     return (doc.PrintRequestedDocumentation(std::cout)? 0:1);
     }
   

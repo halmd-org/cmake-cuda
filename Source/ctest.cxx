@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: ctest.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/04/29 15:49:20 $
-  Version:   $Revision: 1.90.2.1 $
+  Date:      $Date: 2008-01-31 16:43:44 $
+  Version:   $Revision: 1.102 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,9 +21,9 @@
 #include "cmake.h"
 #include "cmDocumentation.h"
 
-
+#include "CTest/cmCTestScriptHandler.h"
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationName[] =
+static const char * cmDocumentationName[][3] =
 {
   {0,
    "  ctest - Testing driver provided by CMake.", 0},
@@ -31,7 +31,7 @@ static const cmDocumentationEntry cmDocumentationName[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationUsage[] =
+static const char * cmDocumentationUsage[][3] =
 {
   {0,
    "  ctest [options]", 0},
@@ -39,7 +39,7 @@ static const cmDocumentationEntry cmDocumentationUsage[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationDescription[] =
+static const char * cmDocumentationDescription[][3] =
 {
   {0,
    "The \"ctest\" executable is the CMake test driver program.  "
@@ -50,7 +50,7 @@ static const cmDocumentationEntry cmDocumentationDescription[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationOptions[] =
+static const char * cmDocumentationOptions[][3] =
 {
   {"-C <cfg>, --build-config <cfg>", "Choose configuration to test.",
    "Some CMake-generated build trees can have multiple build configurations "
@@ -162,18 +162,24 @@ static const cmDocumentationEntry cmDocumentationOptions[] =
   {"--build-project", "Specify the name of the project to build.", "" },
   {"--build-makeprogram", "Specify the make program to use.", "" },
   {"--build-noclean", "Skip the make clean step.", "" },
+  {"--build-config-sample", 
+   "A sample executable to use to determine the configuraiton", 
+   "A sample executable to use to determine the configuraiton that "
+   "should be used. e.g. Debug/Release/etc" },
   {"--build-options", "Add extra options to the build step.",
    "This option must be the last option with the exception of --test-command"
   },
 
   {"--test-command", "The test to run with the --build-and-test option.", ""
   },
+  {"--test-timeout", "The time limit in seconds, internal use only.", ""
+  },
   {"--tomorrow-tag", "Nightly or experimental starts with next day tag.",
    "This is useful if the build will not finish in one day." },
   {"--ctest-config", "The configuration file used to initialize CTest state "
   "when submitting dashboards.",
    "This option tells CTest to use different initialization file instead of "
-   "DartConfiguration.tcl. This way multiple initialization files can be "
+   "CTestConfiguration.tcl. This way multiple initialization files can be "
    "used for example to submit to multiple dashboards." },
   {"--overwrite", "Overwrite CTest configuration option.",
    "By default ctest uses configuration options from configuration file. "
@@ -192,7 +198,7 @@ static const cmDocumentationEntry cmDocumentationOptions[] =
 };
 
 //----------------------------------------------------------------------------
-static const cmDocumentationEntry cmDocumentationSeeAlso[] =
+static const char * cmDocumentationSeeAlso[][3] =
 {
   {0, "cmake", 0},
   {0, "ccmake", 0},
@@ -202,7 +208,9 @@ static const cmDocumentationEntry cmDocumentationSeeAlso[] =
 // this is a test driver program for cmCTest.
 int main (int argc, char *argv[])
 {
+  cmSystemTools::DoNotInheritStdPipes();
   cmSystemTools::EnableMSVCDebugHook();
+  cmSystemTools::FindExecutableDirectory(argv[0]);
   int nocwd = 0;
   cmCTest inst;
 
@@ -216,8 +224,8 @@ int main (int argc, char *argv[])
   // If there is a testing input file, check for documentation options
   // only if there are actually arguments.  We want running without
   // arguments to run tests.
-  if(argc > 1 || !cmSystemTools::FileExists("DartTestfile.txt") &&
-    !cmSystemTools::FileExists("CTestTestfile.cmake"))
+  if(argc > 1 || !(cmSystemTools::FileExists("CTestTestfile.cmake") || 
+                   cmSystemTools::FileExists("DartTestfile.txt")))
     {
     if(argc == 1)
       {
@@ -230,11 +238,18 @@ int main (int argc, char *argv[])
     if(doc.CheckOptions(argc, argv) || nocwd)
       {
       // Construct and print requested documentation.
+      std::vector<cmDocumentationEntry> commands;
+      cmCTestScriptHandler* ch =
+                 static_cast<cmCTestScriptHandler*>(inst.GetHandler("script"));
+      ch->CreateCMake();
+      ch->GetCommandDocumentation(commands);
+
       doc.SetName("ctest");
-      doc.SetNameSection(cmDocumentationName);
-      doc.SetUsageSection(cmDocumentationUsage);
-      doc.SetDescriptionSection(cmDocumentationDescription);
-      doc.SetOptionsSection(cmDocumentationOptions);
+      doc.SetSection("Name",cmDocumentationName);
+      doc.SetSection("Usage",cmDocumentationUsage);
+      doc.SetSection("Description",cmDocumentationDescription);
+      doc.SetSection("Options",cmDocumentationOptions);
+      doc.SetSection("Commands",commands);
       doc.SetSeeAlsoList(cmDocumentationSeeAlso);
 #ifdef cout
 #  undef cout

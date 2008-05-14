@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildAndTestHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:07 $
-  Version:   $Revision: 1.11.2.2 $
+  Date:      $Date: 2007-09-17 14:40:57 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,6 +22,7 @@
 #include "cmake.h"
 #include "cmGlobalGenerator.h"
 #include <cmsys/Process.h>
+#include "cmCTestTestHandler.h"
 
 //----------------------------------------------------------------------
 cmCTestBuildAndTestHandler::cmCTestBuildAndTestHandler()
@@ -29,6 +30,7 @@ cmCTestBuildAndTestHandler::cmCTestBuildAndTestHandler()
   this->BuildTwoConfig         = false;
   this->BuildNoClean           = false;
   this->BuildNoCMake           = false;
+  this->Timeout = 0;
 }
 
 //----------------------------------------------------------------------
@@ -70,10 +72,20 @@ int cmCTestBuildAndTestHandler::RunCMake(std::string* outstring,
     generator += this->BuildGenerator;
     args.push_back(generator);
     }
+  
+  const char* config = 0;
   if ( this->CTest->GetConfigType().size() > 0 )
     {
+    config = this->CTest->GetConfigType().c_str();
+    }
+#ifdef CMAKE_INTDIR
+  config = CMAKE_INTDIR;
+#endif
+  
+  if ( config )
+    {
     std::string btype
-      = "-DCMAKE_BUILD_TYPE:STRING=" + this->CTest->GetConfigType();
+      = "-DCMAKE_BUILD_TYPE:STRING=" + std::string(config);
     args.push_back(btype);
     }
 
@@ -146,7 +158,6 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
   cmSystemTools::SetErrorCallback(CMakeMessageCallback, &cmakeOutString);
   cmSystemTools::SetStdoutCallback(CMakeStdoutCallback, &cmakeOutString);
   cmOStringStream out;
-  // What is this? double timeout = this->CTest->GetTimeOut();
 
   // if the generator and make program are not specified then it is an error
   if (!this->BuildGenerator.size() || !this->BuildMakeProgram.size())
@@ -160,6 +171,32 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
       }
     return 1;
     }
+
+  if ( this->CTest->GetConfigType().size() == 0 &&
+       this->ConfigSample.size())
+    {
+    // use the config sample to set the ConfigType
+    std::string fullPath;
+    std::string resultingConfig;
+    std::vector<std::string> extraPaths;
+    std::vector<std::string> failed;
+    fullPath = 
+      cmCTestTestHandler::FindExecutable(this->CTest, 
+                                         this->ConfigSample.c_str(),
+                                         resultingConfig,
+                                         extraPaths,
+                                         failed);
+    if (fullPath.size() && resultingConfig.size())
+      {
+      this->CTest->SetConfigType(resultingConfig.c_str());
+      }
+    out << "Using config sample with results: "
+        << fullPath << " and " << resultingConfig << std::endl;
+    }
+  
+  // we need to honor the timeout specified, the timeout include cmake, build
+  // and test time
+  double clock_start = cmSystemTools::GetTime();
 
   // make sure the binary dir is there
   std::string cwd = cmSystemTools::GetCurrentWorkingDirectory();
@@ -178,7 +215,7 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
 
   if(!this->BuildNoCMake)
     {
-    // do the cmake step
+    // do the cmake step, no timeout here since it is not a sub process
     if (this->RunCMake(outstring,out,cmakeOutString,cwd,&cm))
       {
       return 1;
@@ -191,16 +228,42 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
     {
     this->BuildTargets.push_back("");
     }
-  for ( tarIt = this->BuildTargets.begin(); tarIt != this->BuildTargets.end();
-    ++ tarIt )
+  for ( tarIt = this->BuildTargets.begin(); 
+        tarIt != this->BuildTargets.end(); ++ tarIt )
     {
+    double remainingTime = 0;
+    if (this->Timeout)
+      {
+      remainingTime = this->Timeout - cmSystemTools::GetTime() + clock_start;
+      if (remainingTime <= 0)
+        {
+        if(outstring)
+          {
+          *outstring = "--build-and-test timeout exceeded. ";
+          }
+        return 1;
+        }
+      }
     std::string output;
+    const char* config = 0;
+    if ( this->CTest->GetConfigType().size() > 0 )
+      {
+      config = this->CTest->GetConfigType().c_str();
+      }
+#ifdef CMAKE_INTDIR
+    config = CMAKE_INTDIR;
+#endif
+    if(!config)
+      {
+      config = "Debug";
+      }
     int retVal = cm.GetGlobalGenerator()->Build(
       this->SourceDir.c_str(), this->BinaryDir.c_str(),
       this->BuildProject.c_str(), tarIt->c_str(),
       &output, this->BuildMakeProgram.c_str(),
-      this->CTest->GetConfigType().c_str(),!this->BuildNoClean, false);
-
+      config,
+      !this->BuildNoClean, 
+      false, remainingTime);
     out << output;
     // if the build failed then return
     if (retVal)
@@ -217,106 +280,33 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
     *outstring =  out.str();
     }
 
-  // if not test was specified then we are done
+  // if no test was specified then we are done
   if (!this->TestCommand.size())
     {
     return 0;
     }
 
   // now run the compiled test if we can find it
-  std::vector<std::string> attempted;
-  std::vector<std::string> failed;
-  std::string tempPath;
-  std::string filepath =
-    cmSystemTools::GetFilenamePath(this->TestCommand);
-  std::string filename =
-    cmSystemTools::GetFilenameName(this->TestCommand);
-  // if full path specified then search that first
-  if (filepath.size())
-    {
-    tempPath = filepath;
-    tempPath += "/";
-    tempPath += filename;
-    attempted.push_back(tempPath);
-    if(this->CTest->GetConfigType().size())
-      {
-      tempPath = filepath;
-      tempPath += "/";
-      tempPath += this->CTest->GetConfigType();
-      tempPath += "/";
-      tempPath += filename;
-      attempted.push_back(tempPath);
-      // If the file is an OSX bundle then the configtyp
-      // will be at the start of the path
-      tempPath = this->CTest->GetConfigType();
-      tempPath += "/";
-      tempPath += filepath;
-      tempPath += "/";
-      tempPath += filename;
-      attempted.push_back(tempPath);
-      }
-    }
-  // otherwise search local dirs
-  else
-    {
-    attempted.push_back(filename);
-    if(this->CTest->GetConfigType().size())
-      {
-      tempPath = this->CTest->GetConfigType();
-      tempPath += "/";
-      tempPath += filename;
-      attempted.push_back(tempPath);
-      }
-    }
+  // store the final location in fullPath
+  std::string fullPath;
+  std::string resultingConfig;
+  std::vector<std::string> extraPaths;
   // if this->ExecutableDirectory is set try that as well
   if (this->ExecutableDirectory.size())
     {
-    tempPath = this->ExecutableDirectory;
+    std::string tempPath = this->ExecutableDirectory;
     tempPath += "/";
     tempPath += this->TestCommand;
-    attempted.push_back(tempPath);
-    if(this->CTest->GetConfigType().size())
-      {
-      tempPath = this->ExecutableDirectory;
-      tempPath += "/";
-      tempPath += this->CTest->GetConfigType();
-      tempPath += "/";
-      tempPath += filename;
-      attempted.push_back(tempPath);
-      }
+    extraPaths.push_back(tempPath);
     }
-
-  // store the final location in fullPath
-  std::string fullPath;
-
-  // now look in the paths we specified above
-  for(unsigned int ai=0;
-      ai < attempted.size() && fullPath.size() == 0; ++ai)
-    {
-    // first check without exe extension
-    if(cmSystemTools::FileExists(attempted[ai].c_str())
-       && !cmSystemTools::FileIsDirectory(attempted[ai].c_str()))
-      {
-      fullPath = cmSystemTools::CollapseFullPath(attempted[ai].c_str());
-      }
-    // then try with the exe extension
-    else
-      {
-      failed.push_back(attempted[ai].c_str());
-      tempPath = attempted[ai];
-      tempPath += cmSystemTools::GetExecutableExtension();
-      if(cmSystemTools::FileExists(tempPath.c_str())
-         && !cmSystemTools::FileIsDirectory(tempPath.c_str()))
-        {
-        fullPath = cmSystemTools::CollapseFullPath(tempPath.c_str());
-        }
-      else
-        {
-        failed.push_back(tempPath.c_str());
-        }
-      }
-    }
-
+  std::vector<std::string> failed;
+  fullPath = 
+    cmCTestTestHandler::FindExecutable(this->CTest, 
+                                       this->TestCommand.c_str(),
+                                       resultingConfig,
+                                       extraPaths,
+                                       failed);
+  
   if(!cmSystemTools::FileExists(fullPath.c_str()))
     {
     out << "Could not find path to executable, perhaps it was not built: "
@@ -361,8 +351,25 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
     out << this->TestCommandArgs[k] << " ";
     }
   out << "\n";
-  // What is this? this->TimeOut = timeout;
-  int runTestRes = this->CTest->RunTest(testCommand, &outs, &retval, 0);
+
+  // how much time is remaining
+  double remainingTime = 0;
+  if (this->Timeout)
+    {
+    remainingTime = this->Timeout - cmSystemTools::GetTime() + clock_start;
+    if (remainingTime <= 0)
+      {
+      if(outstring)
+        {
+        *outstring = "--build-and-test timeout exceeded. ";
+        }
+      return 1;
+      }
+    }
+  
+  int runTestRes = this->CTest->RunTest(testCommand, &outs, &retval, 0, 
+                                        remainingTime);
+
   if(runTestRes != cmsysProcess_State_Exited || retval != 0)
     {
     out << "Failed to run test command: " << testCommand[0] << "\n";
@@ -432,6 +439,11 @@ int cmCTestBuildAndTestHandler::ProcessCommandLineArguments(
     idx++;
     this->ExecutableDirectory = allArgs[idx];
     }
+  if(currentArg.find("--test-timeout",0) == 0 && idx < allArgs.size() - 1)
+    {
+    idx++;
+    this->Timeout = atof(allArgs[idx].c_str());
+    }
   if(currentArg.find("--build-generator",0) == 0 && idx < allArgs.size() - 1)
     {
     idx++;
@@ -448,6 +460,12 @@ int cmCTestBuildAndTestHandler::ProcessCommandLineArguments(
     idx++;
     this->BuildMakeProgram = allArgs[idx];
     }
+  if(currentArg.find("--build-config-sample",0) == 0 &&
+    idx < allArgs.size() - 1)
+    {
+    idx++;
+    this->ConfigSample = allArgs[idx];
+    }
   if(currentArg.find("--build-noclean",0) == 0)
     {
     this->BuildNoClean = true;
@@ -460,8 +478,8 @@ int cmCTestBuildAndTestHandler::ProcessCommandLineArguments(
       {
       this->BuildOptions.push_back(allArgs[idx]);
       if(idx+1 < allArgs.size()
-        && (allArgs[idx+1] == "--build-target" ||
-          allArgs[idx+1] == "--test-command"))
+         && (allArgs[idx+1] == "--build-target" ||
+             allArgs[idx+1] == "--test-command"))
         {
         done = true;
         }
@@ -483,5 +501,4 @@ int cmCTestBuildAndTestHandler::ProcessCommandLineArguments(
     }
   return 1;
 }
-
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCursesMainForm.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:07 $
-  Version:   $Revision: 1.68.2.1 $
+  Date:      $Date: 2008-03-07 21:32:09 $
+  Version:   $Revision: 1.73 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,6 +16,7 @@
 =========================================================================*/
 #include "../cmCacheManager.h"
 #include "../cmSystemTools.h"
+#include "../cmVersion.h"
 #include "../cmake.h"
 #include "cmCursesMainForm.h"
 #include "cmCursesStringWidget.h"
@@ -47,6 +48,7 @@ cmCursesMainForm::cmCursesMainForm(std::vector<std::string> const& args,
   this->HelpMessage.push_back("");
   this->HelpMessage.push_back(s_ConstHelpMessage);
   this->CMakeInstance = new cmake;
+  this->CMakeInstance->SetCMakeEditCommand("ccmake");
 
   // create the arguments for the cmake object
   std::string whereCMake = cmSystemTools::GetProgramPath(this->Args[0].c_str());
@@ -216,7 +218,6 @@ void cmCursesMainForm::RePost()
     this->Form = 0;
     }
   delete[] this->Fields;
-
   if (this->AdvancedMode)
     {
     this->NumberOfVisibleEntries = this->Entries->size();
@@ -237,7 +238,11 @@ void cmCursesMainForm::RePost()
       this->NumberOfVisibleEntries++;
       }
     }
-
+  // there is always one even if it is the dummy one
+  if(this->NumberOfVisibleEntries == 0)
+    {
+    this->NumberOfVisibleEntries = 1;
+    }
   // Assign the fields: 3 for each entry: label, new entry marker
   // ('*' or ' ') and entry widget
   this->Fields = new FIELD*[3*this->NumberOfVisibleEntries+1];
@@ -263,7 +268,15 @@ void cmCursesMainForm::RePost()
     this->Fields[3*j+2]  = (*it)->Entry->Field;
     j++;
     }
-
+  // if no cache entries there should still be one dummy field
+  if(j == 0)
+    {
+    it = this->Entries->begin();
+    this->Fields[0]    = (*it)->Label->Field;
+    this->Fields[1]  = (*it)->IsNewLabel->Field;
+    this->Fields[2]  = (*it)->Entry->Field;
+    this->NumberOfVisibleEntries = 1;
+    }
   // Has to be null terminated.
   this->Fields[3*this->NumberOfVisibleEntries] = 0;
 }
@@ -579,8 +592,8 @@ void cmCursesMainForm::UpdateStatusBar(const char* message)
   // We want to display this on the right
   char version[cmCursesMainForm::MAX_WIDTH];
   char vertmp[128];
-  sprintf(vertmp,"CMake Version %d.%d - %s", cmake::GetMajorVersion(),
-          cmake::GetMinorVersion(),cmake::GetReleaseVersion());
+  sprintf(vertmp,"CMake Version %d.%d - %s", cmVersion::GetMajorVersion(),
+          cmVersion::GetMinorVersion(),cmVersion::GetReleaseVersion().c_str());
   int sideSpace = (width-strlen(vertmp));
   for(i=0; i<sideSpace; i++) { version[i] = ' '; }
   sprintf(version+sideSpace, "%s", vertmp);
@@ -802,7 +815,7 @@ void cmCursesMainForm::FillCacheManagerFromUI()
         {
         // The user has changed the value.  Mark it as modified.
         it.SetProperty("MODIFIED", true);
-      it.SetValue(fixedNewValue.c_str());
+        it.SetValue(fixedNewValue.c_str());
         }
       }
     }

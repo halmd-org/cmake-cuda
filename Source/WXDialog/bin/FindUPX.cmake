@@ -9,7 +9,7 @@ FIND_PATH(UPX_PROGRAM_PATH upx.exe
   $ENV{UPX_DIR}
   "$ENV{ProgramFiles}/upx"
   )
-  
+
 # when found, note this as target
 IF(UPX_PROGRAM_PATH)
   SET(UPX_FOUND 1)

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSiteNameCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/12/07 16:39:08 $
-  Version:   $Revision: 1.9 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.11 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,7 +39,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -49,7 +50,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "SITE_NAME";}
+  virtual const char* GetName() {return "site_name";}
   
   /**
    * Succinct documentation.
@@ -65,7 +66,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  SITE_NAME(variable)\n";
+      "  site_name(variable)\n";
     }
   
   cmTypeMacro(cmSiteNameCommand, cmCommand);

@@ -1,3 +1,19 @@
+/*=========================================================================
+
+  Program:   CMake - Cross-Platform Makefile Generator
+  Module:    $RCSfile: cmXCodeObject.h,v $
+  Language:  C++
+  Date:      $Date: 2007-07-27 14:55:24 $
+  Version:   $Revision: 1.18 $
+
+  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
+  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even 
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
 #ifndef cmXCodeObject_h
 #define cmXCodeObject_h
 
@@ -49,19 +65,19 @@ public:
     {
       this->List.push_back(value);
     }
-  bool HasObject(cmXCodeObject* o)
-    {
+  bool HasObject(cmXCodeObject* o) 
+  {
     return !(std::find(this->List.begin(), this->List.end(), o) 
              == this->List.end());
-    }
+  }
   void AddUniqueObject(cmXCodeObject* value)
-    {
+  {
     if(std::find(this->List.begin(), this->List.end(), value) 
        == this->List.end())
-        {
-        this->List.push_back(value);
-        }
-    }
+      {
+      this->List.push_back(value);
+      }
+  }
   static void Indent(int level, std::ostream& out);
   void Print(std::ostream& out);
   virtual void PrintComment(std::ostream&) {};

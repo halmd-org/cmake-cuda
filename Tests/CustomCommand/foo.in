@@ -15,7 +15,7 @@ int main ()
     if(fin)
       {
       fclose(fin);
-    return 0;
+      return 0;
       }
     else
       {

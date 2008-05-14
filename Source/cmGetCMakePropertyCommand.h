@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetCMakePropertyCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/12/07 16:39:08 $
-  Version:   $Revision: 1.6 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,7 +31,8 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -41,7 +42,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "GET_CMAKE_PROPERTY";}
+  virtual const char* GetName() { return "get_cmake_property";}
 
   /**
    * Succinct documentation.
@@ -57,7 +58,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
       return
-        "  GET_CMAKE_PROPERTY(VAR property)\n"
+        "  get_cmake_property(VAR property)\n"
         "Get a property from the CMake instance.  The value of the "
         "property is stored in the variable VAR. If the property is "
         "not found, CMake will report an error. Some supported properties "

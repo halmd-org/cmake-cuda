@@ -306,9 +306,12 @@ gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL);
 }
 #endif
 #ifdef HAVE_SOCKLEN_T
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#endif
 int
 main ()
 {
@@ -519,17 +522,5 @@ main () {
     if(!buffer[0] || error)
       return 99;
     return 0;
-}
-#endif
-#ifdef HAVE_LONG_LONG_CONSTANT
-int main()
-{
-  long long c = 0x8000000000000000LL;
-  long long k = 0x7FFFFFFFFFFFFFFFLL;
-  if ( c == 0x8000000000000000LL && c != k )
-    {
-    return 0;
-    }
-  return 1;
 }
 #endif

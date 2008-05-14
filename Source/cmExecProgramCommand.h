@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExecProgramCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.17.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.23 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,13 +41,14 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
   virtual const char* GetName() 
-    {return "EXEC_PROGRAM";}
+    {return "exec_program";}
   
   /**
    * This determines if the command is invoked when in script mode.
@@ -60,8 +61,7 @@ public:
   virtual const char* GetTerseDocumentation() 
     {
     return 
-      "Run and executable program during the processing of the CMakeList.txt"
-      " file.";
+      "Deprecated.  Use the execute_process() command instead.";
     }
   
   /**
@@ -70,7 +70,9 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  EXEC_PROGRAM(Executable [directory in which to run]\n"
+      "Run an executable program during the processing of the CMakeList.txt"
+      " file.\n"
+      "  exec_program(Executable [directory in which to run]\n"
       "               [ARGS <arguments to executable>]\n"
       "               [OUTPUT_VARIABLE <var>]\n"
       "               [RETURN_VALUE <var>])\n"
@@ -83,8 +85,6 @@ public:
       "To capture the return value of the execution, provide a RETURN_VALUE. "
       "If OUTPUT_VARIABLE is specified, then no output will go to the "
       "stdout/stderr of the console running cmake.\n"
-      "The EXECUTE_PROCESS command is a newer more powerful version of "
-      "EXEC_PROGRAM, but the old command has been kept for compatibility."
       ;
     }
   

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddSubDirectoryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.4.2.4 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.11 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,7 @@
 
 // cmAddSubDirectoryCommand
 bool cmAddSubDirectoryCommand::InitialPass
-(std::vector<std::string> const& args)
+(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -30,7 +30,7 @@ bool cmAddSubDirectoryCommand::InitialPass
   std::string srcArg = args[0];
   std::string binArg;
   
-  bool intoplevel = true;
+  bool excludeFromAll = false;
 
   // process the rest of the arguments looking for optional args
   std::vector<std::string>::const_iterator i = args.begin();
@@ -39,7 +39,7 @@ bool cmAddSubDirectoryCommand::InitialPass
     {
     if(*i == "EXCLUDE_FROM_ALL")
       {
-      intoplevel = false;
+      excludeFromAll = true;
       continue;
       }
     else if (!binArg.size())
@@ -61,7 +61,7 @@ bool cmAddSubDirectoryCommand::InitialPass
     srcPath = srcArg;
     }
   else
-      {
+    {
     srcPath = this->Makefile->GetCurrentDirectory();
     srcPath += "/";
     srcPath += srcArg;
@@ -71,11 +71,11 @@ bool cmAddSubDirectoryCommand::InitialPass
     std::string error = "given source \"";
     error += srcArg;
     error += "\" which is not an existing directory.";
-      this->SetError(error.c_str());   
-      return false;
-      }
+    this->SetError(error.c_str());
+    return false;
+    }
   srcPath = cmSystemTools::CollapseFullPath(srcPath.c_str());
-  
+
   // Compute the full path to the binary directory.
   std::string binPath;
   if(binArg.empty())
@@ -108,7 +108,7 @@ bool cmAddSubDirectoryCommand::InitialPass
     // Use the binary directory specified.
     // Interpret a relative path with respect to the current binary directory.
     if(cmSystemTools::FileIsFullPath(binArg.c_str()))
-        {
+      {
       binPath = binArg;
       }
     else
@@ -116,13 +116,13 @@ bool cmAddSubDirectoryCommand::InitialPass
       binPath = this->Makefile->GetCurrentOutputDirectory();
       binPath += "/";
       binPath += binArg;
-        }
+      }
     }
   binPath = cmSystemTools::CollapseFullPath(binPath.c_str());
-  
+
   // Add the subdirectory using the computed full paths.
   this->Makefile->AddSubDirectory(srcPath.c_str(), binPath.c_str(),
-                              intoplevel, false, true);
+                                  excludeFromAll, false, true);
 
   return true;
 }

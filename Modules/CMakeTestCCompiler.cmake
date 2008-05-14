@@ -10,7 +10,6 @@ IF(NOT CMAKE_C_COMPILER_WORKS)
     "#ifdef __cplusplus\n"
     "# error \"The CMAKE_C_COMPILER is set to a C++ compiler\"\n"
     "#endif\n"
-    "#include <stdio.h>\n"
     "#if defined(__CLASSIC_C__)\n"
     "int main(argc, argv)\n"
     "  int argc;\n"
@@ -18,7 +17,7 @@ IF(NOT CMAKE_C_COMPILER_WORKS)
     "#else\n"
     "int main(int argc, char* argv[])\n"
     "#endif\n"
-    "{ printf(\"%s\\n\", argv[0]); return argc-1;}\n")
+    "{ return argc-1;}\n")
   TRY_COMPILE(CMAKE_C_COMPILER_WORKS ${CMAKE_BINARY_DIR} 
     ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/testCCompiler.c
     OUTPUT_VARIABLE OUTPUT) 
@@ -41,14 +40,20 @@ ELSE(NOT CMAKE_C_COMPILER_WORKS)
       "Determining if the C compiler works passed with "
       "the following output:\n${OUTPUT}\n\n") 
   ENDIF(C_TEST_WAS_RUN)
-  INCLUDE (${CMAKE_ROOT}/Modules/CheckTypeSize.cmake)
-  # Check the size of void*.  This used to be "void *" but icc expands the *.
-  CHECK_TYPE_SIZE("void*"  CMAKE_SIZEOF_VOID_P)
   SET(CMAKE_C_COMPILER_WORKS 1 CACHE INTERNAL "")
-  # re-configure this file CMakeCCompiler.cmake so that it gets
-  # the value for CMAKE_SIZEOF_VOID_P
-  # configure variables set in this file for fast reload later on
-  CONFIGURE_FILE(${CMAKE_ROOT}/Modules/CMakeCCompiler.cmake.in 
-    ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeCCompiler.cmake IMMEDIATE)
+
+  IF(CMAKE_C_COMPILER_FORCED)
+    # The compiler configuration was forced by the user.
+    # Assume the user has configured all compiler information.
+  ELSE(CMAKE_C_COMPILER_FORCED)
+    # Try to identify the ABI and configure it into CMakeCCompiler.cmake
+    INCLUDE(${CMAKE_ROOT}/Modules/CMakeDetermineCompilerABI.cmake)
+    CMAKE_DETERMINE_COMPILER_ABI(C ${CMAKE_ROOT}/Modules/CMakeCCompilerABI.c)
+    CONFIGURE_FILE(
+      ${CMAKE_ROOT}/Modules/CMakeCCompiler.cmake.in
+      ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeCCompiler.cmake
+      @ONLY IMMEDIATE # IMMEDIATE must be here for compatibility mode <= 2.0
+      )
+  ENDIF(CMAKE_C_COMPILER_FORCED)
 ENDIF(NOT CMAKE_C_COMPILER_WORKS)
 

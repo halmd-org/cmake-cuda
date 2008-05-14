@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetSourceFilePropertyCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/22 19:06:52 $
-  Version:   $Revision: 1.10 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,12 +31,13 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "GET_SOURCE_FILE_PROPERTY";}
+  virtual const char* GetName() { return "get_source_file_property";}
 
   /**
    * Succinct documentation.
@@ -52,10 +53,10 @@ public:
   virtual const char* GetFullDocumentation()
     {
       return
-        "  GET_SOURCE_FILE_PROPERTY(VAR file property)\n"
+        "  get_source_file_property(VAR file property)\n"
         "Get a property from a source file.  The value of the property is "
         "stored in the variable VAR.  If the property is not found, VAR "
-        "will be set to \"NOTFOUND\".  Use SET_SOURCE_FILES_PROPERTIES to set "
+        "will be set to \"NOTFOUND\". Use set_source_files_properties to set "
         "property values.  Source file properties usually control how the "
         "file is built. One property that is always there is LOCATION";
     }

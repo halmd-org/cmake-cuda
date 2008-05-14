@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmBuildNameCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.12.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,7 +39,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -49,7 +50,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "BUILD_NAME";}
+  virtual const char* GetName() {return "build_name";}
 
   /**
    * Succinct documentation.
@@ -66,7 +67,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  BUILD_NAME(variable)\n"
+      "  build_name(variable)\n"
       "Sets the specified variable to a string representing the platform "
       "and compiler settings.  These values are now available through the "
       "CMAKE_SYSTEM and CMAKE_CXX_COMPILER variables.";

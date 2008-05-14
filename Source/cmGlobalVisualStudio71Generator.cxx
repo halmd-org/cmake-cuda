@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio71Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.30.2.5 $
+  Date:      $Date: 2008-05-01 16:35:39 $
+  Version:   $Revision: 1.48.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,16 +20,14 @@
 #include "cmMakefile.h"
 #include "cmake.h"
 
-
-
+//----------------------------------------------------------------------------
 cmGlobalVisualStudio71Generator::cmGlobalVisualStudio71Generator()
 {
   this->FindMakeProgramFile = "CMakeVS71FindMake.cmake";
   this->ProjectConfigurationSectionName = "ProjectConfiguration";
 }
 
-
-
+//----------------------------------------------------------------------------
 ///! Create a local generator appropriate to this Global Generator
 cmLocalGenerator *cmGlobalVisualStudio71Generator::CreateLocalGenerator()
 {
@@ -40,242 +38,98 @@ cmLocalGenerator *cmGlobalVisualStudio71Generator::CreateLocalGenerator()
   return lg;
 }
 
+//----------------------------------------------------------------------------
 void cmGlobalVisualStudio71Generator::AddPlatformDefinitions(cmMakefile* mf)
 {
   mf->AddDefinition("MSVC71", "1");
 }
 
-// Write a SLN file to the stream
+//----------------------------------------------------------------------------
+std::string cmGlobalVisualStudio71Generator::GetUserMacrosDirectory()
+{
+  // Macros not supported on Visual Studio 7.1 and earlier because
+  // they do not appear to work *during* a build when called by an
+  // outside agent...
+  //
+  return "";
+
+#if 0
+  //
+  // The COM result from calling a Visual Studio macro with 7.1 indicates
+  // that the call succeeds, but the macro does not appear to execute...
+  //
+  // So, I am leaving this code here to show how to do it, but have not
+  // yet figured out what the issue is in terms of why the macro does not
+  // appear to execute...
+  //
+  std::string base;
+  std::string path;
+
+  // base begins with the VisualStudioProjectsLocation reg value...
+  if (cmSystemTools::ReadRegistryValue(
+    "HKEY_CURRENT_USER\\Software\\Microsoft\\VisualStudio\\7.1;"
+    "VisualStudioProjectsLocation",
+    base))
+    {
+    cmSystemTools::ConvertToUnixSlashes(base);
+
+    // 7.1 macros folder:
+    path = base + "/VSMacros71";
+    }
+
+  // path is (correctly) still empty if we did not read the base value from
+  // the Registry value
+  return path;
+#endif
+}
+
+//----------------------------------------------------------------------------
+std::string cmGlobalVisualStudio71Generator::GetUserMacrosRegKeyBase()
+{
+  // Macros not supported on Visual Studio 7.1 and earlier because
+  // they do not appear to work *during* a build when called by an
+  // outside agent...
+  //
+  return "";
+
+#if 0
+  return "Software\\Microsoft\\VisualStudio\\7.1\\vsmacros";
+#endif
+}
+
+//----------------------------------------------------------------------------
 void cmGlobalVisualStudio71Generator
 ::WriteSLNFile(std::ostream& fout,
-                                                   cmLocalGenerator* root,
-                                                   std::vector<cmLocalGenerator*>& generators)
-{
+               cmLocalGenerator* root,
+               std::vector<cmLocalGenerator*>& generators)
+{ 
   // Write out the header for a SLN file
   this->WriteSLNHeader(fout);
   
-  // Get the start directory with the trailing slash
-  std::string rootdir = root->GetMakefile()->GetStartOutputDirectory();
-  rootdir += "/";
-  bool doneAllBuild = false;
-  bool doneCheckBuild = false;
-  bool doneRunTests = false;
-  bool doneInstall  = false;
-  bool doneEditCache = false;
-  bool doneRebuildCache = false;
-  bool donePackage = false;
-  
-  // For each cmMakefile, create a VCProj for it, and
-  // add it to this SLN file
-  unsigned int i;
-  for(i = 0; i < generators.size(); ++i)
-    {
-    if(this->IsExcluded(root, generators[i]))
-      {
-      continue;
-      }
-    cmMakefile* mf = generators[i]->GetMakefile();
-
-    // Get the source directory from the makefile
-    std::string dir = mf->GetStartOutputDirectory();
-    // remove the home directory and / from the source directory
-    // this gives a relative path 
-    cmSystemTools::ReplaceString(dir, rootdir.c_str(), "");
-
-    // Get the list of create dsp files names from the cmVCProjWriter, more
-    // than one dsp could have been created per input CMakeLists.txt file
-    // for each target
-    std::vector<std::string> dspnames = 
-      static_cast<cmLocalVisualStudio7Generator *>(generators[i])
-      ->GetCreatedProjectNames();
-    cmTargets &tgts = generators[i]->GetMakefile()->GetTargets();
-    cmTargets::iterator l = tgts.begin();
-    for(std::vector<std::string>::iterator si = dspnames.begin(); 
-        l != tgts.end() && si != dspnames.end(); ++l)
-      {
-      // special handling for the current makefile
-      if(mf == generators[0]->GetMakefile())
-        {
-        dir = "."; // no subdirectory for project generated
-        // if this is the special ALL_BUILD utility, then
-        // make it depend on every other non UTILITY project.
-        // This is done by adding the names to the GetUtilities
-        // vector on the makefile
-        if(l->first == "ALL_BUILD" && !doneAllBuild)
-          {
-          unsigned int j;
-          for(j = 0; j < generators.size(); ++j)
-            {
-            cmTargets &atgts = generators[j]->GetMakefile()->GetTargets();
-            for(cmTargets::iterator al = atgts.begin();
-                al != atgts.end(); ++al)
-              {
-              if (al->second.IsInAll())
-                {
-                if (al->second.GetType() == cmTarget::UTILITY ||
-                    al->second.GetType() == cmTarget::GLOBAL_TARGET)
-                  {
-                  l->second.AddUtility(al->first.c_str());
-                  }
-                else
-                  {
-                  l->second.AddLinkLibrary(al->first,cmTarget::GENERAL);
-                  }
-                }
-              }
-            }
-          }
-        }
-      // Write the project into the SLN file
-      if (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-        {
-        cmCustomCommand cc = l->second.GetPostBuildCommands()[0];
-        const cmCustomCommandLines& cmds = cc.GetCommandLines();
-        std::string project = cmds[0][0];
-        std::string location = cmds[0][1];
-        this->WriteExternalProject(fout, project.c_str(), 
-                                   location.c_str(), cc.GetDepends());
-        }
-      else 
-        {
-        if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-            && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS))
-          {
-          bool skip = false;
-          if(l->first == "ALL_BUILD" )
-            {
-            if(doneAllBuild)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneAllBuild = true;
-              }
-            }
-          if(l->first == CMAKE_CHECK_BUILD_SYSTEM_TARGET)
-            {
-            if(doneCheckBuild)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneCheckBuild = true;
-              }
-            }
-          if(l->first == "INSTALL")
-            {
-            if(doneInstall)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneInstall = true;
-              }
-            }
-          if(l->first == "RUN_TESTS")
-            {
-            if(doneRunTests)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneRunTests = true;
-              }
-            }
-          if(l->first == "EDIT_CACHE")
-            {
-            if(doneEditCache)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneEditCache = true;
-              }
-            }
-          if(l->first == "REBUILD_CACHE")
-            {
-            if(doneRebuildCache)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneRebuildCache = true;
-              }
-            }
-          if(l->first == "PACKAGE")
-            {
-            if(donePackage)
-              {
-              skip = true;
-              }
-            else
-              {
-              donePackage = true;
-              }
-            }
-          if(!skip)
-            {
-            this->WriteProject(fout, si->c_str(), dir.c_str(),l->second);
-            }
-          ++si;
-          }
-        }
-      }
-    }
+  // collect the set of targets for this project by 
+  // tracing depends of all targets.
+  // also collect the set of targets that are explicitly
+  // in this project. 
+  cmGlobalGenerator::TargetDependSet projectTargets;
+  cmGlobalGenerator::TargetDependSet originalTargets;
+  this->GetTargetSets(projectTargets,
+                      originalTargets,
+                      root, generators);
+  this->WriteTargetsToSolution(fout, root, projectTargets, originalTargets);
+  // Write out the configurations information for the solution
   fout << "Global\n";
+  // Write out the configurations for the solution
   this->WriteSolutionConfigurations(fout);
   fout << "\tGlobalSection(" << this->ProjectConfigurationSectionName
        << ") = postSolution\n";
-  // loop over again and compute the depends
-  for(i = 0; i < generators.size(); ++i)
-    {
-    cmMakefile* mf = generators[i]->GetMakefile();
-    cmLocalVisualStudio7Generator* pg =  
-      static_cast<cmLocalVisualStudio7Generator*>(generators[i]);
-    // Get the list of create dsp files names from the cmVCProjWriter, more
-    // than one dsp could have been created per input CMakeLists.txt file
-    // for each target
-    std::vector<std::string> dspnames = 
-      pg->GetCreatedProjectNames();
-    cmTargets &tgts = pg->GetMakefile()->GetTargets();
-    cmTargets::iterator l = tgts.begin();
-    std::string dir = mf->GetStartDirectory();
-    for(std::vector<std::string>::iterator si = dspnames.begin(); 
-        l != tgts.end() && si != dspnames.end(); ++l)
-      {
-      if (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-        {
-        cmCustomCommand cc = l->second.GetPostBuildCommands()[0];
-        const cmCustomCommandLines& cmds = cc.GetCommandLines();
-        std::string project = cmds[0][0];
-        this->WriteProjectConfigurations(fout, project.c_str(), 
-                                         true);
-        }
-      else if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-               && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS))
-        {
-        bool partOfDefaultBuild = this->IsPartOfDefaultBuild(
-          root->GetMakefile()->GetProjectName(),
-          &l->second);
-        this->WriteProjectConfigurations(fout, si->c_str(), 
-                                         partOfDefaultBuild);
-        ++si;
-        }
-      }
-    }
+  // Write out the configurations for all the targets in the project
+  this->WriteTargetConfigurations(fout, root, projectTargets);
   fout << "\tEndGlobalSection\n";
-
   // Write the footer for the SLN file
   this->WriteSLNFooter(fout);
 }
 
-
+//----------------------------------------------------------------------------
 void
 cmGlobalVisualStudio71Generator
 ::WriteSolutionConfigurations(std::ostream& fout)
@@ -289,6 +143,7 @@ cmGlobalVisualStudio71Generator
   fout << "\tEndGlobalSection\n";
 }
 
+//----------------------------------------------------------------------------
 // Write a dsp file into the SLN file,
 // Note, that dependencies from executables to 
 // the libraries it uses are also done here
@@ -298,10 +153,19 @@ cmGlobalVisualStudio71Generator::WriteProject(std::ostream& fout,
                                               const char* dir,
                                               cmTarget& t)
 {
-  fout << "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"" 
+  // check to see if this is a fortran build
+  const char* ext = ".vcproj";
+  const char* project = "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"";
+  if(this->TargetIsFortranOnly(t))
+    {
+    ext = ".vfproj"; 
+    project = "Project(\"{6989167D-11E4-40FE-8C1A-2192A86A7E90}\") = \"";
+    }
+  
+  fout << project
        << dspname << "\", \""
        << this->ConvertToSolutionPath(dir)
-       << "\\" << dspname << ".vcproj\", \"{"
+       << "\\" << dspname << ext << "\", \"{"
        << this->GetGUID(dspname) << "}\"\n";
   fout << "\tProjectSection(ProjectDependencies) = postProject\n";
   this->WriteProjectDepends(fout, dspname, dir, t);
@@ -310,8 +174,7 @@ cmGlobalVisualStudio71Generator::WriteProject(std::ostream& fout,
   fout <<"EndProject\n";
 }
 
-
-
+//----------------------------------------------------------------------------
 // Write a dsp file into the SLN file,
 // Note, that dependencies from executables to 
 // the libraries it uses are also done here
@@ -321,8 +184,18 @@ cmGlobalVisualStudio71Generator
                       const char* dspname,
                       const char*, cmTarget& target)
 {
-  // insert Begin Project Dependency  Project_Dep_Name project stuff here 
+#if 0
+  // Create inter-target dependencies in the solution file.  For VS
+  // 7.1 and below we cannot let static libraries depend directly on
+  // targets to which they "link" because the librarian tool will copy
+  // the targets into the static library.  See
+  // cmGlobalVisualStudioGenerator::FixUtilityDependsForTarget for a
+  // work-around.  VS 8 and above do not have this problem.
+  if (!this->VSLinksDependencies() ||
+      target.GetType() != cmTarget::STATIC_LIBRARY);
+#else
   if (target.GetType() != cmTarget::STATIC_LIBRARY)
+#endif
     {
     cmTarget::LinkLibraryVectorType::const_iterator j, jend;
     j = target.GetLinkLibraries().begin();
@@ -332,7 +205,9 @@ cmGlobalVisualStudio71Generator
       if(j->first != dspname)
         {
         // is the library part of this SLN ? If so add dependency
-        if(this->FindTarget(this->CurrentProject.c_str(), j->first.c_str()))
+        // find target anywhere because all depend libraries are 
+        // brought in as well
+        if(this->FindTarget(0, j->first.c_str()))
           {
           fout << "\t\t{" << this->GetGUID(j->first.c_str()) << "} = {"
                << this->GetGUID(j->first.c_str()) << "}\n";
@@ -349,17 +224,7 @@ cmGlobalVisualStudio71Generator
     {
     if(*i != dspname)
       {
-      std::string name = i->c_str();
-      if(strncmp(name.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-        {
-        // kind of weird removing the first 27 letters.  my
-        // recommendatsions: use cmCustomCommand::GetCommand() to get the
-        // project name or get rid of the target name starting with
-        // "INCLUDE_EXTERNAL_MSPROJECT_" and use another indicator/flag
-        // somewhere.  These external project names shouldn't conflict
-        // with cmake target names anyways.
-        name.erase(name.begin(), name.begin() + 27);
-        }
+      std::string name = this->GetUtilityForTarget(target, i->c_str());
       std::string guid = this->GetGUID(name.c_str());
       if(guid.size() == 0)
         {
@@ -375,14 +240,16 @@ cmGlobalVisualStudio71Generator
     }
 }
 
+//----------------------------------------------------------------------------
 // Write a dsp file into the SLN file, Note, that dependencies from
 // executables to the libraries it uses are also done here
 void cmGlobalVisualStudio71Generator
 ::WriteExternalProject(std::ostream& fout, 
-                               const char* name,
-                               const char* location,
-                               const std::vector<std::string>& depends)
+                       const char* name,
+                       const char* location,
+                       const std::vector<std::string>& depends)
 { 
+  std::cout << "WriteExternalProject vs71\n";
   fout << "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"" 
        << name << "\", \""
        << this->ConvertToSolutionPath(location) << "\", \"{"
@@ -414,7 +281,7 @@ void cmGlobalVisualStudio71Generator
 
 }
 
-
+//----------------------------------------------------------------------------
 // Write a dsp file into the SLN file, Note, that dependencies from
 // executables to the libraries it uses are also done here
 void cmGlobalVisualStudio71Generator
@@ -429,15 +296,13 @@ void cmGlobalVisualStudio71Generator
          << ".ActiveCfg = " << *i << "|Win32\n";
     if(partOfDefaultBuild)
       {
-      fout << "\t\t{" << guid << "}." << *i 
+      fout << "\t\t{" << guid << "}." << *i
            << ".Build.0 = " << *i << "|Win32\n";
       }
     }
 }
 
-
-
-
+//----------------------------------------------------------------------------
 // Standard end of dsw file
 void cmGlobalVisualStudio71Generator::WriteSLNFooter(std::ostream& fout)
 {
@@ -448,7 +313,7 @@ void cmGlobalVisualStudio71Generator::WriteSLNFooter(std::ostream& fout)
        << "EndGlobal\n";
 }
 
-  
+//----------------------------------------------------------------------------
 // ouput standard header for dsw file
 void cmGlobalVisualStudio71Generator::WriteSLNHeader(std::ostream& fout)
 {
@@ -459,7 +324,7 @@ void cmGlobalVisualStudio71Generator::WriteSLNHeader(std::ostream& fout)
 void cmGlobalVisualStudio71Generator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates Visual Studio .NET 2003 project files.";
-  entry.full = "";
+  entry.Name = this->GetName();
+  entry.Brief = "Generates Visual Studio .NET 2003 project files.";
+  entry.Full = "";
 }

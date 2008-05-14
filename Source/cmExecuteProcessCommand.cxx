@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExecuteProcessCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.6.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -28,10 +28,12 @@ static bool cmExecuteProcessCommandIsWhitespace(char c)
 
 void cmExecuteProcessCommandFixText(std::vector<char>& output,
                                     bool strip_trailing_whitespace);
+void cmExecuteProcessCommandAppend(std::vector<char>& output,
+                                   const char* data, int length);
 
 // cmExecuteProcessCommand
 bool cmExecuteProcessCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -305,14 +307,14 @@ bool cmExecuteProcessCommand
         }
       else
         {
-        tempOutput.insert(tempOutput.end(), data, data+length);
+        cmExecuteProcessCommandAppend(tempOutput, data, length);
         }
       }
     else if(p == cmsysProcess_Pipe_STDERR && !error_quiet)
       {
       if(!error_variable.empty())
         {
-        tempError.insert(tempError.end(), data, data+length);
+        cmExecuteProcessCommandAppend(tempError, data, length);
         }
       }
     }
@@ -404,4 +406,22 @@ void cmExecuteProcessCommandFixText(std::vector<char>& output,
 
   // Put a terminator on the text string.
   output.push_back('\0');
+}
+
+//----------------------------------------------------------------------------
+void cmExecuteProcessCommandAppend(std::vector<char>& output,
+                                   const char* data, int length)
+{
+#if defined(__APPLE__)
+  // HACK on Apple to work around bug with inserting at the
+  // end of an empty vector.  This resulted in random failures
+  // that were hard to reproduce.
+  if(output.empty() && length > 0)
+    {
+    output.push_back(data[0]);
+    ++data;
+    --length;
+    }
+#endif
+  output.insert(output.end(), data, data+length);
 }

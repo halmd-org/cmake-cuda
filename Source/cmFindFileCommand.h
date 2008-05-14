@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindFileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/02 18:30:22 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2007-10-10 15:47:43 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -38,7 +38,7 @@ public:
     {
     return new cmFindFileCommand;
     }
-  virtual const char* GetName() { return "FIND_FILE";}
+  virtual const char* GetName() { return "find_file";}
 
   /**
    * Succinct documentation.

@@ -5,9 +5,16 @@ SET(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-shared")
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "-rdynamic")  
 SET(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG "-Wl,-rpath,")
 SET(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP ":")
+SET(CMAKE_SHARED_LIBRARY_RPATH_LINK_C_FLAG "-Wl,-rpath-link,")
 SET(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
 SET(CMAKE_SHARED_LIBRARY_SONAME_CXX_FLAG "-Wl,-soname,")
 SET(CMAKE_SHARED_LIBRARY_SONAME_Fortran_FLAG "-Wl,-soname,")
+SET(CMAKE_EXE_EXPORTS_C_FLAG "-Wl,--export-dynamic")
+SET(CMAKE_EXE_EXPORTS_CXX_FLAG "-Wl,--export-dynamic")
+
+# Shared libraries with no builtin soname may not be linked safely by
+# specifying the file path.
+SET(CMAKE_PLATFORM_USES_PATH_WHEN_NO_SONAME 1)
 
 # Initialize C link type selection flags.  These flags are used when
 # building a shared library, shared module, or executable that links
@@ -46,3 +53,9 @@ ELSE(DEFINED CMAKE_INSTALL_SO_NO_EXE)
 ENDIF(DEFINED CMAKE_INSTALL_SO_NO_EXE)
 
 INCLUDE(Platform/UnixPaths)
+
+# Debian has lib64 paths only for compatibility so they should not be
+# searched.
+IF(EXISTS "/etc/debian_version")
+  SET_PROPERTY(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS FALSE)
+ENDIF(EXISTS "/etc/debian_version")

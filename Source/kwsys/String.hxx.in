@@ -22,8 +22,8 @@ namespace @KWSYS_NAMESPACE@
 /** \class String
  * \brief Short-name version of the STL basic_string class template.
  *
- * The standard library "std::string" type is actually a typedef for
- * "std::basic_string<..long argument list..>".  This string class is
+ * The standard library "string" type is actually a typedef for
+ * "basic_string<..long argument list..>".  This string class is
  * simply a subclass of this type with the same interface so that the
  * name is shorter in debugging symbols and error messages.
  */
@@ -53,6 +53,14 @@ public:
   String(const stl_string& s, size_type pos=0, size_type n=npos):
     stl_string(s, pos, n) {}
 }; // End Class: String
+
+#if defined(__WATCOMC__)
+inline bool operator<(String const& l, String const& r)
+  {
+  return (static_cast<@KWSYS_NAMESPACE@_stl::string const&>(l) <
+          static_cast<@KWSYS_NAMESPACE@_stl::string const&>(r));
+  }
+#endif
 
 } // namespace @KWSYS_NAMESPACE@
 

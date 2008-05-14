@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGeneratedFileStream.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.15.2.2 $
+  Date:      $Date: 2007-11-16 12:01:58 $
+  Version:   $Revision: 1.19 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -90,7 +90,7 @@ cmGeneratedFileStream::Open(const char* name, bool quiet, bool binaryFlag)
 }
 
 //----------------------------------------------------------------------------
-cmGeneratedFileStream&
+bool
 cmGeneratedFileStream::Close()
 {
   // Save whether the temporary output file is valid before closing.
@@ -100,9 +100,7 @@ cmGeneratedFileStream::Close()
   this->Stream::close();
 
   // Remove the temporary file (possibly by renaming to the real file).
-  this->cmGeneratedFileStreamBase::Close();
-
-  return *this;
+  return this->cmGeneratedFileStreamBase::Close();
 }
 
 //----------------------------------------------------------------------------
@@ -170,8 +168,10 @@ void cmGeneratedFileStreamBase::Open(const char* name)
 }
 
 //----------------------------------------------------------------------------
-void cmGeneratedFileStreamBase::Close()
+bool cmGeneratedFileStreamBase::Close()
 {
+  bool replaced = false;
+
   std::string resname = this->Name;
   if ( this->Compress && this->CompressExtraExtension )
     {
@@ -200,12 +200,16 @@ void cmGeneratedFileStreamBase::Close()
       {
       this->RenameFile(this->TempName.c_str(), resname.c_str());
       }
+
+    replaced = true;
     }
 
   // Else, the destination was not replaced.
   //
   // Always delete the temporary file. We never want it to stay around.
   cmSystemTools::RemoveFile(this->TempName.c_str());
+
+  return replaced;
 }
 
 //----------------------------------------------------------------------------
@@ -228,7 +232,7 @@ int cmGeneratedFileStreamBase::CompressFile(const char* oldname,
   char buffer[BUFFER_SIZE];
   while ( (res = fread(buffer, 1, BUFFER_SIZE, ifs)) > 0 )
     {
-    if ( !gzwrite(gf, buffer, res) )
+    if ( !gzwrite(gf, buffer, static_cast<int>(res)) )
       {
       fclose(ifs);
       gzclose(gf);

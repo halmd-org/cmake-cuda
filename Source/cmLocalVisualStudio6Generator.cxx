@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio6Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/12/12 03:28:45 $
-  Version:   $Revision: 1.100.2.9 $
+  Date:      $Date: 2008-04-23 02:05:39 $
+  Version:   $Revision: 1.141.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,6 +22,8 @@
 #include "cmCacheManager.h"
 #include "cmake.h"
 
+#include "cmComputeLinkInformation.h"
+
 #include <cmsys/RegularExpression.hxx>
 
 cmLocalVisualStudio6Generator::cmLocalVisualStudio6Generator()
@@ -32,13 +34,16 @@ cmLocalVisualStudio6Generator::~cmLocalVisualStudio6Generator()
 {
 }
 
-
-void cmLocalVisualStudio6Generator::Generate()
-{ 
+void cmLocalVisualStudio6Generator::AddHelperCommands()
+{
   std::set<cmStdString> lang;
   lang.insert("C");
   lang.insert("CXX");
   this->CreateCustomTargetsAndCommands(lang);
+}
+
+void cmLocalVisualStudio6Generator::Generate()
+{
   this->OutputDSPFile();
 }
 
@@ -103,7 +108,6 @@ void cmLocalVisualStudio6Generator::OutputDSPFile()
 
   // clear project names
   this->CreatedProjectNames.clear();
-  // Call TraceVSDependencies on all targets
   cmTargets &tgts = this->Makefile->GetTargets(); 
   for(cmTargets::iterator l = tgts.begin(); 
       l != tgts.end(); l++)
@@ -115,16 +119,6 @@ void cmLocalVisualStudio6Generator::OutputDSPFile()
     if (!cmSystemTools::IsOn(suppRegenRule))
       {
       this->AddDSPBuildRule(l->second);
-      }
-
-    // INCLUDE_EXTERNAL_MSPROJECT command only affects the workspace
-    // so don't build a projectfile for it
-    if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-        && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS)
-        && (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) != 0))
-      {
-      cmTarget& target = l->second;
-      target.TraceVSDependencies(target.GetName(), this->Makefile);
       }
     }
 
@@ -148,19 +142,13 @@ void cmLocalVisualStudio6Generator::OutputDSPFile()
       case cmTarget::GLOBAL_TARGET:
         this->SetBuildType(UTILITY, l->first.c_str(), l->second);
         break;
-      case cmTarget::INSTALL_FILES:
-        break;
-      case cmTarget::INSTALL_PROGRAMS:
-        break;
       default:
         cmSystemTools::Error("Bad target type", l->first.c_str());
         break;
       }
     // INCLUDE_EXTERNAL_MSPROJECT command only affects the workspace
     // so don't build a projectfile for it
-    if ((l->second.GetType() != cmTarget::INSTALL_FILES)
-        && (l->second.GetType() != cmTarget::INSTALL_PROGRAMS)
-        && (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) != 0))
+    if (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) != 0)
       {
       // check to see if the dsp is going into a sub-directory
       std::string::size_type pos = l->first.rfind('/');
@@ -231,23 +219,7 @@ void cmLocalVisualStudio6Generator::AddDSPBuildRule(cmTarget& tgt)
                   START_OUTPUT, UNCHANGED, true);
   commandLine.push_back(args);
 
-  std::string configFile = 
-    this->Makefile->GetRequiredDefinition("CMAKE_ROOT");
-  configFile += "/Templates/CMakeWindowsSystemConfig.cmake";
-  std::vector<std::string> listFiles = this->Makefile->GetListFiles();
-  bool found = false;
-  for(std::vector<std::string>::iterator i = listFiles.begin();
-      i != listFiles.end(); ++i)
-    {
-    if(*i == configFile)
-      {
-      found  = true;
-      }
-    }
-  if(!found)
-    {
-    listFiles.push_back(configFile);
-    }
+  std::vector<std::string> const& listFiles = this->Makefile->GetListFiles();
 
   cmCustomCommandLines commandLines;
   commandLines.push_back(commandLine);
@@ -258,7 +230,7 @@ void cmLocalVisualStudio6Generator::AddDSPBuildRule(cmTarget& tgt)
                                            no_working_directory, true);
   if(cmSourceFile* file = this->Makefile->GetSource(makefileIn.c_str()))
     {
-    tgt.GetSourceFiles().push_back(file);
+    tgt.AddSourceFile(file);
     }
   else
     {
@@ -323,11 +295,11 @@ void cmLocalVisualStudio6Generator::WriteDSPFile(std::ostream& fout,
   std::vector<cmSourceGroup> sourceGroups = this->Makefile->GetSourceGroups();
   
   // get the classes from the source lists then add them to the groups
-  std::vector<cmSourceFile*> & classes = target.GetSourceFiles();
+  std::vector<cmSourceFile*> const & classes = target.GetSourceFiles();
 
   // now all of the source files have been properly assigned to the target
   // now stick them into source groups using the reg expressions
-  for(std::vector<cmSourceFile*>::iterator i = classes.begin(); 
+  for(std::vector<cmSourceFile*>::const_iterator i = classes.begin(); 
       i != classes.end(); i++)
     {
     // Add the file to the list of sources.
@@ -337,7 +309,7 @@ void cmLocalVisualStudio6Generator::WriteDSPFile(std::ostream& fout,
     sourceGroup.AssignSource(*i);
     // while we are at it, if it is a .rule file then for visual studio 6 we
     // must generate it
-    if ((*i)->GetSourceExtension() == "rule")
+    if ((*i)->GetExtension() == "rule")
       {
       if(!cmSystemTools::FileExists(source.c_str()))
         {
@@ -359,7 +331,7 @@ void cmLocalVisualStudio6Generator::WriteDSPFile(std::ostream& fout,
         }
       }
     }
-  
+
   // Compute which sources need unique object computation.
   this->ComputeObjectNameRequirements(sourceGroups);
   
@@ -379,14 +351,14 @@ void cmLocalVisualStudio6Generator::WriteDSPFile(std::ostream& fout,
 }
 
 void cmLocalVisualStudio6Generator
-::WriteGroup(const cmSourceGroup *sg, cmTarget target, 
+::WriteGroup(const cmSourceGroup *sg, cmTarget& target,
              std::ostream &fout, const char *libName)
 {
   const std::vector<const cmSourceFile *> &sourceFiles = 
     sg->GetSourceFiles();
   // If the group is empty, don't write it at all.
         
-  if(sourceFiles.empty())
+  if(sourceFiles.empty() && sg->GetGroupChildren().empty())
     { 
     return; 
     }
@@ -397,7 +369,29 @@ void cmLocalVisualStudio6Generator
     {
     this->WriteDSPBeginGroup(fout, name.c_str(), "");
     }
-    
+
+  // Compute the maximum length of a configuration name.
+  std::string::size_type config_len_max = 0;
+  for(std::vector<std::string>::iterator i = this->Configurations.begin();
+      i != this->Configurations.end(); ++i)
+    {
+    // Strip the subdirectory name out of the configuration name.
+    std::string config = this->GetConfigName(*i);
+    if(config.size() > config_len_max)
+      {
+      config_len_max = config.size();
+      }
+    }
+
+  // Compute the maximum length of the full path to the intermediate
+  // files directory for any configuration.  This is used to construct
+  // object file names that do not produce paths that are too long.
+  std::string::size_type dir_len = 0;
+  dir_len += strlen(this->Makefile->GetCurrentOutputDirectory());
+  dir_len += 1;
+  dir_len += config_len_max;
+  dir_len += 1;
+
   // Loop through each source in the source group.
   for(std::vector<const cmSourceFile *>::const_iterator sf =
         sourceFiles.begin(); sf != sourceFiles.end(); ++sf)
@@ -412,7 +406,7 @@ void cmLocalVisualStudio6Generator
       {
       objectNameDir =
         cmSystemTools::GetFilenamePath(
-          this->GetObjectFileNameWithoutTarget(*(*sf)));
+          this->GetObjectFileNameWithoutTarget(*(*sf), dir_len));
       }
 
     // Add per-source file flags.
@@ -435,6 +429,32 @@ void cmLocalVisualStudio6Generator
         compileFlags += " /TC ";
         }
       }
+
+    // Add per-source and per-configuration preprocessor definitions.
+    std::map<cmStdString, cmStdString> cdmap;
+    this->AppendDefines(compileFlags,
+                        (*sf)->GetProperty("COMPILE_DEFINITIONS"), lang);
+    if(const char* cdefs = (*sf)->GetProperty("COMPILE_DEFINITIONS_DEBUG"))
+      {
+      this->AppendDefines(cdmap["DEBUG"], cdefs, lang);
+      }
+    if(const char* cdefs = (*sf)->GetProperty("COMPILE_DEFINITIONS_RELEASE"))
+      {
+      this->AppendDefines(cdmap["RELEASE"], cdefs, lang);
+      }
+    if(const char* cdefs =
+       (*sf)->GetProperty("COMPILE_DEFINITIONS_MINSIZEREL"))
+      {
+      this->AppendDefines(cdmap["MINSIZEREL"], cdefs, lang);
+      }
+    if(const char* cdefs =
+       (*sf)->GetProperty("COMPILE_DEFINITIONS_RELWITHDEBINFO"))
+      {
+      this->AppendDefines(cdmap["RELWITHDEBINFO"], cdefs, lang);
+      }
+
+    bool excludedFromBuild =
+      (lang && (*sf)->GetPropertyAsBool("HEADER_FILE_ONLY"));
       
     // Check for extra object-file dependencies.
     const char* dependsValue = (*sf)->GetProperty("OBJECT_DEPENDS");
@@ -465,30 +485,18 @@ void cmLocalVisualStudio6Generator
         }
       if (command)
         {
-        std::string script =
-          this->ConstructScript(command->GetCommandLines(), 
-                                command->GetWorkingDirectory(),
-                                command->GetEscapeOldStyle(),
-                                command->GetEscapeAllowMakeVars(),
-                                "\\\n\t");
-        std::string comment =
-          this->ConstructComment(*command,
-                                 "Building Custom Rule $(InputPath)");
-        if(comment == "<hack>")
-          {
-          comment = "";
-          }
         const char* flags = compileFlags.size() ? compileFlags.c_str(): 0;
-        this->WriteCustomRule(fout, source.c_str(), script.c_str(),
-                              comment.c_str(), command->GetDepends(),
-                              command->GetOutputs(), flags);
+        this->WriteCustomRule(fout, source.c_str(), *command, flags);
         }
-      else if(!compileFlags.empty() || !objectNameDir.empty())
+      else if(!compileFlags.empty() || !objectNameDir.empty() ||
+              excludedFromBuild || !cdmap.empty())
         {
         for(std::vector<std::string>::iterator i
               = this->Configurations.begin(); 
             i != this->Configurations.end(); ++i)
           { 
+          // Strip the subdirectory name out of the configuration name.
+          std::string config = this->GetConfigName(*i);
           if (i == this->Configurations.begin())
             {
             fout << "!IF  \"$(CFG)\" == " << i->c_str() << std::endl;
@@ -497,18 +505,22 @@ void cmLocalVisualStudio6Generator
             {
             fout << "!ELSEIF  \"$(CFG)\" == " << i->c_str() << std::endl;
             }
+          if(excludedFromBuild)
+            {
+            fout << "# PROP Exclude_From_Build 1\n";
+            }
           if(!compileFlags.empty())
             {
-          fout << "\n# ADD CPP " << compileFlags << "\n\n";
-          } 
+            fout << "\n# ADD CPP " << compileFlags << "\n\n";
+            }
+          std::map<cmStdString, cmStdString>::iterator cdi =
+            cdmap.find(cmSystemTools::UpperCase(config));
+          if(cdi != cdmap.end() && !cdi->second.empty())
+            {
+            fout << "\n# ADD CPP " << cdi->second << "\n\n";
+            }
           if(!objectNameDir.empty())
             {
-            // Strip the subdirectory name out of the configuration name.
-            std::string config = *i;
-            std::string::size_type pos = config.find_last_of(" ");
-            config = config.substr(pos+1, std::string::npos);
-            config = config.substr(0, config.size()-1);
-
             // Setup an alternate object file directory.
             fout << "\n# PROP Intermediate_Dir \""
                  << config << "/" << objectNameDir << "\"\n\n";
@@ -568,7 +580,7 @@ cmLocalVisualStudio6Generator
 
   // Add a source file representing this output to the project.
   cmSourceFile* outsf = this->Makefile->GetSourceFileWithOutput(output);
-  target.GetSourceFiles().push_back(outsf);
+  target.AddSourceFile(outsf);
 
   // Free the fake output name.
   delete [] output;
@@ -578,21 +590,29 @@ void
 cmLocalVisualStudio6Generator
 ::WriteCustomRule(std::ostream& fout,
                   const char* source,
-                  const char* command,
-                  const char* comment,
-                  const std::vector<std::string>& depends,
-                  const std::vector<std::string>& outputs,
+                  const cmCustomCommand& command,
                   const char* flags)
 {
+  std::string comment =
+    this->ConstructComment(command, "Building Custom Rule $(InputPath)");
+  if(comment == "<hack>")
+    {
+    comment = "";
+    }
+  
   // Write the rule for each configuration.
   std::vector<std::string>::iterator i;
   for(i = this->Configurations.begin(); i != this->Configurations.end(); ++i)
     {
-    // Strip the subdirectory name out of the configuration name.
-    std::string config = *i;
-    std::string::size_type pos = config.find_last_of(" ");
-    config = config.substr(pos+1, std::string::npos);
-    config = config.substr(0, config.size()-1);
+    std::string config = this->GetConfigName(*i);
+    std::string script =
+      this->ConstructScript(command.GetCommandLines(), 
+                            command.GetWorkingDirectory(),
+                            config.c_str(),
+                            command.GetEscapeOldStyle(),
+                            command.GetEscapeAllowMakeVars(),
+                            "\\\n\t");
+      
     if (i == this->Configurations.begin())
       {
       fout << "!IF  \"$(CFG)\" == " << i->c_str() << std::endl;
@@ -607,8 +627,10 @@ cmLocalVisualStudio6Generator
       }
     // Write out the dependencies for the rule.
     fout << "USERDEP__HACK=";
-    for(std::vector<std::string>::const_iterator d = depends.begin();
-        d != depends.end(); ++d)
+    for(std::vector<std::string>::const_iterator d = 
+          command.GetDepends().begin();
+        d != command.GetDepends().end(); 
+        ++d)
       {
       // Lookup the real name of the dependency in case it is a CMake target.
       std::string dep = this->GetRealDependency(d->c_str(),
@@ -620,26 +642,28 @@ cmLocalVisualStudio6Generator
 
     fout << "# PROP Ignore_Default_Tool 1\n";
     fout << "# Begin Custom Build -";
-    if(comment && *comment)
+    if(!comment.empty())
       {
-      fout << " " << comment;
+      fout << " " << comment.c_str();
       }
     fout << "\n\n";
-    if(outputs.empty())
+    if(command.GetOutputs().empty())
       {
       fout << source 
            << "_force :  \"$(SOURCE)\" \"$(INTDIR)\" \"$(OUTDIR)\"\n\t";
-      fout << command << "\n\n";
+      fout << script.c_str() << "\n\n";
       }
     else
       {
-      for(std::vector<std::string>::const_iterator o = outputs.begin();
-          o != outputs.end(); ++o)
+      for(std::vector<std::string>::const_iterator o = 
+          command.GetOutputs().begin();
+          o != command.GetOutputs().end(); 
+          ++o)
         {
         // Write a rule for every output generated by this command.
         fout << this->ConvertToOptionallyRelativeOutputPath(o->c_str())
              << " :  \"$(SOURCE)\" \"$(INTDIR)\" \"$(OUTDIR)\"\n\t";
-        fout << command << "\n\n";
+        fout << script.c_str() << "\n\n";
         }
       }
     fout << "# End Custom Build\n\n";
@@ -749,6 +773,7 @@ void cmLocalVisualStudio6Generator::SetBuildType(BuildType b,
 // look for custom rules on a target and collect them together
 std::string 
 cmLocalVisualStudio6Generator::CreateTargetRules(cmTarget &target, 
+                                                 const char* configName, 
                                                  const char * /* libName */)
 {
   std::string customRuleCode = "";
@@ -789,6 +814,7 @@ cmLocalVisualStudio6Generator::CreateTargetRules(cmTarget &target,
       }
     customRuleCode += this->ConstructScript(cr->GetCommandLines(),
                                             cr->GetWorkingDirectory(),
+                                            configName, 
                                             cr->GetEscapeOldStyle(),
                                             cr->GetEscapeAllowMakeVars(),
                                             "\\\n\t");
@@ -803,6 +829,7 @@ cmLocalVisualStudio6Generator::CreateTargetRules(cmTarget &target,
       }
     customRuleCode += this->ConstructScript(cr->GetCommandLines(),
                                             cr->GetWorkingDirectory(),
+                                            configName,
                                             cr->GetEscapeOldStyle(),
                                             cr->GetEscapeAllowMakeVars(),
                                             "\\\n\t");
@@ -831,6 +858,7 @@ cmLocalVisualStudio6Generator::CreateTargetRules(cmTarget &target,
       }
     customRuleCode += this->ConstructScript(cr->GetCommandLines(),
                                             cr->GetWorkingDirectory(),
+                                            configName,
                                             cr->GetEscapeOldStyle(),
                                             cr->GetEscapeAllowMakeVars(),
                                             "\\\n\t");
@@ -858,12 +886,16 @@ inline std::string removeQuotes(const std::string& s)
 // only for compatibility with user project's replacement DSP
 // templates.  The CMake templates no longer use them.
 #define CM_USE_OLD_VS6
-  
+
 void cmLocalVisualStudio6Generator
 ::WriteDSPHeader(std::ostream& fout, 
                  const char *libName, cmTarget &target, 
                  std::vector<cmSourceGroup> &)
 {
+  // Lookup the output directory for the target.
+  std::string outPath = target.GetDirectory();
+
+#ifdef CM_USE_OLD_VS6
   // Lookup the library and executable output directories.
   std::string libPath;
   if(this->Makefile->GetDefinition("LIBRARY_OUTPUT_PATH"))
@@ -892,7 +924,6 @@ void cmLocalVisualStudio6Generator
       }
     }
 
-#ifdef CM_USE_OLD_VS6
   std::set<std::string> pathEmitted;
   
   // determine the link directories
@@ -1123,7 +1154,7 @@ void cmLocalVisualStudio6Generator
       {
       cmSystemTools::Error
         ("CMake can not determine linker language for target:",
-                           target.GetName());
+         target.GetName());
       return;
       }
 
@@ -1194,6 +1225,46 @@ void cmLocalVisualStudio6Generator
                              optionsRelWithDebInfo);
     }
 
+  // Compute the path of the import library.
+  std::string targetImplibFlagDebug;
+  std::string targetImplibFlagRelease;
+  std::string targetImplibFlagMinSizeRel;
+  std::string targetImplibFlagRelWithDebInfo;
+  if(target.GetType() == cmTarget::SHARED_LIBRARY ||
+     target.GetType() == cmTarget::MODULE_LIBRARY ||
+     target.GetType() == cmTarget::EXECUTABLE)
+    {
+    std::string fullPathImpDebug = target.GetDirectory("Debug", true);
+    std::string fullPathImpRelease = target.GetDirectory("Release", true);
+    std::string fullPathImpMinSizeRel =
+      target.GetDirectory("MinSizeRel", true);
+    std::string fullPathImpRelWithDebInfo =
+      target.GetDirectory("RelWithDebInfo", true);
+    fullPathImpDebug += "/";
+    fullPathImpRelease += "/";
+    fullPathImpMinSizeRel += "/";
+    fullPathImpRelWithDebInfo += "/";
+    fullPathImpDebug += target.GetFullName("Debug", true);
+    fullPathImpRelease += target.GetFullName("Release", true);
+    fullPathImpMinSizeRel += target.GetFullName("MinSizeRel", true);
+    fullPathImpRelWithDebInfo += target.GetFullName("RelWithDebInfo", true);
+
+    targetImplibFlagDebug = "/implib:";
+    targetImplibFlagRelease = "/implib:";
+    targetImplibFlagMinSizeRel = "/implib:";
+    targetImplibFlagRelWithDebInfo = "/implib:";
+    targetImplibFlagDebug +=
+      this->ConvertToOptionallyRelativeOutputPath(fullPathImpDebug.c_str());
+    targetImplibFlagRelease +=
+      this->ConvertToOptionallyRelativeOutputPath(fullPathImpRelease.c_str());
+    targetImplibFlagMinSizeRel +=
+      this->ConvertToOptionallyRelativeOutputPath(
+        fullPathImpMinSizeRel.c_str());
+    targetImplibFlagRelWithDebInfo +=
+      this->ConvertToOptionallyRelativeOutputPath(
+        fullPathImpRelWithDebInfo.c_str());
+    }
+
 #ifdef CM_USE_OLD_VS6
   // Compute link information for the target.
   if(extraLinkOptions.size())
@@ -1209,10 +1280,17 @@ void cmLocalVisualStudio6Generator
     libMultiLineOptionsForDebug += " \n";
     }
 #endif
-  
+
   // are there any custom rules on the target itself
   // only if the target is a lib or exe
-  std::string customRuleCode = this->CreateTargetRules(target, libName);
+  std::string customRuleCodeRelease        
+      = this->CreateTargetRules(target, "RELEASE",        libName);
+  std::string customRuleCodeDebug          
+      = this->CreateTargetRules(target, "DEBUG",          libName);
+  std::string customRuleCodeMinSizeRel     
+      = this->CreateTargetRules(target, "MINSIZEREL",     libName);
+  std::string customRuleCodeRelWithDebInfo 
+      = this->CreateTargetRules(target, "RELWITHDEBINFO", libName);
 
   std::ifstream fin(this->DSPHeaderTemplate.c_str());
   if(!fin)
@@ -1227,18 +1305,13 @@ void cmLocalVisualStudio6Generator
       staticLibOptions = libflags;
       }
     }
-  std::string exportSymbol;
-  if (const char* custom_export_name = target.GetProperty("DEFINE_SYMBOL"))
-    {
-    exportSymbol = custom_export_name;
-    }
-  else
-    {
-    std::string in = libName;
-    in += "_EXPORTS";
-    exportSymbol = cmSystemTools::MakeCindentifier(in.c_str());
-    }
 
+  // Add the export symbol definition for shared library objects.
+  std::string exportSymbol;
+  if(const char* exportMacro = target.GetExportMacro())
+    {
+    exportSymbol = exportMacro;
+    }
 
   std::string line;
   while(cmSystemTools::GetLineFromStream(fin, line))
@@ -1250,8 +1323,6 @@ void cmLocalVisualStudio6Generator
       }
     cmSystemTools::ReplaceString(line, "OUTPUT_LIBNAME_EXPORTS",
                                  exportSymbol.c_str());
-    cmSystemTools::ReplaceString(line, "CMAKE_CUSTOM_RULE_CODE",
-                                 customRuleCode.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_MFC_FLAG",
                                  mfcFlag);
     if(target.GetType() == cmTarget::STATIC_LIBRARY )
@@ -1263,7 +1334,7 @@ void cmLocalVisualStudio6Generator
       {
       cmSystemTools::ReplaceString(line, "/nologo", "");
       }
-    
+
 #ifdef CM_USE_OLD_VS6
     cmSystemTools::ReplaceString(line, "CM_LIBRARIES",
                                  libOptions.c_str());
@@ -1280,6 +1351,18 @@ void cmLocalVisualStudio6Generator
     cmSystemTools::ReplaceString(line, "CM_MULTILINE_OPTIMIZED_LIBRARIES",
                                  libMultiLineOptimizedOptions.c_str());
 #endif
+    
+    // Substitute the rules for custom command. When specifying just the 
+    // target name for the command the command can be different for
+    // different configs
+    cmSystemTools::ReplaceString(line, "CMAKE_CUSTOM_RULE_CODE_RELEASE",
+                                 customRuleCodeRelease.c_str());
+    cmSystemTools::ReplaceString(line, "CMAKE_CUSTOM_RULE_CODE_DEBUG",
+                                 customRuleCodeDebug.c_str());
+    cmSystemTools::ReplaceString(line, "CMAKE_CUSTOM_RULE_CODE_MINSIZEREL",
+                                 customRuleCodeMinSizeRel.c_str());
+    cmSystemTools::ReplaceString(line, "CMAKE_CUSTOM_RULE_CODE_RELWITHDEBINFO",
+                                 customRuleCodeRelWithDebInfo.c_str());
 
     // Substitute the real output name into the template.
     cmSystemTools::ReplaceString(line, "OUTPUT_NAME_DEBUG", 
@@ -1306,7 +1389,16 @@ void cmLocalVisualStudio6Generator
                                  this->IncludeOptions.c_str());
     cmSystemTools::ReplaceString(line, "TARGET_VERSION_FLAG",
                                  targetVersionFlag.c_str());
+    cmSystemTools::ReplaceString(line, "TARGET_IMPLIB_FLAG_DEBUG",
+                                 targetImplibFlagDebug.c_str());
+    cmSystemTools::ReplaceString(line, "TARGET_IMPLIB_FLAG_RELEASE",
+                                 targetImplibFlagRelease.c_str());
+    cmSystemTools::ReplaceString(line, "TARGET_IMPLIB_FLAG_MINSIZEREL",
+                                 targetImplibFlagMinSizeRel.c_str());
+    cmSystemTools::ReplaceString(line, "TARGET_IMPLIB_FLAG_RELWITHDEBINFO",
+                                 targetImplibFlagRelWithDebInfo.c_str());
     cmSystemTools::ReplaceString(line, "OUTPUT_LIBNAME",libName);
+#ifdef CM_USE_OLD_VS6
     // because LIBRARY_OUTPUT_PATH and EXECUTABLE_OUTPUT_PATH 
     // are already quoted in the template file,
     // we need to remove the quotes here, we still need
@@ -1319,6 +1411,11 @@ void cmLocalVisualStudio6Generator
       (line, "EXECUTABLE_OUTPUT_PATH",
        removeQuotes(this->ConvertToOptionallyRelativeOutputPath
                     (exePath.c_str())).c_str());
+#endif
+    cmSystemTools::ReplaceString
+      (line, "OUTPUT_DIRECTORY",
+       removeQuotes(this->ConvertToOptionallyRelativeOutputPath
+                    (outPath.c_str())).c_str());
 
     cmSystemTools::ReplaceString(line, 
                                  "EXTRA_DEFINES", 
@@ -1342,7 +1439,7 @@ void cmLocalVisualStudio6Generator
         {
         cmSystemTools::Error
           ("CMake can not determine linker language for target:",
-                             target.GetName());
+           target.GetName());
         return;
         }
       // if CXX is on and the target contains cxx code then add the cxx flags
@@ -1406,6 +1503,33 @@ void cmLocalVisualStudio6Generator
       flags += targetFlags;
       }
 
+    // Add per-target and per-configuration preprocessor definitions.
+    this->AppendDefines
+      (flags, this->Makefile->GetProperty("COMPILE_DEFINITIONS"), 0);
+    this->AppendDefines(flags, target.GetProperty("COMPILE_DEFINITIONS"), 0);
+    this->AppendDefines
+      (flagsDebug,
+       this->Makefile->GetProperty("COMPILE_DEFINITIONS_DEBUG"), 0);
+    this->AppendDefines(flagsDebug,
+                        target.GetProperty("COMPILE_DEFINITIONS_DEBUG"), 0);
+    this->AppendDefines
+      (flagsRelease,
+       this->Makefile->GetProperty("COMPILE_DEFINITIONS_RELEASE"), 0);
+    this->AppendDefines(flagsRelease,
+                        target.GetProperty("COMPILE_DEFINITIONS_RELEASE"), 0);
+    this->AppendDefines
+      (flagsMinSize,
+       this->Makefile->GetProperty("COMPILE_DEFINITIONS_MINSIZEREL"), 0);
+    this->AppendDefines
+      (flagsMinSize,
+       target.GetProperty("COMPILE_DEFINITIONS_MINSIZEREL"), 0);
+    this->AppendDefines
+      (flagsDebugRel,
+       this->Makefile->GetProperty("COMPILE_DEFINITIONS_RELWITHDEBINFO"), 0);
+    this->AppendDefines
+      (flagsDebugRel,
+       target.GetProperty("COMPILE_DEFINITIONS_RELWITHDEBINFO"), 0);
+
     // The template files have CXX FLAGS in them, that need to be replaced.
     // There are not separate CXX and C template files, so we use the same
     // variable names.   The previous code sets up flags* variables to contain
@@ -1441,17 +1565,23 @@ void cmLocalVisualStudio6Generator::WriteDSPFooter(std::ostream& fout)
 //----------------------------------------------------------------------------
 void cmLocalVisualStudio6Generator
 ::ComputeLinkOptions(cmTarget& target,
-                                                       const char* configName,
-                                                       const std::string extraOptions,
-                                                       std::string& options)
+                     const char* configName,
+                     const std::string extraOptions,
+                     std::string& options)
 {
   // Compute the link information for this configuration.
-  std::vector<cmStdString> linkLibs;
-  std::vector<cmStdString> linkDirs;
-  this->ComputeLinkInformation(target, configName, linkLibs, linkDirs);
+  cmComputeLinkInformation* pcli = target.GetLinkInformation(configName);
+  if(!pcli)
+    {
+    return;
+    }
+  cmComputeLinkInformation& cli = *pcli;
+  typedef cmComputeLinkInformation::ItemVector ItemVector;
+  ItemVector const& linkLibs = cli.GetItems();
+  std::vector<std::string> const& linkDirs = cli.GetDirectories();
 
   // Build the link options code.
-  for(std::vector<cmStdString>::const_iterator d = linkDirs.begin();
+  for(std::vector<std::string>::const_iterator d = linkDirs.begin();
       d != linkDirs.end(); ++d)
     {
     std::string dir = *d;
@@ -1469,11 +1599,19 @@ void cmLocalVisualStudio6Generator
       options += "\n";
       }
     }
-  for(std::vector<cmStdString>::const_iterator l = linkLibs.begin();
+  for(ItemVector::const_iterator l = linkLibs.begin();
       l != linkLibs.end(); ++l)
     {
     options += "# ADD LINK32 ";
-    options += this->ConvertToOptionallyRelativeOutputPath(l->c_str());
+    if(l->IsPath)
+      {
+      options +=
+        this->ConvertToOptionallyRelativeOutputPath(l->Value.c_str());
+      }
+    else
+      {
+      options += l->Value;
+      }
     options += "\n";
     }
 
@@ -1484,4 +1622,62 @@ void cmLocalVisualStudio6Generator
     options += extraOptions;
     options += "\n";
     }
+}
+
+std::string
+cmLocalVisualStudio6Generator
+::GetTargetDirectory(cmTarget const&) const
+{
+  // No per-target directory for this generator (yet).
+  return "";
+}
+
+void cmLocalVisualStudio6Generator
+::GetTargetObjectFileDirectories(cmTarget* ,
+                                 std::vector<std::string>& 
+                                 dirs)
+{
+  std::string dir = this->Makefile->GetCurrentOutputDirectory();
+  dir += "/";
+  dir += this->GetGlobalGenerator()->GetCMakeCFGInitDirectory();
+  dirs.push_back(dir);
+}
+
+std::string
+cmLocalVisualStudio6Generator
+::GetConfigName(std::string const& configuration) const
+{
+  // Strip the subdirectory name out of the configuration name.
+  std::string config = configuration;
+  std::string::size_type pos = config.find_last_of(" ");
+  config = config.substr(pos+1, std::string::npos);
+  config = config.substr(0, config.size()-1);
+  return config;
+}
+
+//----------------------------------------------------------------------------
+bool
+cmLocalVisualStudio6Generator
+::CheckDefinition(std::string const& define) const
+{
+  // Perform the standard check first.
+  if(!this->cmLocalGenerator::CheckDefinition(define))
+    {
+    return false;
+    }
+
+  // Now do the VS6-specific check.
+  if(define.find_first_of("=") != define.npos)
+    {
+    cmOStringStream e;
+    e << "WARNING: The VS6 IDE does not support preprocessor definitions "
+      << "with values.\n"
+      << "CMake is dropping a preprocessor definition: " << define << "\n"
+      << "Consider defining the macro in a (configured) header file.\n";
+    cmSystemTools::Message(e.str().c_str());
+    return false;
+    }
+
+  // Assume it is supported.
+  return true;
 }
