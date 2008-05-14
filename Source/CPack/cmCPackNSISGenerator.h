@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackNSISGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:21:32 $
-  Version:   $Revision: 1.8.2.1 $
+  Date:      $Date: 2007-11-05 21:55:45 $
+  Version:   $Revision: 1.11 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,17 +19,17 @@
 #define cmCPackNSISGenerator_h
 
 
-#include "cmCPackGenericGenerator.h"
+#include "cmCPackGenerator.h"
 
 /** \class cmCPackNSISGenerator
  * \brief A generator for NSIS files
  *
  * http://people.freebsd.org/~kientzle/libarchive/
  */
-class cmCPackNSISGenerator : public cmCPackGenericGenerator
+class cmCPackNSISGenerator : public cmCPackGenerator
 {
 public:
-  cmCPackTypeMacro(cmCPackNSISGenerator, cmCPackGenericGenerator);
+  cmCPackTypeMacro(cmCPackNSISGenerator, cmCPackGenerator);
 
   /**
    * Construct generator
@@ -39,6 +39,8 @@ public:
 
 protected:
   virtual int InitializeInternal();
+  void CreateMenuLinks( cmOStringStream& str,
+                        cmOStringStream& deleteStr);
   int CompressFiles(const char* outFileName, const char* toplevel,
     const std::vector<std::string>& files);
   virtual const char* GetOutputExtension() { return ".exe"; }

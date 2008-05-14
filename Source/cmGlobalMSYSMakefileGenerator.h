@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalMSYSMakefileGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:41 $
-  Version:   $Revision: 1.3.2.1 $
+  Date:      $Date: 2007-08-09 19:57:30 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,7 @@
 #ifndef cmGlobalMSYSMakefileGenerator_h
 #define cmGlobalMSYSMakefileGenerator_h
 
-#include "cmGlobalUNIXMakefileGenerator3.h"
+#include "cmGlobalUnixMakefileGenerator3.h"
 
 /** \class cmGlobalMSYSMakefileGenerator
  * \brief Write a NMake makefiles.
@@ -47,7 +47,7 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages,
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
 
 private:
   std::string FindMinGW(std::string const& makeloc);

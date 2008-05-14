@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGeneratedFileStream.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:02:01 $
-  Version:   $Revision: 1.21 $
+  Date:      $Date: 2007-11-16 12:01:58 $
+  Version:   $Revision: 1.23 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,7 @@ protected:
   // after the real stream is closed and Okay is set to whether the
   // real stream was still valid for writing when it was closed.
   void Open(const char* name);
-  void Close();
+  bool Close();
 
   // Internal file replacement implementation.
   int RenameFile(const char* oldname, const char* newname);
@@ -123,7 +123,7 @@ public:
    * destionation file if the stream is still valid when this method
    * is called.
    */
-  cmGeneratedFileStream& Close();
+  bool Close();
 
   /**
    * Set whether copy-if-different is done.
@@ -145,6 +145,9 @@ public:
    * the output file to be changed during the use of cmGeneratedFileStream.
    */
   void SetName(const char* fname);
+
+private:
+  cmGeneratedFileStream(cmGeneratedFileStream const&); // not implemented
 };
 
 #if defined(__sgi) && !defined(__GNUC__)

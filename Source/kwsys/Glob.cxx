@@ -149,10 +149,10 @@ kwsys_stl::string Glob::PatternToRegex(const kwsys_stl::string& pattern,
 
         // A regex range complement uses '^' instead of '!'.
         if(k != bracket_last && *k == '!')
-            {
+          {
           regex += "^";
           ++k;
-            }
+          }
 
         // Convert the remaining characters.
         for(; k != bracket_last; ++k)
@@ -181,28 +181,28 @@ kwsys_stl::string Glob::PatternToRegex(const kwsys_stl::string& pattern,
       if(!(('a' <= ch && ch <= 'z') ||
            ('A' <= ch && ch <= 'Z') ||
            ('0' <= ch && ch <= '9')))
-          {
+        {
         // Escape the non-alphanumeric character.
         regex += "\\";
-          }
+        }
 #if defined(KWSYS_GLOB_CASE_INDEPENDENT)
       else
-          {
+        {
         // On case-insensitive systems file names are converted to lower
         // case before matching.
         ch = tolower(ch);
-          }
+        }
 #endif
 
       // Store the character.
       regex.append(1, static_cast<char>(ch));
-        }
       }
+    }
 
   if(require_whole_string)
-      {
+    {
     regex += "$";
-      }
+    }
   return regex;
 }
 
@@ -253,8 +253,9 @@ void Glob::RecurseDirectory(kwsys_stl::string::size_type start,
 
     if ( !dir_only || !kwsys::SystemTools::FileIsDirectory(realname.c_str()) )
       {
-      if ( this->Internals->Expressions[
-        this->Internals->Expressions.size()-1].find(fname.c_str()) )
+      if ( (this->Internals->Expressions.size() > 0) && 
+           this->Internals->Expressions[
+             this->Internals->Expressions.size()-1].find(fname.c_str()) )
         {
         this->AddFile(this->Internals->Files, realname.c_str());
         }
@@ -277,6 +278,12 @@ void Glob::ProcessDirectory(kwsys_stl::string::size_type start,
     this->RecurseDirectory(start, dir, dir_only);
     return;
     }
+
+  if ( start >= this->Internals->Expressions.size() )
+    {
+    return;
+    }
+
   kwsys::Directory d;
   if ( !d.Load(dir.c_str()) )
     {

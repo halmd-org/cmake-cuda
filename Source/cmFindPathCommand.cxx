@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPathCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/07/24 15:19:35 $
-  Version:   $Revision: 1.31.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.41 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,11 +21,18 @@
 
 cmFindPathCommand::cmFindPathCommand()
 {
+  this->EnvironmentPath = "INCLUDE";
   this->IncludeFileInPath = false;
   cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "FIND_XXX", "FIND_PATH");
+                               "FIND_XXX", "find_path");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "CMAKE_XXX_PATH", "CMAKE_INCLUDE_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_XXX_MAC_PATH",
+                               "CMAKE_FRAMEWORK_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_SYSTEM_XXX_MAC_PATH",
+                               "CMAKE_SYSTEM_FRAMEWORK_PATH");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "XXX_SYSTEM", "INCLUDE");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
@@ -36,6 +43,12 @@ cmFindPathCommand::cmFindPathCommand()
                                "directory containing the named file");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "SEARCH_XXX", "file in a directory");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "XXX_SUBDIR", "include");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_FIND_ROOT_PATH_MODE_XXX", 
+                               "CMAKE_FIND_ROOT_PATH_MODE_INCLUDE");
+
   this->ExtraDocAdded = false;
 }
 
@@ -57,7 +70,8 @@ const char* cmFindPathCommand::GetFullDocumentation()
 }
 
 // cmFindPathCommand
-bool cmFindPathCommand::InitialPass(std::vector<std::string> const& argsIn)
+bool cmFindPathCommand
+::InitialPass(std::vector<std::string> const& argsIn, cmExecutionStatus &)
 {
   this->VariableDocumentation = "Path to a file.";
   this->CMakePathName = "INCLUDE";
@@ -88,6 +102,16 @@ bool cmFindPathCommand::InitialPass(std::vector<std::string> const& argsIn)
     supportFrameworks = false;
     }
   std::string framework;
+  // Add a trailing slash to all paths to aid the search process.
+  for(std::vector<std::string>::iterator i = this->SearchPaths.begin();
+      i != this->SearchPaths.end(); ++i)
+    {
+    std::string& p = *i;
+    if(p.empty() || p[p.size()-1] != '/')
+      {
+      p += "/";
+      }
+    }
   // Use the search path to find the file.
   unsigned int k;
   std::string result;
@@ -109,7 +133,6 @@ bool cmFindPathCommand::InitialPass(std::vector<std::string> const& argsIn)
       if(result.size() == 0)
         {
         tryPath = this->SearchPaths[k];
-        tryPath += "/";
         tryPath += this->Names[j];
         if(cmSystemTools::FileExists(tryPath.c_str()))
           {
@@ -127,19 +150,19 @@ bool cmFindPathCommand::InitialPass(std::vector<std::string> const& argsIn)
         {
         this->Makefile->AddCacheDefinition
           (this->VariableName.c_str(), result.c_str(),
-                                       this->VariableDocumentation.c_str(),
-                                       (this->IncludeFileInPath) ? 
-                                       cmCacheManager::FILEPATH :cmCacheManager::PATH);
+           this->VariableDocumentation.c_str(),
+           (this->IncludeFileInPath) ? 
+           cmCacheManager::FILEPATH :cmCacheManager::PATH);
         return true;
         }
       }
     }
   this->Makefile->AddCacheDefinition
     (this->VariableName.c_str(),
-                                 (this->VariableName + "-NOTFOUND").c_str(),
-                                 this->VariableDocumentation.c_str(),
-                                 (this->IncludeFileInPath) ? 
-                                 cmCacheManager::FILEPATH :cmCacheManager::PATH);
+     (this->VariableName + "-NOTFOUND").c_str(),
+     this->VariableDocumentation.c_str(),
+     (this->IncludeFileInPath) ? 
+     cmCacheManager::FILEPATH :cmCacheManager::PATH);
   return true;
 }
 
@@ -168,7 +191,6 @@ std::string cmFindPathCommand::FindHeaderInFramework(std::string& file,
     if(frameWorkName.size())
       {
       std::string fpath = dir;
-      fpath += "/";
       fpath += frameWorkName;
       fpath += ".framework";
       std::string intPath = fpath;
@@ -187,7 +209,7 @@ std::string cmFindPathCommand::FindHeaderInFramework(std::string& file,
   // if it is not found yet or not a framework header, then do a glob search
   // for all files in dir/*/Headers/
   cmStdString glob = dir;
-  glob += "/*/Headers/";
+  glob += "*/Headers/";
   glob += file;
   cmsys::Glob globIt;
   globIt.FindFiles(glob);

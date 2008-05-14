@@ -1,3 +1,4 @@
+cmake_minimum_required (VERSION 2.6)
 project (Tutorial)
 
 # The version number.
@@ -30,8 +31,9 @@ add_executable (Tutorial tutorial.cxx)
 target_link_libraries (Tutorial  ${EXTRA_LIBS})
 
 # add the install targets
-install_targets (/bin Tutorial)
-install_files (/include FILES "${PROJECT_BINARY_DIR}/TutorialConfig.h")
+install (TARGETS Tutorial DESTINATION bin)
+install (FILES "${PROJECT_BINARY_DIR}/TutorialConfig.h" 
+  DESTINATION include)
 
 
 # enable testing

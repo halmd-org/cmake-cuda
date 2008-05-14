@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmEnableTestingCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 15:35:00 $
-  Version:   $Revision: 1.12 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -29,7 +29,7 @@
  * within the valid control structures are replicated in Testfile
  * (i.e. SUBDIRS() and ADD_TEST() commands within IF() commands that are
  * not entered by CMake are not replicated in Testfile).
- * Note that Dart expects to find this file in the build directory root; 
+ * Note that CTest expects to find this file in the build directory root; 
  * therefore, this command should be in the source directory root too.
  */
 class cmEnableTestingCommand : public cmCommand
@@ -47,12 +47,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const&);
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ENABLE_TESTING";}
+  virtual const char* GetName() { return "enable_testing";}
 
   /**
    * Succinct documentation.
@@ -68,17 +69,14 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ENABLE_TESTING()\n"
+      "  enable_testing()\n"
       "Enables testing for this directory and below.  "
-      "See also the ADD_TEST command.  Note that ctest expects to find "
+      "See also the add_test command.  Note that ctest expects to find "
       "a test file in the build directory root.  Therefore, this command "
       "should be in the source directory root.";
     }
   
   cmTypeMacro(cmEnableTestingCommand, cmCommand);
-
-  ///! method to recurse and write the DartTestfiles
-  void CreateDartTestfileForMakefile(cmMakefile *mf);
   
 };
 

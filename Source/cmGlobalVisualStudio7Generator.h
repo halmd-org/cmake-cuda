@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio7Generator.h,v $
   Language:  C++
-  Date:      $Date: 2007/03/16 22:05:42 $
-  Version:   $Revision: 1.34.2.6 $
+  Date:      $Date: 2008-01-31 21:38:45 $
+  Version:   $Revision: 1.45 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,7 @@
 #ifndef cmGlobalVisualStudio7Generator_h
 #define cmGlobalVisualStudio7Generator_h
 
-#include "cmGlobalGenerator.h"
+#include "cmGlobalVisualStudioGenerator.h"
 
 class cmTarget;
 struct cmVS7FlagTable;
@@ -27,7 +27,7 @@ struct cmVS7FlagTable;
  *
  * cmGlobalVisualStudio7Generator manages UNIX build process for a tree
  */
-class cmGlobalVisualStudio7Generator : public cmGlobalGenerator
+class cmGlobalVisualStudio7Generator : public cmGlobalVisualStudioGenerator
 {
 public:
   cmGlobalVisualStudio7Generator();
@@ -50,7 +50,7 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages, 
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
 
   /**
    * Try running cmake and building a file. This is used for dynalically
@@ -107,18 +107,37 @@ protected:
                             const char* name, const char* path, cmTarget &t);
   virtual void WriteProjectDepends(std::ostream& fout, 
                            const char* name, const char* path, cmTarget &t);
-  virtual void WriteProjectConfigurations(std::ostream& fout, 
+  virtual void WriteProjectConfigurations(std::ostream& fout,
                                           const char* name,
                                           bool partOfDefaultBuild);
   virtual void WriteSLNFooter(std::ostream& fout);
   virtual void WriteSLNHeader(std::ostream& fout);
   virtual void AddPlatformDefinitions(cmMakefile* mf);
 
+  virtual void WriteTargetsToSolution(
+    std::ostream& fout,
+    cmLocalGenerator* root,
+    cmGlobalGenerator::TargetDependSet& projectTargets,
+    cmGlobalGenerator::TargetDependSet& originalTargets);
+  virtual void WriteTargetDepends(
+    std::ostream& fout,
+    cmGlobalGenerator::TargetDependSet& projectTargets);
+  virtual void WriteTargetConfigurations(
+    std::ostream& fout,
+    cmLocalGenerator* root,
+    cmGlobalGenerator::TargetDependSet& projectTargets);
+  
+  void AddAllBuildDepends(cmLocalGenerator* root,
+                          cmTarget* target,
+                          cmGlobalGenerator::TargetDependSet& targets);
+                                       
   void GenerateConfigurations(cmMakefile* mf);
 
-  void WriteExternalProject(std::ostream& fout, 
-                            const char* name, const char* path,
-                            const std::vector<std::string>& dependencies);
+  virtual void WriteExternalProject(std::ostream& fout, 
+                                    const char* name, 
+                                    const char* path,
+                                    const std::vector<std::string>&
+                                    dependencies);
 
   std::string ConvertToSolutionPath(const char* path);
 

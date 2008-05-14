@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsJavaParserHelper.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2006-05-10 19:01:22 $
+  Version:   $Revision: 1.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -141,7 +141,7 @@ void cmDependsJavaParserHelper::Print(const char* place, const char* str)
 
 void cmDependsJavaParserHelper::CombineUnions(char** out, 
                                               const char* in1, char** in2,
-  const char* sep)
+                                              const char* sep)
 {
   size_t len = 1;
   if ( in1 )
@@ -199,7 +199,7 @@ void cmDependsJavaParserHelper
 
 void cmDependsJavaParserHelper
 ::AllocateParserType(cmDependsJavaParserHelper::ParserType* pt, 
-  const char* str, int len)
+                     const char* str, int len)
 {
   pt->str = 0;
   if ( len == 0 )
@@ -393,7 +393,7 @@ void cmDependsJavaParserHelper::Error(const char* str)
   std::cerr << "String: [";
   for ( cc = 0; 
         cc < 30 && *(this->InputBuffer.c_str() + this->InputBufferPos + cc);
-    cc ++ )
+        cc ++ )
     {
     std::cerr << *(this->InputBuffer.c_str() + this->InputBufferPos + cc);
     }

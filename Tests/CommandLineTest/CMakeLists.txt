@@ -1,3 +1,4 @@
+cmake_minimum_required (VERSION 2.6)
 PROJECT(CommandLineTest)
 
 GET_FILENAME_COMPONENT(CMAKE_BIN_DIR ${CMAKE_COMMAND} PATH)
@@ -16,8 +17,8 @@ EXEC_CMAKE_COMMAND("-E time \"${CMAKE_COMMAND} -N -LH ${CommandLineTest_SOURCE_D
 EXEC_CMAKE_COMMAND("-E time \"${CMAKE_COMMAND} -N -LAH ${CommandLineTest_SOURCE_DIR}\"")
 EXEC_CMAKE_COMMAND("--help")
 EXEC_CMAKE_COMMAND("--help-command-list")
-EXEC_CMAKE_COMMAND("--help ADD_EXECUTABLE")
-EXEC_CMAKE_COMMAND("--help-command ADD_EXECUTABLE")
+EXEC_CMAKE_COMMAND("--help add_executable")
+EXEC_CMAKE_COMMAND("--help-command add_executable")
 EXEC_CMAKE_COMMAND("--help-full \"${CMAKE_CURRENT_BINARY_DIR}/cmake.txt\"")
 EXEC_CMAKE_COMMAND("--help-man \"${CMAKE_CURRENT_BINARY_DIR}/cmake.man\"")
 EXEC_CMAKE_COMMAND("--help-html \"${CMAKE_CURRENT_BINARY_DIR}/cmake.html\"")

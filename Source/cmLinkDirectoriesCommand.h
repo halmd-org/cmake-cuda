@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLinkDirectoriesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/03/18 15:41:40 $
-  Version:   $Revision: 1.10 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -42,19 +42,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "LINK_DIRECTORIES";}
+  virtual const char* GetName() { return "link_directories";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Specify directories in which to search for libraries.";
+    return "Specify directories in which the linker will look for libraries.";
     }
   
   /**
@@ -63,8 +64,9 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  LINK_DIRECTORIES(directory1 directory2 ...)\n"
-      "Specify the paths in which the linker should search for libraries.";
+      "  link_directories(directory1 directory2 ...)\n"
+      "Specify the paths in which the linker should search for libraries. "
+      "The command will apply only to targets created after it is called.";
     }
   
   cmTypeMacro(cmLinkDirectoriesCommand, cmCommand);

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestCoverageHandler.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/10 20:03:09 $
-  Version:   $Revision: 1.13 $
+  Date:      $Date: 2007-06-08 16:29:40 $
+  Version:   $Revision: 1.17 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,6 +25,7 @@
 #include <cmsys/RegularExpression.hxx>
 
 class cmGeneratedFileStream;
+class cmCTestCoverageHandlerContainer;
 
 /** \class cmCTestCoverageHandler
  * \brief A class that handles coverage computaiton for ctest
@@ -54,6 +55,41 @@ private:
     const char* binDir);
   bool StartCoverageLogFile(cmGeneratedFileStream& ostr, int logFileCount);
   void EndCoverageLogFile(cmGeneratedFileStream& ostr, int logFileCount);
+
+  //! Handle coverage using GCC's GCov
+  int HandleGCovCoverage(cmCTestCoverageHandlerContainer* cont);
+
+  //! Handle coverage using Bullseye
+  int HandleBullseyeCoverage(cmCTestCoverageHandlerContainer* cont);
+  int RunBullseyeSourceSummary(cmCTestCoverageHandlerContainer* cont);
+  int RunBullseyeCoverageBranch(cmCTestCoverageHandlerContainer* cont,
+                                std::set<cmStdString>& coveredFileNames,
+                                std::vector<std::string>& files,
+                                std::vector<std::string>& filesFullPath);
+  int RunBullseyeCommand(
+    cmCTestCoverageHandlerContainer* cont,
+    const char* cmd,
+    const char* arg,
+    std::string& outputFile);
+  bool ParseBullsEyeCovsrcLine(
+    std::string const& inputLine,
+    std::string& sourceFile,
+    int& functionsCalled,
+    int& totalFunctions,
+    int& percentFunction,
+    int& branchCovered,
+    int& totalBranches,
+    int& percentBranch);
+  bool GetNextInt(std::string const& inputLine,
+                  std::string::size_type& pos,
+                  int& value);
+  //! Handle Python coverage using Python's Trace.py
+  int HandleTracePyCoverage(cmCTestCoverageHandlerContainer* cont);
+
+  // Find the source file based on the source and build tree. This is used for
+  // Trace.py mode, since that one does not tell us where the source file is.
+  std::string FindFile(cmCTestCoverageHandlerContainer* cont,
+    std::string fileName);
 
   struct cmCTestCoverage
     {

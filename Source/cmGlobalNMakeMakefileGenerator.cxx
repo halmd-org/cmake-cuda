@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalNMakeMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.19.2.4 $
+  Date:      $Date: 2008-01-13 21:36:20 $
+  Version:   $Revision: 1.26 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -27,12 +27,14 @@ cmGlobalNMakeMakefileGenerator::cmGlobalNMakeMakefileGenerator()
 }
 
 void cmGlobalNMakeMakefileGenerator
-::EnableLanguage(std::vector<std::string>const& l, cmMakefile *mf)
+::EnableLanguage(std::vector<std::string>const& l, 
+                 cmMakefile *mf, 
+                 bool optional)
 {
   // pick a default 
   mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
   mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
-  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf);
+  this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
 }
 
 ///! Create a local generator appropriate to this Global Generator
@@ -45,6 +47,7 @@ cmLocalGenerator *cmGlobalNMakeMakefileGenerator::CreateLocalGenerator()
   lg->SetGlobalGenerator(this);
   lg->SetIgnoreLibPrefix(true);
   lg->SetPassMakeflags(true);
+  lg->SetNMake(true);
   lg->SetUnixCD(false);
   return lg;
 }
@@ -53,7 +56,7 @@ cmLocalGenerator *cmGlobalNMakeMakefileGenerator::CreateLocalGenerator()
 void cmGlobalNMakeMakefileGenerator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates NMake makefiles.";
-  entry.full = "";
+  entry.Name = this->GetName();
+  entry.Brief = "Generates NMake makefiles.";
+  entry.Full = "";
 }

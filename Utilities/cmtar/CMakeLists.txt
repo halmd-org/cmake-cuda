@@ -107,9 +107,15 @@ FOREACH(func
     glob
     major
     minor
+    makedev
     )
   CHECK_SYMBOL_EXISTS_EX("${func}")
 ENDFOREACH(func)
+
+# on Syllable lchown() is there, but always returns "Not implemented"
+IF("${CMAKE_SYSTEM_NAME}" MATCHES syllable)
+  SET(HAVE_LCHOWN 0)
+ENDIF("${CMAKE_SYSTEM_NAME}" MATCHES syllable)
 
 CHECK_TYPE_SIZE("dev_t" SIZEOF_DEV_T)
 IF(HAVE_SIZEOF_DEV_T)
@@ -206,7 +212,7 @@ ELSE(HAVE_SIZEOF_UID_T)
 ENDIF(HAVE_SIZEOF_UID_T)
 
 #SET (HAVE_BASENAME 0)
-#SET (HAVE_CTYPE_H 0)
+SET (HAVE_CTYPE_H 1) # all our platforms have <ctype.h>
 #SET (HAVE_DEV_T 1)
 #SET (HAVE_DIRNAME 0)
 #SET (HAVE_FNMATCH 1)

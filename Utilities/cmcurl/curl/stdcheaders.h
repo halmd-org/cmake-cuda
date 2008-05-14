@@ -20,7 +20,7 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: stdcheaders.h,v 1.1 2005/06/24 13:02:17 andy Exp $
+ * $Id: stdcheaders.h,v 1.2 2007-03-15 19:22:15 andy Exp $
  ***************************************************************************/
 
 #include <sys/types.h>

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmStringCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.19.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.27 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,8 +20,11 @@
 
 #include <stdlib.h> // required for atoi
 #include <ctype.h>
+#include <time.h>
+
 //----------------------------------------------------------------------------
-bool cmStringCommand::InitialPass(std::vector<std::string> const& args)
+bool cmStringCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1)
     {
@@ -65,6 +68,14 @@ bool cmStringCommand::InitialPass(std::vector<std::string> const& args)
   else if(subCommand == "SUBSTRING")
     {
     return this->HandleSubstringCommand(args);
+    }
+  else if(subCommand == "STRIP")
+    {
+    return this->HandleStripCommand(args);
+    }
+  else if(subCommand == "RANDOM")
+    {
+    return this->HandleRandomCommand(args);
     }
   
   std::string e = "does not recognize sub-command "+subCommand;
@@ -238,6 +249,7 @@ bool cmStringCommand::RegexMatch(std::vector<std::string> const& args)
     input += args[i];
     }
   
+  this->ClearMatches(this->Makefile);
   // Compile the regular expression.
   cmsys::RegularExpression re;
   if(!re.compile(regex.c_str()))
@@ -252,6 +264,7 @@ bool cmStringCommand::RegexMatch(std::vector<std::string> const& args)
   std::string output;
   if(re.find(input.c_str()))
     {
+    this->StoreMatches(this->Makefile, re);
     std::string::size_type l = re.start();
     std::string::size_type r = re.end();
     if(r-l == 0)
@@ -285,6 +298,7 @@ bool cmStringCommand::RegexMatchAll(std::vector<std::string> const& args)
     input += args[i];
     }
   
+  this->ClearMatches(this->Makefile);
   // Compile the regular expression.
   cmsys::RegularExpression re;
   if(!re.compile(regex.c_str()))
@@ -301,6 +315,7 @@ bool cmStringCommand::RegexMatchAll(std::vector<std::string> const& args)
   const char* p = input.c_str();
   while(re.find(p))
     {
+    this->StoreMatches(this->Makefile, re);
     std::string::size_type l = re.start();
     std::string::size_type r = re.end();
     if(r-l == 0)
@@ -387,6 +402,7 @@ bool cmStringCommand::RegexReplace(std::vector<std::string> const& args)
     input += args[i];
     }
   
+  this->ClearMatches(this->Makefile);
   // Compile the regular expression.
   cmsys::RegularExpression re;
   if(!re.compile(regex.c_str()))
@@ -403,6 +419,7 @@ bool cmStringCommand::RegexReplace(std::vector<std::string> const& args)
   std::string::size_type base = 0;
   while(re.find(input.c_str()+base))
     {
+    this->StoreMatches(this->Makefile, re);
     std::string::size_type l2 = re.start();
     std::string::size_type r = re.end();
     
@@ -460,6 +477,28 @@ bool cmStringCommand::RegexReplace(std::vector<std::string> const& args)
   // Store the output in the provided variable.
   this->Makefile->AddDefinition(outvar.c_str(), output.c_str());
   return true;
+}
+
+//----------------------------------------------------------------------------
+void cmStringCommand::ClearMatches(cmMakefile* mf)
+{
+  for (unsigned int i=0; i<10; i++)
+    {
+    char name[128];
+    sprintf(name, "CMAKE_MATCH_%d", i);
+    mf->AddDefinition(name, "");
+    }
+}
+
+//----------------------------------------------------------------------------
+void cmStringCommand::StoreMatches(cmMakefile* mf,cmsys::RegularExpression& re)
+{
+  for (unsigned int i=0; i<10; i++)
+    {
+    char name[128];
+    sprintf(name, "CMAKE_MATCH_%d", i);
+    mf->AddDefinition(name, re.match(i).c_str());
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -604,5 +643,122 @@ bool cmStringCommand
   sprintf(buffer, "%d", static_cast<int>(length));
 
   this->Makefile->AddDefinition(variableName.c_str(), buffer);
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmStringCommand::HandleStripCommand(
+  std::vector<std::string> const& args)
+{
+ if(args.size() != 3)
+    {
+    this->SetError("sub-command LENGTH requires two arguments.");
+    return false;
+    }
+
+  const std::string& stringValue = args[1];
+  const std::string& variableName = args[2];
+  size_t inStringLength = stringValue.size();
+  size_t startPos = inStringLength + 1;
+  size_t endPos = 0;
+  const char* ptr = stringValue.c_str();
+  size_t cc;
+  for ( cc = 0; cc < inStringLength; ++ cc )
+    {
+    if ( !isspace(*ptr) )
+      {
+      if ( startPos > inStringLength )
+        {
+        startPos = cc;
+        }
+      endPos = cc;
+      }
+    ++ ptr;
+    }
+
+  size_t outLength = 0;
+
+  // if the input string didn't contain any non-space characters, return 
+  // an empty string
+  if (startPos > inStringLength)
+    {
+    outLength = 0;
+    startPos = 0;
+    }
+  else
+    {
+    outLength=endPos - startPos + 1;
+    }
+
+  this->Makefile->AddDefinition(variableName.c_str(),
+    stringValue.substr(startPos, outLength).c_str());
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmStringCommand
+::HandleRandomCommand(std::vector<std::string> const& args)
+{
+  if(args.size() < 2 || args.size() == 3 || args.size() == 5)
+    {
+    this->SetError("sub-command RANDOM requires at least one argument.");
+    return false;
+    }
+
+  int length = 5;
+  const char cmStringCommandDefaultAlphabet[] = "qwertyuiopasdfghjklzxcvbnm"
+    "QWERTYUIOPASDFGHJKLZXCVBNM"
+    "0123456789";
+  std::string alphabet;
+
+  if ( args.size() > 3 )
+    {
+    size_t i = 1;
+    size_t stopAt = args.size() - 2;
+
+    for ( ; i < stopAt; ++i )
+      {
+      if ( args[i] == "LENGTH" )
+        {
+        ++i;
+        length = atoi(args[i].c_str());
+        }
+      else if ( args[i] == "ALPHABET" )
+        {
+        ++i;
+        alphabet = args[i];
+        }
+      }
+    }
+  if ( !alphabet.size() )
+    {
+    alphabet = cmStringCommandDefaultAlphabet;
+    }
+
+  double sizeofAlphabet = alphabet.size();
+  if ( sizeofAlphabet < 1 )
+    {
+    this->SetError("sub-command RANDOM invoked with bad alphabet.");
+    return false;
+    }
+  if ( length < 1 )
+    {
+    this->SetError("sub-command RANDOM invoked with bad length.");
+    return false;
+    }
+  const std::string& variableName = args[args.size()-1];
+
+  std::vector<char> result;
+  srand((int)time(NULL));
+  const char* alphaPtr = alphabet.c_str();
+  int cc;
+  for ( cc = 0; cc < length; cc ++ )
+    {
+    int idx=(int) (sizeofAlphabet* rand()/(RAND_MAX+1.0));
+    result.push_back(*(alphaPtr + idx));
+    }
+  result.push_back(0);
+
+  this->Makefile->AddDefinition(variableName.c_str(), &*result.begin());
   return true;
 }

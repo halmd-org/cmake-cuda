@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2004, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2005, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,7 +18,7 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: amigaos.h,v 1.1 2005/06/24 13:00:12 andy Exp $
+ * $Id: amigaos.h,v 1.2 2007-03-15 19:22:13 andy Exp $
  ***************************************************************************/
 
 #ifndef LIBCURL_AMIGAOS_H
@@ -32,13 +32,19 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 
-#include <bsdsocket.h>
+#include <sys/socket.h>
 
 #include "config-amigaos.h"
 
-#define select(args...) WaitSelect( args, NULL)
-#define inet_ntoa(x)    Inet_NtoA( x ## .s_addr)
-#define ioctl(a,b,c,d)  IoctlSocket( (LONG)a, (ULONG)b, (char*)c)
+#ifndef select
+# define select(args...) WaitSelect( args, NULL)
+#endif
+#ifndef inet_ntoa
+# define inet_ntoa(x)    Inet_NtoA( x ## .s_addr)
+#endif
+#ifndef ioctl
+# define ioctl(a,b,c,d)  IoctlSocket( (LONG)a, (ULONG)b, (char*)c)
+#endif
 #define _AMIGASF        1
 
 extern void amiga_cleanup();

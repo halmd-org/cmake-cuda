@@ -1,4 +1,4 @@
-# - pkg-config module for CMake
+# - obsolete pkg-config module for CMake
 #
 # Defines the following macros:
 #
@@ -15,6 +15,8 @@
 FIND_PROGRAM(PKGCONFIG_EXECUTABLE NAMES pkg-config PATHS /usr/local/bin )
 
 MACRO(PKGCONFIG _package _include_DIR _link_DIR _link_FLAGS _cflags)
+  message(STATUS
+    "WARNING: you are using the obsolete 'PKGCONFIG' macro use FindPkgConfig")
 # reset the variables at the beginning
   SET(${_include_DIR})
   SET(${_link_DIR})

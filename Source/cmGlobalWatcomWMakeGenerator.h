@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalWatcomWMakeGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/10 18:54:57 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2007-08-09 19:57:30 $
+  Version:   $Revision: 1.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,7 @@
 #ifndef cmGlobalWatcomWMakeGenerator_h
 #define cmGlobalWatcomWMakeGenerator_h
 
-#include "cmGlobalUNIXMakefileGenerator3.h"
+#include "cmGlobalUnixMakefileGenerator3.h"
 
 /** \class cmGlobalWatcomWMakeGenerator
  * \brief Write a NMake makefiles.
@@ -45,7 +45,7 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages, 
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
 };
 
 #endif

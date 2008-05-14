@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmEndMacroCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:58:11 $
-  Version:   $Revision: 1.1.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,13 +39,15 @@ public:
    * Override cmCommand::InvokeInitialPass to get arguments before
    * expansion.
    */
-  virtual bool InvokeInitialPass(std::vector<cmListFileArgument> const&);
+  virtual bool InvokeInitialPass(std::vector<cmListFileArgument> const&,
+                                 cmExecutionStatus &);
   
   /**
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const&) {return false;}
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &) {return false;}
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -55,14 +57,14 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "ENDMACRO";}
+  virtual const char* GetName() { return "endmacro";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Ends a list of commands in a MACRO block.";
+    return "Ends a list of commands in a macro block.";
     }
   
   /**
@@ -71,8 +73,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ENDMACRO(expression)\n"
-      "See the MACRO command.";
+      "  endmacro(expression)\n"
+      "See the macro command.";
     }
   
   cmTypeMacro(cmEndMacroCommand, cmCommand);

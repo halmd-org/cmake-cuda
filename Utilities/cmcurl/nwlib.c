@@ -18,7 +18,7 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: nwlib.c,v 1.1 2005/06/24 13:00:12 andy Exp $
+ * $Id: nwlib.c,v 1.2 2007-03-15 19:22:13 andy Exp $
  ***************************************************************************/
 
 #include <errno.h>
@@ -30,7 +30,7 @@
 #include <nks/thread.h>
 #include <nks/synch.h>
 
-#include "curl_memory.h"
+#include "memory.h"
 #include "memdebug.h"
 
 typedef struct

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTryCompileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2007/05/28 14:07:04 $
-  Version:   $Revision: 1.18.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.27 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,14 +17,14 @@
 #ifndef cmTryCompileCommand_h
 #define cmTryCompileCommand_h
 
-#include "cmCommand.h"
+#include "cmCoreTryCompile.h"
 
 /** \class cmTryCompileCommand
  * \brief Specifies where to install some files
  *
  * cmTryCompileCommand is used to test if soucre code can be compiled
  */
-class cmTryCompileCommand : public cmCommand
+class cmTryCompileCommand : public cmCoreTryCompile
 {
 public:
   /**
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "TRY_COMPILE";}
+  virtual const char* GetName() { return "try_compile";}
 
   /**
    * Succinct documentation.
@@ -55,40 +56,27 @@ public:
     }
 
   /**
-   * This is the core code for try compile. It is here so that other
-   * commands, such as TryRun can access the same logic without
-   * duplication. 
-   */
-  static int CoreTryCompileCode(
-    cmMakefile *mf, std::vector<std::string> const& argv, bool clean);
-
-  /** 
-   * This deletes all the files created by TRY_COMPILE or TRY_RUN
-   * code. This way we do not have to rely on the timing and
-   * dependencies of makefiles.
-   */
-  static void CleanupFiles(const char* binDir);
-  
-  /**
    * More documentation.  */
   virtual const char* GetFullDocumentation()
     {
     return
-      "  TRY_COMPILE(RESULT_VAR bindir srcdir\n"
-      "              projectName <targetname> <CMAKE_FLAGS <Flags>>\n"
-      "              <OUTPUT_VARIABLE var>)\n"
-      "Try compiling a program.  In this form, srcdir should contain a complete "
-      "CMake project with a CMakeLists.txt file and all sources. The bindir and "
-      "srcdir will not be deleted after this command is run. "
+      "  try_compile(RESULT_VAR bindir srcdir\n"
+      "              projectName <targetname> [CMAKE_FLAGS <Flags>]\n"
+      "              [OUTPUT_VARIABLE var])\n"
+      "Try compiling a program.  In this form, srcdir should contain a "
+      "complete CMake project with a CMakeLists.txt file and all sources. The "
+      "bindir and srcdir will not be deleted after this command is run. "
       "If <target name> is specified then build just that target "
       "otherwise the all or ALL_BUILD target is built.\n"
-      "  TRY_COMPILE(RESULT_VAR bindir srcfile\n"
-      "              <CMAKE_FLAGS <Flags>>\n"
-      "              <COMPILE_DEFINITIONS <flags> ...>\n"
-      "              <OUTPUT_VARIABLE var>)\n"
+      "  try_compile(RESULT_VAR bindir srcfile\n"
+      "              [CMAKE_FLAGS <Flags>]\n"
+      "              [COMPILE_DEFINITIONS <flags> ...]\n"
+      "              [OUTPUT_VARIABLE var]\n"
+      "              [COPY_FILE <filename> )\n"
       "Try compiling a srcfile.  In this case, the user need only supply a "
       "source file.  CMake will create the appropriate CMakeLists.txt file "
-      "to build the source. "
+      "to build the source. If COPY_FILE is used, the compiled file will be "
+      "copied to the given file.\n"
       "In this version all files in bindir/CMakeFiles/CMakeTmp, "
       "will be cleaned automatically, for debugging a --debug-trycompile can "
       "be passed to cmake to avoid the clean. Some extra flags that "
@@ -97,14 +85,14 @@ public:
       "COMPILE_DEFINITIONS are -Ddefinition that will be passed to the "
       "compile line.  "
 
-      "TRY_COMPILE creates a CMakeList.txt "
+      "try_compile creates a CMakeList.txt "
       "file on the fly that looks like this:\n"
-      "  ADD_DEFINITIONS( <expanded COMPILE_DEFINITIONS from calling "
+      "  add_definitions( <expanded COMPILE_DEFINITIONS from calling "
       "cmake>)\n"
-      "  INCLUDE_DIRECTORIES(${INCLUDE_DIRECTORIES})\n"
-      "  LINK_DIRECTORIES(${LINK_DIRECTORIES})\n"
-      "  ADD_EXECUTABLE(cmTryCompileExec sources)\n"
-      "  TARGET_LINK_LIBRARIES(cmTryCompileExec ${LINK_LIBRARIES})\n"
+      "  include_directories(${INCLUDE_DIRECTORIES})\n"
+      "  link_directories(${LINK_DIRECTORIES})\n"
+      "  add_executable(cmTryCompileExec sources)\n"
+      "  target_link_libraries(cmTryCompileExec ${LINK_LIBRARIES})\n"
       "In both versions of the command, "
       "if OUTPUT_VARIABLE is specified, then the "
       "output from the build process is stored in the given variable. "
@@ -114,7 +102,7 @@ public:
       "";
     }
   
-  cmTypeMacro(cmTryCompileCommand, cmCommand);
+  cmTypeMacro(cmTryCompileCommand, cmCoreTryCompile);
 
 };
 

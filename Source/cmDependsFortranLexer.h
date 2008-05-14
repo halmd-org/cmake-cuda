@@ -1,3 +1,19 @@
+/*=========================================================================
+
+  Program:   CMake - Cross-Platform Makefile Generator
+  Module:    $RCSfile: cmDependsFortranLexer.h,v $
+  Language:  C++
+  Date:      $Date: 2008-04-21 19:21:57 $
+  Version:   $Revision: 1.7.2.1 $
+
+  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
+  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
 #ifndef cmDependsFortran_yyHEADER_H
 #define cmDependsFortran_yyHEADER_H 1
 #define cmDependsFortran_yyIN_HEADER 1
@@ -9,7 +25,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 31
+#define YY_FLEX_SUBMINOR_VERSION 34
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -31,7 +47,15 @@
 
 /* C99 systems have <inttypes.h>. Non-C99 systems may or may not. */
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ >= 199901L
+#if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+
+/* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
+ * if you want the limit (max/min) macros for int types.
+ */
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS 1
+#endif
+
 #include <inttypes.h>
 typedef int8_t flex_int8_t;
 typedef uint8_t flex_uint8_t;
@@ -86,11 +110,12 @@ typedef unsigned int flex_uint32_t;
 
 #else   /* ! __cplusplus */
 
-#if __STDC__
+/* C99 requires __STDC__ to be defined as 1. */
+#if defined (__STDC__)
 
 #define YY_USE_CONST
 
-#endif  /* __STDC__ */
+#endif  /* defined (__STDC__) */
 #endif  /* ! __cplusplus */
 
 #ifdef YY_USE_CONST
@@ -116,7 +141,10 @@ typedef void* yyscan_t;
 #define yycolumn (YY_CURRENT_BUFFER_LVALUE->yy_bs_column)
 #define yy_flex_debug yyg->yy_flex_debug_r
 
-int cmDependsFortran_yylex_init (yyscan_t* scanner);
+/* Size of default input buffer. */
+#ifndef YY_BUF_SIZE
+#define YY_BUF_SIZE 16384
+#endif
 
 #ifndef YY_TYPEDEF_YY_BUFFER_STATE
 #define YY_TYPEDEF_YY_BUFFER_STATE
@@ -126,11 +154,13 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 /* The following is because we cannot portably get our hands on size_t
  * (without autoconf's help, which isn't available because we want
  * flex-generated scanners to compile on their own).
+ * Given that the standard has decreed that size_t exists since 1989,
+ * I guess we can afford to depend on it. Manoj.
  */
 
 #ifndef YY_TYPEDEF_YY_SIZE_T
 #define YY_TYPEDEF_YY_SIZE_T
-typedef unsigned int yy_size_t;
+typedef size_t yy_size_t;
 #endif
 
 #ifndef YY_STRUCT_YY_BUFFER_STATE
@@ -185,24 +215,16 @@ struct yy_buffer_state
 #endif /* !YY_STRUCT_YY_BUFFER_STATE */
 
 void cmDependsFortran_yyrestart (FILE *input_file ,yyscan_t yyscanner );
-void cmDependsFortran_yy_switch_to_buffer (YY_BUFFER_STATE new_buffer ,
-  yyscan_t yyscanner );
-YY_BUFFER_STATE cmDependsFortran_yy_create_buffer (FILE *file,int size ,
-  yyscan_t yyscanner );
-void cmDependsFortran_yy_delete_buffer (YY_BUFFER_STATE b ,
-  yyscan_t yyscanner );
-void cmDependsFortran_yy_flush_buffer (YY_BUFFER_STATE b ,
-  yyscan_t yyscanner );
-void cmDependsFortran_yypush_buffer_state (YY_BUFFER_STATE new_buffer ,
-  yyscan_t yyscanner );
+void cmDependsFortran_yy_switch_to_buffer (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
+YY_BUFFER_STATE cmDependsFortran_yy_create_buffer (FILE *file,int size ,yyscan_t yyscanner );
+void cmDependsFortran_yy_delete_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
+void cmDependsFortran_yy_flush_buffer (YY_BUFFER_STATE b ,yyscan_t yyscanner );
+void cmDependsFortran_yypush_buffer_state (YY_BUFFER_STATE new_buffer ,yyscan_t yyscanner );
 void cmDependsFortran_yypop_buffer_state (yyscan_t yyscanner );
 
-YY_BUFFER_STATE cmDependsFortran_yy_scan_buffer (char *base,yy_size_t size ,
-  yyscan_t yyscanner );
-YY_BUFFER_STATE cmDependsFortran_yy_scan_string (yyconst char *yy_str ,
-  yyscan_t yyscanner );
-YY_BUFFER_STATE cmDependsFortran_yy_scan_bytes (yyconst char *bytes,int len ,
-  yyscan_t yyscanner );
+YY_BUFFER_STATE cmDependsFortran_yy_scan_buffer (char *base,yy_size_t size ,yyscan_t yyscanner );
+YY_BUFFER_STATE cmDependsFortran_yy_scan_string (yyconst char *yy_str ,yyscan_t yyscanner );
+YY_BUFFER_STATE cmDependsFortran_yy_scan_bytes (yyconst char *bytes,int len ,yyscan_t yyscanner );
 
 void *cmDependsFortran_yyalloc (yy_size_t ,yyscan_t yyscanner );
 void *cmDependsFortran_yyrealloc (void *,yy_size_t ,yyscan_t yyscanner );
@@ -228,6 +250,10 @@ void cmDependsFortran_yyfree (void * ,yyscan_t yyscanner );
 #define YY_EXTRA_TYPE void *
 #endif
 
+int cmDependsFortran_yylex_init (yyscan_t* scanner);
+
+int cmDependsFortran_yylex_init_extra (YY_EXTRA_TYPE user_defined,yyscan_t* scanner);
+
 /* Accessor methods to globals.
    These are made visible to non-reentrant scanners for convenience. */
 
@@ -239,8 +265,7 @@ void cmDependsFortran_yyset_debug (int debug_flag ,yyscan_t yyscanner );
 
 YY_EXTRA_TYPE cmDependsFortran_yyget_extra (yyscan_t yyscanner );
 
-void cmDependsFortran_yyset_extra (YY_EXTRA_TYPE user_defined ,
-  yyscan_t yyscanner );
+void cmDependsFortran_yyset_extra (YY_EXTRA_TYPE user_defined ,yyscan_t yyscanner );
 
 FILE *cmDependsFortran_yyget_in (yyscan_t yyscanner );
 
@@ -303,15 +328,13 @@ extern int cmDependsFortran_yylex (yyscan_t yyscanner);
 #define YY_DECL int cmDependsFortran_yylex (yyscan_t yyscanner)
 #endif /* !YY_DECL */
 
-/* yy_get_previous_state - get the state just before the EOB char was reached
- */
+/* yy_get_previous_state - get the state just before the EOB char was reached */
 
 #undef YY_NEW_FILE
 #undef YY_FLUSH_BUFFER
 #undef yy_set_bol
 #undef yy_new_buffer
 #undef yy_set_interactive
-#undef yytext_ptr
 #undef YY_DO_BEFORE_ACTION
 
 #ifdef YY_DECL_IS_OURS

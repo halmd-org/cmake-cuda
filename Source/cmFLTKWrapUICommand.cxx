@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFLTKWrapUICommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 20:05:56 $
-  Version:   $Revision: 1.28.2.3 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.38 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,7 +19,8 @@
 #include "cmSourceFile.h"
 
 // cmFLTKWrapUICommand
-bool cmFLTKWrapUICommand::InitialPass(std::vector<std::string> const& args)
+bool cmFLTKWrapUICommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2 )
     {
@@ -53,19 +54,17 @@ bool cmFLTKWrapUICommand::InitialPass(std::vector<std::string> const& args)
     // to generate .cxx and .h files
     if (!curr || !curr->GetPropertyAsBool("WRAP_EXCLUDE"))
       {
-      cmSourceFile header_file;
-      std::string srcName = cmSystemTools::GetFilenameWithoutExtension(*i);
-      const bool headerFileOnly = true;
-      header_file.SetName(srcName.c_str(), 
-                  outputDirectory.c_str(), "h",headerFileOnly);
+      std::string outName = outputDirectory;
+      outName += "/";
+      outName += cmSystemTools::GetFilenameWithoutExtension(*i);
+      std::string hname = outName;
+      hname += ".h";
       std::string origname = cdir + "/" + *i;
-      std::string hname   = header_file.GetFullPath();
       // add starting depends
       std::vector<std::string> depends;
       depends.push_back(origname);
       depends.push_back(fluid_exe);
-      std::string cxxres = outputDirectory.c_str();
-      cxxres += "/" + srcName;
+      std::string cxxres = outName;
       cxxres += ".cxx";
 
       cmCustomCommandLine commandLine;
@@ -93,8 +92,8 @@ bool cmFLTKWrapUICommand::InitialPass(std::vector<std::string> const& args)
                                            no_working_dir);
 
       cmSourceFile *sf = this->Makefile->GetSource(cxxres.c_str());
-      sf->GetDepends().push_back(hname);
-      sf->GetDepends().push_back(origname);
+      sf->AddDepend(hname.c_str());
+      sf->AddDepend(origname.c_str());
       this->GeneratedSourcesClasses.push_back(sf);
       }
     }
@@ -122,12 +121,12 @@ void cmFLTKWrapUICommand::FinalPass()
   // people should add the srcs to the target themselves, but the old command
   // didn't support that, so check and see if they added the files in and if
   // they didn;t then print a warning and add then anyhow
-  std::vector<std::string> srcs = 
-    this->Makefile->GetTargets()[this->Target].GetSourceLists();
+  std::vector<cmSourceFile*> const& srcs = 
+    this->Makefile->GetTargets()[this->Target].GetSourceFiles();
   bool found = false;
   for (unsigned int i = 0; i < srcs.size(); ++i)
     {
-    if (srcs[i] == 
+    if (srcs[i]->GetFullPath() == 
         this->GeneratedSourcesClasses[0]->GetFullPath())
       {
       found = true;
@@ -157,8 +156,8 @@ void cmFLTKWrapUICommand::FinalPass()
     // Generate code for all the .fl files
     for(size_t classNum = 0; classNum < lastHeadersClass; classNum++)
       {
-      this->Makefile->GetTargets()[this->Target].GetSourceFiles().
-        push_back(this->GeneratedSourcesClasses[classNum]);
+      this->Makefile->GetTargets()[this->Target]
+        .AddSourceFile(this->GeneratedSourcesClasses[classNum]);
       }
     }
 }

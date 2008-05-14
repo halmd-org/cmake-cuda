@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalUnixMakefileGenerator3.h,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 19:05:32 $
-  Version:   $Revision: 1.45.2.5 $
+  Date:      $Date: 2008-01-13 21:36:20 $
+  Version:   $Revision: 1.82 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,7 +22,6 @@
 class cmCustomCommand;
 class cmDependInformation;
 class cmDepends;
-class cmMakeDepend;
 class cmMakefileTargetGenerator;
 class cmTarget;
 class cmSourceFile;
@@ -98,6 +97,16 @@ public:
   void SetWatcomWMake(bool v)  {this->WatcomWMake = v;}
 
   /**
+   * Set to true if the make tool being used is MinGW Make.
+   */
+  void SetMinGWMake(bool v)  {this->MinGWMake = v;}
+
+  /**
+   * Set to true if the make tool being used is NMake.
+   */
+  void SetNMake(bool v)  {this->NMake = v;}
+
+  /**
    * Set to true if the shell being used is the MSYS shell.
    * This controls if statements in the makefile and the SHELL variable.
    * The default is false.
@@ -122,15 +131,6 @@ public:
    * be not end with :  i.e. .SILENT: or .SILENT
    */
   void SetSilentNoColon(bool v)  {this->SilentNoColon = v;}
-
-  /**
-   * If set to true, the CMake variable CMAKE_VERBOSE_MAKEFILES doesn't have
-   * anymore. Set it to true when writing a generator where short output
-   * doesn't make sense, e.g. because the full output is parsed by an
-   * IDE/editor.
-   */
-  void SetForceVerboseMakefiles(bool enable) 
-    {this->ForceVerboseMakefiles=enable;}
 
   /**
    * Set the command to use for native make shell echo.  The value
@@ -158,6 +158,20 @@ public:
    */
   void SetIgnoreLibPrefix(bool s) { this->IgnoreLibPrefix = s; }
 
+  /**
+   * Set whether passing a make target on a command line requires an
+   * extra level of escapes.
+   */
+  void SetMakeCommandEscapeTargetTwice(bool b)
+    { this->MakeCommandEscapeTargetTwice = b; }
+
+  /**
+   * Set whether the Borland curly brace command line hack should be
+   * applied.
+   */
+  void SetBorlandMakeCurlyHack(bool b)
+    { this->BorlandMakeCurlyHack = b; }
+
   // used in writing out Cmake files such as WriteDirectoryInformation
   static void WriteCMakeArgument(std::ostream& os, const char* s);
 
@@ -170,13 +184,16 @@ public:
   /** used to create a recursive make call */
   std::string GetRecursiveMakeCall(const char *makefile, const char* tgt);    
   
+  // append flags to a string
+  virtual void AppendFlags(std::string& flags, const char* newFlags);
+
   // append an echo command
   enum EchoColor { EchoNormal, EchoDepend, EchoBuild, EchoLink,
                    EchoGenerate, EchoGlobal };
   void AppendEcho(std::vector<std::string>& commands, const char* text,
                   EchoColor color = EchoNormal);
 
-  static std::string GetTargetDirectory(cmTarget& target);
+  virtual std::string GetTargetDirectory(cmTarget const& target) const;
 
     // create a command that cds to the start dir then runs the commands
   void CreateCDCommand(std::vector<std::string>& commands, 
@@ -186,31 +203,32 @@ public:
 
   std::string CreateMakeVariable(const char* sin, const char* s2in);
 
-  // cleanup the name of a potential target
-  std::string ConvertToMakeTarget(const char* tgt);
+  /** Called from command-line hook to bring dependencies up to date
+      for a target.  */
+  virtual bool UpdateDependencies(const char* tgtInfo,
+                                  bool verbose, bool color);
 
-  /** Called from command-line hook to scan dependencies.  */
-  virtual bool ScanDependencies(const char* tgtInfo);
-
-  /** Called from command-line hook to check dependencies.  */
-  virtual void CheckDependencies(cmMakefile* mf, bool verbose,
-                                 bool clear);
+  /** Called from command-line hook to clear dependencies.  */
+  virtual void ClearDependencies(cmMakefile* mf, bool verbose);
   
   /** write some extra rules such as make test etc */
   void WriteSpecialTargetsTop(std::ostream& makefileStream);
   void WriteSpecialTargetsBottom(std::ostream& makefileStream);
 
-  std::string GetRelativeTargetDirectory(cmTarget& target);
+  std::string GetRelativeTargetDirectory(cmTarget const& target);
 
-  // List the files for which to check dependency integrity.  Each
-  // language has its own list because integrity may be checked
-  // differently.
-  struct IntegrityCheckSet: public std::set<cmSourceFile *> {};
-  struct IntegrityCheckSetMap: public std::map<cmStdString, IntegrityCheckSet>
-  {};
-  std::map<cmStdString, IntegrityCheckSetMap> &GetIntegrityCheckSet() 
-  { return this->CheckDependFiles;}
-  
+  // File pairs for implicit dependency scanning.  The key of the map
+  // is the depender and the value is the explicit dependee.
+  struct ImplicitDependFileMap: public std::map<cmStdString, cmStdString> {};
+  struct ImplicitDependLanguageMap:
+    public std::map<cmStdString, ImplicitDependFileMap> {};
+  struct ImplicitDependTargetMap:
+    public std::map<cmStdString, ImplicitDependLanguageMap> {};
+  ImplicitDependLanguageMap const& GetImplicitDepends(cmTarget const& tgt);
+
+  void AddImplicitDepends(cmTarget const& tgt, const char* lang,
+                          const char* obj, const char* src);
+
   void AppendGlobalTargetDepends(std::vector<std::string>& depends,
                                  cmTarget& target);
 
@@ -225,7 +243,10 @@ public:
     LocalObjectEntry(cmTarget* t, const char* lang):
       Target(t), Language(lang) {}
   };
-  class LocalObjectInfo: public std::vector<LocalObjectEntry> {};
+  struct LocalObjectInfo: public std::vector<LocalObjectEntry>
+  {
+    bool HasSourceExtension;
+  };
   std::map<cmStdString, LocalObjectInfo> const& GetLocalObjectFiles()
     { return this->LocalObjectFiles;}
 
@@ -246,13 +267,10 @@ public:
     {
     return !this->SkipAssemblySourceRules;
     }
-
+  // Get the directories into which the .o files will go for this target
+  void GetTargetObjectFileDirectories(cmTarget* target,
+                                      std::vector<std::string>& dirs);
 protected:
-  // these two methods just compute reasonable values for LibraryOutputPath
-  // and ExecutableOutputPath
-  void ConfigureOutputPaths();
-  void FormatOutputPath(std::string& path, const char* name);
-
   void WriteLocalMakefile();
   
   
@@ -289,11 +307,12 @@ protected:
                                const std::vector<std::string>& objects);
   void WriteObjectConvenienceRule(std::ostream& ruleFileStream,
                                   const char* comment, const char* output,
-                                  LocalObjectInfo const& targets);
+                                  LocalObjectInfo const& info);
   
   std::string GetObjectFileName(cmTarget& target,
                                 const cmSourceFile& source,
-                                std::string* nameWithoutTargetDir = 0);
+                                std::string* nameWithoutTargetDir = 0,
+                                bool* hasSourceExtension = 0);
 
   void AppendRuleDepend(std::vector<std::string>& depends,
                         const char* ruleFileName);
@@ -304,13 +323,17 @@ protected:
   void AppendCustomCommands(std::vector<std::string>& commands,
                             const std::vector<cmCustomCommand>& ccs);
   void AppendCustomCommand(std::vector<std::string>& commands,
-                           const cmCustomCommand& cc);
+                           const cmCustomCommand& cc,
+                           bool echo_comment=false);
   void AppendCleanCommand(std::vector<std::string>& commands,
                           const std::vector<std::string>& files,
                           cmTarget& target, const char* filename =0);
 
-  bool ForceVerboseMakefiles;
   std::map<cmStdString, std::vector<int> > ProgressFiles;
+
+  // Helper methods for dependeny updates.
+  bool ScanDependencies(const char* targetDir);
+  void CheckMultipleOutputs(bool verbose);
 
 private:
   friend class cmMakefileTargetGenerator;
@@ -318,16 +341,14 @@ private:
   friend class cmMakefileLibraryTargetGenerator;
   friend class cmMakefileUtilityTargetGenerator;
   friend class cmGlobalUnixMakefileGenerator3;
-  
-  std::map<cmStdString, IntegrityCheckSetMap> CheckDependFiles;
+
+  ImplicitDependTargetMap ImplicitDepends;
 
   //==========================================================================
   // Configuration settings.
   int MakefileVariableSize;
   std::string IncludeDirective;
   std::string MakeSilentFlag;
-  std::string ExecutableOutputPath;
-  std::string LibraryOutputPath;
   std::string ConfigurationName;
   std::string NativeEchoCommand;
   bool NativeEchoWindows;
@@ -335,10 +356,12 @@ private:
   bool UnixCD;
   bool PassMakeflags;
   bool SilentNoColon;
+  bool MakeCommandEscapeTargetTwice;
+  bool BorlandMakeCurlyHack;
   //==========================================================================
 
   std::string HomeRelativeOutputPath;
-  
+
   /* Copy the setting of CMAKE_COLOR_MAKEFILE from the makefile at the
      beginning of generation to avoid many duplicate lookups.  */
   bool ColorMakefile;

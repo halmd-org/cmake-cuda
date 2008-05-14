@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileTargetGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2007/01/03 15:19:03 $
-  Version:   $Revision: 1.6.2.4 $
+  Date:      $Date: 2008-04-08 16:22:50 $
+  Version:   $Revision: 1.24.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,7 +25,6 @@ class cmDepends;
 class cmGeneratedFileStream;
 class cmGlobalUnixMakefileGenerator3;
 class cmLocalUnixMakefileGenerator3;
-class cmMakeDepend;
 class cmMakefile;
 class cmTarget;
 class cmSourceFile;
@@ -38,13 +37,11 @@ class cmMakefileTargetGenerator
 {
 public:
   // constructor to set the ivars
-  cmMakefileTargetGenerator();
+  cmMakefileTargetGenerator(cmTarget* target);
   virtual ~cmMakefileTargetGenerator() {};
 
   // construct using this factory call
-  static cmMakefileTargetGenerator *New(cmLocalUnixMakefileGenerator3 *lg,
-                                        cmStdString tgtName,
-                                        cmTarget *tgt);
+  static cmMakefileTargetGenerator *New(cmTarget *tgt);
 
   /* the main entry point for this class. Writes the Makefiles associated
      with this target */
@@ -59,8 +56,7 @@ public:
   virtual unsigned long GetNumberOfProgressActions() {
     return this->NumberOfProgressActions;}
 
-  const char *GetTargetName() { return this->TargetName.c_str(); }
-
+  cmTarget* GetTarget() { return this->Target;}
 protected:
 
   // create the file and directory etc
@@ -83,6 +79,9 @@ protected:
   // write the depend rules for this target
   void WriteTargetDependRules();
 
+  // write rules for Mac OS X Application Bundle content.
+  void WriteMacOSXContentRules(cmSourceFile& source, const char* pkgloc);
+
   // write the rules for an object
   void WriteObjectRuleFiles(cmSourceFile& source);
 
@@ -99,10 +98,17 @@ protected:
   // write the build rule for a custom command
   void GenerateCustomRuleFile(const cmCustomCommand& cc);
 
+  // write a rule to drive building of more than one output from
+  // another rule
+  void GenerateExtraOutput(const char* out, const char* in,
+                           bool symbolic = false);
+
   // write out the variable that lists the objects for this target
   void WriteObjectsVariable(std::string& variableName,
                             std::string& variableNameExternal);
   void WriteObjectsString(std::string& buildObjs);
+  void WriteObjectsStrings(std::vector<std::string>& objStrings,
+                           std::string::size_type limit = std::string::npos);
 
   // write the driver rule to build target outputs
   void WriteTargetDriverRule(const char* main_output, bool relink);
@@ -115,16 +121,39 @@ protected:
   // append intertarget dependencies
   void AppendTargetDepends(std::vector<std::string>& depends);
 
+  /** In order to support parallel builds for custom commands with
+      multiple outputs the outputs are given a serial order, and only
+      the first output actually has the build rule.  Other outputs
+      just depend on the first one.  The check-build-system step must
+      remove a dependee if the depender is missing to make sure both
+      are regenerated properly.  This method is used by the local
+      makefile generators to register such pairs.  */
+  void AddMultipleOutputPair(const char* depender, const char* dependee);
+
+  /** Create a script to hold link rules and a command to invoke the
+      script at build time.  */
+  void CreateLinkScript(const char* name,
+                        std::vector<std::string> const& link_commands,
+                        std::vector<std::string>& makefile_commands,
+                        std::vector<std::string>& makefile_depends);
+
+  /** Create a response file with the given set of options.  Returns
+      the relative path from the target build working directory to the
+      response file name.  */
+  std::string CreateResponseFile(const char* name,
+                                 std::string const& options,
+                                 std::vector<std::string>& makefile_depends);
+
   virtual void CloseFileStreams();
   void RemoveForbiddenFlags(const char* flagVar, const char* linkLang,
                             std::string& linkFlags);
-  cmStdString TargetName;
   cmTarget *Target;
   cmLocalUnixMakefileGenerator3 *LocalGenerator;
   cmGlobalUnixMakefileGenerator3 *GlobalGenerator;
   cmMakefile *Makefile;
 
-  bool DriveCustomCommandsOnDepends;
+  enum CustomCommandDriveType { OnBuild, OnDepends, OnUtility };
+  CustomCommandDriveType CustomCommandDriver;
 
   // the full path to the build file
   std::string BuildFileName;
@@ -156,11 +185,34 @@ protected:
   // objects used by this target
   std::vector<std::string> Objects;
   std::vector<std::string> ExternalObjects;
-  std::set<std::string> ExtraContent;
 
   // Set of object file names that will be built in this directory.
   std::set<cmStdString> ObjectFiles;
 
+  // Set of extra output files to be driven by the build.
+  std::set<cmStdString> ExtraFiles;
+
+  typedef std::map<cmStdString, cmStdString> MultipleOutputPairsType;
+  MultipleOutputPairsType MultipleOutputPairs;
+
+  // Target name info.
+  std::string TargetNameOut;
+  std::string TargetNameSO;
+  std::string TargetNameReal;
+  std::string TargetNameImport;
+  std::string TargetNamePDB;
+
+  // Mac OS X content info.
+  std::string MacContentDirectory;
+  std::set<cmStdString> MacContentFolders;
+
+  // Target-wide Fortran module output directory.
+  bool FortranModuleDirectoryComputed;
+  std::string FortranModuleDirectory;
+  const char* GetFortranModuleDirectory();
+
+  // Compute target-specific Fortran language flags.
+  void AddFortranFlags(std::string& flags);
 
   //==================================================================
   // Convenience routines that do nothing more than forward to

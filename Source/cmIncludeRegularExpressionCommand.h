@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeRegularExpressionCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 20:05:58 $
-  Version:   $Revision: 1.10.6.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -23,8 +23,7 @@
  * \brief Set the regular expression for following #includes.
  *
  * cmIncludeRegularExpressionCommand is used to specify the regular expression
- * used by cmMakeDepend to determine whether to follow a #include file in
- * dependency checking.
+ * that determines whether to follow a #include file in dependency checking.
  */
 class cmIncludeRegularExpressionCommand : public cmCommand
 {
@@ -41,12 +40,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "INCLUDE_REGULAR_EXPRESSION";}
+  virtual const char* GetName() {return "include_regular_expression";}
 
   /**
    * Succinct documentation.
@@ -62,7 +62,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  INCLUDE_REGULAR_EXPRESSION(regex_match [regex_complain])\n"
+      "  include_regular_expression(regex_match [regex_complain])\n"
       "Set the regular expressions used in dependency checking.  Only files "
       "matching regex_match will be traced as dependencies.  Only files "
       "matching regex_complain will generate warnings if they cannot be "

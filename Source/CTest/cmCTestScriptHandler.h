@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestScriptHandler.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:49 $
-  Version:   $Revision: 1.16.2.2 $
+  Date:      $Date: 2007-06-08 20:06:33 $
+  Version:   $Revision: 1.19 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -107,6 +107,9 @@ public:
   ~cmCTestScriptHandler();
 
   void Initialize();
+
+  void CreateCMake();
+  void GetCommandDocumentation(std::vector<cmDocumentationEntry>& v) const;
 
 private:
   // reads in a script

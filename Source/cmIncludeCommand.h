@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 19:11:09 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.17 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -42,7 +42,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -52,7 +53,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "INCLUDE";}
+  virtual const char* GetName() {return "include";}
   
   /**
    * Succinct documentation.
@@ -68,12 +69,14 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  INCLUDE(file1 [OPTIONAL])\n"
-      "  INCLUDE(module [OPTIONAL])\n"
+      "  include(file1 [OPTIONAL] [RESULT_VARIABLE <VAR>])\n"
+      "  include(module [OPTIONAL] [RESULT_VARIABLE <VAR>])\n"
       "Reads CMake listfile code from the given file.  Commands in the file "
       "are processed immediately as if they were written in place of the "
-      "INCLUDE command.  If OPTIONAL is present, then no error "
-      "is raised if the file does not exist.\n"
+      "include command.  If OPTIONAL is present, then no error "
+      "is raised if the file does not exist.  If RESULT_VARIABLE is given "
+      "the variable will be set to the full filename which "
+      "has been included or NOTFOUND if it failed.\n"
       "If a module is specified instead of a file, the file with name "
       "<modulename>.cmake is searched in the CMAKE_MODULE_PATH.";
     }

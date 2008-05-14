@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackCygwinBinaryGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:22:02 $
-  Version:   $Revision: 1.2.2.1 $
+  Date:      $Date: 2007-10-31 12:50:17 $
+  Version:   $Revision: 1.3 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -34,7 +34,6 @@ public:
   cmCPackCygwinBinaryGenerator();
   virtual ~cmCPackCygwinBinaryGenerator();
 protected:
-  virtual const char* GetInstallPrefix() { return "/usr"; }
   virtual int InitializeInternal();
   int CompressFiles(const char* outFileName, const char* toplevel,
     const std::vector<std::string>& files);

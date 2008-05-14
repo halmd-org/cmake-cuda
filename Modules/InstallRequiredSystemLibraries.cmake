@@ -55,6 +55,35 @@ IF(MSVC)
     ENDIF(CMAKE_INSTALL_DEBUG_LIBRARIES)
 
   ENDIF(MSVC80)
+  IF(MSVC90)
+    # Find the runtime library redistribution directory.
+    FIND_PATH(MSVC90_REDIST_DIR NAMES x86/Microsoft.VC90.CRT/Microsoft.VC90.CRT.manifest
+      PATHS "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\9.0;InstallDir]/../../VC/redist"
+      
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VCExpress\\9.0;InstallDir]/../../VC/redist"
+      )
+    MARK_AS_ADVANCED(MSVC90_REDIST_DIR)
+    SET(MSVC90_CRT_DIR "${MSVC90_REDIST_DIR}/x86/Microsoft.VC90.CRT")
+    
+    # Install the manifest that allows DLLs to be loaded from the
+    # directory containing the executable.
+    SET(__install__libs
+      "${MSVC90_CRT_DIR}/Microsoft.VC90.CRT.manifest"
+      "${MSVC90_CRT_DIR}/msvcm90.dll"
+      "${MSVC90_CRT_DIR}/msvcp90.dll"
+      "${MSVC90_CRT_DIR}/msvcr90.dll"
+      ) 
+    IF(CMAKE_INSTALL_DEBUG_LIBRARIES)
+      SET(MSVC90_CRT_DIR
+        "${MSVC90_REDIST_DIR}/Debug_NonRedist/x86/Microsoft.VC90.DebugCRT")
+      SET(__install__libs ${__install__libs}
+        "${MSVC90_CRT_DIR}/Microsoft.VC90.DebugCRT.manifest"
+        "${MSVC90_CRT_DIR}/msvcm90d.dll"
+        "${MSVC90_CRT_DIR}/msvcp90d.dll"
+        "${MSVC90_CRT_DIR}/msvcr90d.dll"
+        )
+    ENDIF(CMAKE_INSTALL_DEBUG_LIBRARIES) 
+  ENDIF(MSVC90) 
   IF(CMAKE_INSTALL_MFC_LIBRARIES)
     IF(MSVC70)
       SET(__install__libs ${__install__libs}
@@ -89,8 +118,6 @@ IF(MSVC)
         "${MSVC80_MFC_DIR}/mfcm80.dll"
         "${MSVC80_MFC_DIR}/mfcm80u.dll"
         )
-    ENDIF(MSVC80)
-    IF(MSVC80)
       # include the language dll's for vs8 as well as the actuall dll's
       SET(MSVC80_MFCLOC_DIR "${MSVC80_REDIST_DIR}/x86/Microsoft.VC80.MFCLOC")
       # Install the manifest that allows DLLs to be loaded from the
@@ -108,6 +135,47 @@ IF(MSVC)
         "${MSVC80_MFCLOC_DIR}/mfc80kor.dll"
         )
     ENDIF(MSVC80)
+    IF(MSVC90)
+      IF(CMAKE_INSTALL_DEBUG_LIBRARIES)
+        SET(MSVC90_MFC_DIR
+          "${MSVC90_REDIST_DIR}/Debug_NonRedist/x86/Microsoft.VC90.DebugMFC")
+        SET(__install__libs ${__install__libs}
+          "${MSVC90_MFC_DIR}/Microsoft.VC90.DebugMFC.manifest"
+          "${MSVC90_MFC_DIR}/mfc90d.dll"
+          "${MSVC90_MFC_DIR}/mfc90ud.dll"
+          "${MSVC90_MFC_DIR}/mfcm90d.dll"
+          "${MSVC90_MFC_DIR}/mfcm90ud.dll"
+          )
+      ENDIF(CMAKE_INSTALL_DEBUG_LIBRARIES)
+        
+      SET(MSVC90_MFC_DIR "${MSVC90_REDIST_DIR}/x86/Microsoft.VC90.MFC")
+      # Install the manifest that allows DLLs to be loaded from the
+      # directory containing the executable.
+      SET(__install__libs ${__install__libs}
+        "${MSVC90_MFC_DIR}/Microsoft.VC90.MFC.manifest"
+        "${MSVC90_MFC_DIR}/mfc90.dll"
+        "${MSVC90_MFC_DIR}/mfc90u.dll"
+        "${MSVC90_MFC_DIR}/mfcm90.dll"
+        "${MSVC90_MFC_DIR}/mfcm90u.dll"
+        )
+      # include the language dll's for vs9 as well as the actuall dll's
+      SET(MSVC90_MFCLOC_DIR "${MSVC90_REDIST_DIR}/x86/Microsoft.VC90.MFCLOC")
+      # Install the manifest that allows DLLs to be loaded from the
+      # directory containing the executable.
+      SET(__install__libs ${__install__libs}
+        "${MSVC90_MFCLOC_DIR}/Microsoft.VC90.MFCLOC.manifest"
+        "${MSVC90_MFCLOC_DIR}/mfc90chs.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90cht.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90enu.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90esp.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90deu.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90fra.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90ita.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90jpn.dll"
+        "${MSVC90_MFCLOC_DIR}/mfc90kor.dll"
+        )
+    ENDIF(MSVC90)
+
   ENDIF(CMAKE_INSTALL_MFC_LIBRARIES)
   FOREACH(lib
       ${__install__libs}
@@ -123,11 +191,11 @@ ENDIF(MSVC)
 # specified by CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS.
 IF(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
   IF(NOT CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP)
-  IF(WIN32)
-    INSTALL_PROGRAMS(/bin ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
-  ELSE(WIN32)
-    INSTALL_PROGRAMS(/lib ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
-  ENDIF(WIN32)
+    IF(WIN32)
+      INSTALL_PROGRAMS(/bin ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
+    ELSE(WIN32)
+      INSTALL_PROGRAMS(/lib ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS})
+    ENDIF(WIN32)
   ENDIF(NOT CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP)
 ENDIF(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
 

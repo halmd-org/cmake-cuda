@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSystemTools.h,v $
   Language:  C++
-  Date:      $Date: 2007/02/05 18:21:32 $
-  Version:   $Revision: 1.133.2.2 $
+  Date:      $Date: 2008-04-21 00:44:53 $
+  Version:   $Revision: 1.150.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,7 +22,7 @@
 #include <cmsys/SystemTools.hxx>
 #include <cmsys/Process.h>
 
-
+class cmSystemToolsFileTime;
 
 /** \class cmSystemTools
  * \brief A collection of useful functions for CMake.
@@ -165,6 +165,12 @@ public:
   static bool CopyFileIfDifferent(const char* source, 
     const char* destination);
 
+  ///! Compute the md5sum of a file
+  static bool ComputeFileMD5(const char* source, char* md5out);
+
+  /** Compute the md5sum of a string.  */
+  static std::string ComputeStringMD5(const char* input);
+
   /**
    * Run an executable command and put the stdout in output.
    * A temporary file is created in the binaryDir for storing the
@@ -206,12 +212,22 @@ public:
                                int* retVal = 0, const char* dir = 0, 
                                bool verbose = true,
                                double timeout = 0.0);
+  /** 
+   * In this version of RunSingleCommand, command[0] should be
+   * the command to run, and each argument to the command should
+   * be in comand[1]...command[command.size()]
+   */
+  static bool RunSingleCommand(std::vector<cmStdString> const& command,
+                               std::string* output = 0,
+                               int* retVal = 0, const char* dir = 0, 
+                               bool verbose = true,
+                               double timeout = 0.0);
 
   /**
    * Parse arguments out of a single string command
    */
   static std::vector<cmStdString> ParseArguments(const char* command);
-    
+
   /** Parse arguments out of a windows command line string.  */
   static void ParseWindowsCommandLine(const char* command,
                                       std::vector<std::string>& args);
@@ -289,15 +305,14 @@ public:
 
   // ConvertToOutputPath use s_ForceUnixPaths
   static std::string ConvertToOutputPath(const char* path);
+  static void ConvertToOutputSlashes(std::string& path);
+
   // ConvertToRunCommandPath does not use s_ForceUnixPaths and should
   // be used when RunCommand is called from cmake, because the 
   // running cmake needs paths to be in its format
   static std::string ConvertToRunCommandPath(const char* path);
-
   //! Check if the first string ends with the second one.
   static bool StringEndsWith(const char* str1, const char* str2);
-
-  static bool CreateSymlink(const char* origName, const char* newName);
   
   /** compute the relative path from local to remote.  local must 
       be a directory.  remote can be a file or a directory.  
@@ -337,6 +352,55 @@ public:
   static bool ExtractTar(const char* inFileName,
                          const std::vector<cmStdString>& files, bool gzip, 
                          bool verbose);
+  // This should be called first thing in main
+  // it will keep child processes from inheriting the
+  // stdin and stdout of this process.  This is important
+  // if you want to be able to kill child processes and
+  // not get stuck waiting for all the output on the pipes.
+  static void DoNotInheritStdPipes();
+
+  /** Copy the file create/access/modify times from the file named by
+      the first argument to that named by the second.  */
+  static bool CopyFileTime(const char* fromFile, const char* toFile);
+
+  /** Save and restore file times.  */
+  static cmSystemToolsFileTime* FileTimeNew();
+  static void FileTimeDelete(cmSystemToolsFileTime*);
+  static bool FileTimeGet(const char* fname, cmSystemToolsFileTime* t);
+  static bool FileTimeSet(const char* fname, cmSystemToolsFileTime* t);
+
+  /** Find the directory containing the running executable.  Save it
+   in a global location to be queried by GetExecutableDirectory
+   later.  */
+  static void FindExecutableDirectory(const char* argv0);
+
+  /** Get the directory containing the currently running executable.  */
+  static const char* GetExecutableDirectory();
+
+#if defined(CMAKE_BUILD_WITH_CMAKE)
+  /** Echo a message in color using KWSys's Terminal cprintf.  */
+  static void MakefileColorEcho(int color, const char* message,
+                                bool newLine, bool enabled);
+#endif
+
+  /** Try to guess the soname of a shared library.  */
+  static bool GuessLibrarySOName(std::string const& fullPath,
+                                 std::string& soname);
+
+  /** Try to set the RPATH in an ELF binary.  */
+  static bool ChangeRPath(std::string const& file,
+                          std::string const& oldRPath,
+                          std::string const& newRPath,
+                          std::string* emsg = 0);
+
+  /** Try to remove the RPATH from an ELF binary.  */
+  static bool RemoveRPath(std::string const& file, std::string* emsg = 0);
+
+  /** Check whether the RPATH in an ELF binary contains the path
+      given.  */
+  static bool CheckRPath(std::string const& file,
+                         std::string const& newRPath);
+
 private:
   static bool s_ForceUnixPaths;
   static bool s_RunCommandHideConsole;

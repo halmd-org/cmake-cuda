@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmWriteFileCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:44 $
-  Version:   $Revision: 1.14.2.1 $
+  Date:      $Date: 2008-05-01 16:35:40 $
+  Version:   $Revision: 1.16.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,7 +20,8 @@
 #include <sys/stat.h>
 
 // cmLibraryCommand
-bool cmWriteFileCommand::InitialPass(std::vector<std::string> const& args)
+bool cmWriteFileCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2 )
     {
@@ -96,7 +97,6 @@ bool cmWriteFileCommand::InitialPass(std::vector<std::string> const& args)
   file << message << std::endl;
   file.close();
   cmSystemTools::SetPermissions(fileName.c_str(), mode);
-  this->Makefile->AddWrittenFile(fileName.c_str());
 
   return true;
 }

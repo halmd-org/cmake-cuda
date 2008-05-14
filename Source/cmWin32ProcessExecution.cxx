@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmWin32ProcessExecution.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:06 $
-  Version:   $Revision: 1.27.2.1 $
+  Date:      $Date: 2007-09-27 18:16:20 $
+  Version:   $Revision: 1.32 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -142,14 +142,11 @@ bool cmWin32ProcessExecution::BorlandRunCommand(
   if (!CreatePipe(&newstdin,&write_stdin,&sa,0)) 
 //create stdin pipe 
     {
-    std::cerr << "CreatePipe" << std::endl;
     return false;
- 
     }
   if (!CreatePipe(&read_stdout,&newstdout,&sa,0)) 
 //create stdout pipe 
     {
-    std::cerr << "CreatePipe" << std::endl;
     CloseHandle(newstdin);
     CloseHandle(write_stdin);
     return false;
@@ -442,7 +439,7 @@ static BOOL RealPopenCreateProcess(const char *cmdstring,
     free(s1);
     return TRUE;
     }
-  
+
   output += "CreateProcessError: ";
   {
   /* Format the error message.  */
@@ -502,6 +499,10 @@ bool cmWin32ProcessExecution::PrivateOpen(const char *cmdstring,
   saAttr.bInheritHandle = TRUE;
   saAttr.lpSecurityDescriptor = NULL;
   
+  fd1 = 0;
+  fd2 = 0;
+  fd3 = 0;
+
   if (!CreatePipe(&this->hChildStdinRd, &this->hChildStdinWr, &saAttr, 0))
     {
     this->Output += "CreatePipeError\n";
@@ -633,7 +634,21 @@ bool cmWin32ProcessExecution::PrivateOpen(const char *cmdstring,
                                 this->hChildStdoutWr,
                                 &hProcess, this->HideWindows,
                                 this->Output))
+      {
+      if(fd1 >= 0)
+        {
+        close(fd1);
+        }
+      if(fd2 >= 0)
+        {
+        close(fd2);
+        }
+      if(fd3 >= 0)
+        {
+        close(fd3);
+        }
       return 0;
+      }
     }
   else 
     {
@@ -645,7 +660,21 @@ bool cmWin32ProcessExecution::PrivateOpen(const char *cmdstring,
                                 this->hChildStderrWr,
                                 &hProcess, this->HideWindows,
                                 this->Output))
+      {
+      if(fd1 >= 0)
+        {
+        close(fd1);
+        }
+      if(fd2 >= 0)
+        {
+        close(fd2);
+        }
+      if(fd3 >= 0)
+        {
+        close(fd3);
+        }
       return 0;
+      }
     }
 
   /*
@@ -668,17 +697,14 @@ bool cmWin32ProcessExecution::PrivateOpen(const char *cmdstring,
   this->ProcessHandle = hProcess;
   if ( fd1 >= 0 )
     {
-    //  this->StdIn = f1;
     this->pStdIn = fd1;
     }
   if ( fd2 >= 0 )
     {
-    //  this->StdOut = f2;
     this->pStdOut = fd2;
     }
   if ( fd3 >= 0 )
     {
-    //  this->StdErr = f3;
     this->pStdErr = fd3;
     }
 
@@ -687,40 +713,50 @@ bool cmWin32ProcessExecution::PrivateOpen(const char *cmdstring,
 
 bool cmWin32ProcessExecution::CloseHandles()
 {
+  if(this->pStdErr != -1 )
+    {
+    _close(this->pStdErr);
+    this->pStdErr = -1;
+    }
+  if(this->pStdIn != -1 )
+    {
+    _close(this->pStdIn);
+    this->pStdIn = -1;
+    }
+  if(this->pStdOut != -1 )
+    {
+    _close(this->pStdOut);
+    this->pStdOut = -1;
+    }
+
   bool ret = true;
   if (this->hChildStdinRd && !CloseHandle(this->hChildStdinRd))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStdinRd = 0;
   if(this->hChildStdoutRdDup && !CloseHandle(this->hChildStdoutRdDup))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStdoutRdDup = 0;
   if(this->hChildStderrRdDup && !CloseHandle(this->hChildStderrRdDup))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStderrRdDup = 0;
   if(this->hChildStdinWrDup && !CloseHandle(this->hChildStdinWrDup))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStdinWrDup = 0;
   if (this->hChildStdoutWr && !CloseHandle(this->hChildStdoutWr))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStdoutWr = 0;
   if (this->hChildStderrWr && !CloseHandle(this->hChildStderrWr))
     {
-    this->Output += "CloseHandleError\n";
     ret = false;
     }
   this->hChildStderrWr = 0;

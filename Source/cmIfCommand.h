@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIfCommand.h,v $
   Language:  C++
-  Date:      $Date: 2007/10/25 18:03:48 $
-  Version:   $Revision: 1.32.2.7 $
+  Date:      $Date: 2008-03-24 22:23:26 $
+  Version:   $Revision: 1.46.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -28,18 +28,22 @@
 class cmIfFunctionBlocker : public cmFunctionBlocker
 {
 public:
-  cmIfFunctionBlocker() {this->HasRun = false; this->ScopeDepth = 0;}
+  cmIfFunctionBlocker() {
+    this->HasRun = false; this->ScopeDepth = 0; this->Executing = false;}
   virtual ~cmIfFunctionBlocker() {}
   virtual bool IsFunctionBlocked(const cmListFileFunction& lff,
-                                 cmMakefile &mf);
+                                 cmMakefile &mf,
+                                 cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction& lff,
                             cmMakefile &mf);
   virtual void ScopeEnded(cmMakefile &mf);
   
   std::vector<cmListFileArgument> Args;
+  std::vector<cmListFileFunction> Functions;
   bool IsBlocking;
   bool HasRun;
   unsigned int ScopeDepth;
+  bool Executing;
 };
 
 /** \class cmIfCommand
@@ -62,18 +66,20 @@ public:
    * This overrides the default InvokeInitialPass implementation.
    * It records the arguments before expansion.
    */
-  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args);
+  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args,
+                                 cmExecutionStatus &);
     
   /**
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const&) { return false; }
+  virtual bool InitialPass(std::vector<std::string> const&,
+                           cmExecutionStatus &) { return false;};
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "IF";}
+  virtual const char* GetName() { return "if";}
 
   /**
    * Succinct documentation.
@@ -94,78 +100,82 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  IF(expression)\n"
-      "    # THEN section.\n"
+      "  if(expression)\n"
+      "    # then section.\n"
       "    COMMAND1(ARGS ...)\n"
       "    COMMAND2(ARGS ...)\n"
       "    ...\n"
-      "  ELSEIF(expression2)\n"
-      "    # ELSEIF section.\n"
+      "  elseif(expression2)\n"
+      "    # elseif section.\n"
       "    COMMAND1(ARGS ...)\n"
       "    COMMAND2(ARGS ...)\n"
       "    ...\n"
-      "  ELSE(expression)\n"
-      "    # ELSE section.\n"
+      "  else(expression)\n"
+      "    # else section.\n"
       "    COMMAND1(ARGS ...)\n"
       "    COMMAND2(ARGS ...)\n"
       "    ...\n"
-      "  ENDIF(expression)\n"
+      "  endif(expression)\n"
       "Evaluates the given expression.  If the result is true, the commands "
       "in the THEN section are invoked.  Otherwise, the commands in the "
-      "ELSE section are invoked.  The ELSEIF and ELSE sections are "
-      "optional. You may have multiple ELSEIF clauses. Note that "
-      "the same expression must be given to IF, and ENDIF.  Long "
+      "else section are invoked.  The elseif and else sections are "
+      "optional. You may have multiple elseif clauses. Note that "
+      "the same expression must be given to if, and endif.  Long "
       "expressions can be used and the order or precedence is that the "
       "EXISTS, COMMAND, and DEFINED operators will be evaluated first. "
       "Then any EQUAL, LESS, GREATER, STRLESS, STRGREATER, STREQUAL, MATCHES "
       "will be evaluated. Then NOT operators and finally AND, OR operators "
       "will be evaluated. Possible expressions are:\n"
-      "  IF(variable)\n"
+      "  if(variable)\n"
       "True if the variable's value is not empty, 0, N, NO, OFF, FALSE, "
       "NOTFOUND, or <variable>-NOTFOUND.\n"
-      "  IF(NOT variable)\n"
+      "  if(NOT variable)\n"
       "True if the variable's value is empty, 0, N, NO, OFF, FALSE, "
       "NOTFOUND, or <variable>-NOTFOUND.\n"
-      "  IF(variable1 AND variable2)\n"
+      "  if(variable1 AND variable2)\n"
       "True if both variables would be considered true individually.\n"
-      "  IF(variable1 OR variable2)\n"
+      "  if(variable1 OR variable2)\n"
       "True if either variable would be considered true individually.\n"
-      "  IF(COMMAND command-name)\n"
-      "True if the given name is a command that can be invoked.\n"
-      "  IF(EXISTS file-name)\n"
-      "  IF(EXISTS directory-name)\n"
+      "  if(COMMAND command-name)\n"
+      "True if the given name is a command, macro or function that can be "
+      "invoked.\n"
+      "  if(POLICY policy-id)\n"
+      "True if the given name is an existing policy "
+      "(of the form CMP<NNNN>).\n"
+      "  if(EXISTS file-name)\n"
+      "  if(EXISTS directory-name)\n"
       "True if the named file or directory exists.  "
       "Behavior is well-defined only for full paths.\n"
-      "  IF(file1 IS_NEWER_THAN file2)\n"
+      "  if(file1 IS_NEWER_THAN file2)\n"
       "True if file1 is newer than file2 or if one of the two files "
       "doesn't exist. "
       "Behavior is well-defined only for full paths.\n"
-      "  IF(IS_DIRECTORY directory-name)\n"
+      "  if(IS_DIRECTORY directory-name)\n"
       "True if the given name is a directory.  "
       "Behavior is well-defined only for full paths.\n"
-      "  IF(IS_ABSOLUTE path)\n"
+      "  if(IS_ABSOLUTE path)\n"
       "True if the given path is an absolute path.\n "
-      "  IF(variable MATCHES regex)\n"
-      "  IF(string MATCHES regex)\n"
+      "  if(variable MATCHES regex)\n"
+      "  if(string MATCHES regex)\n"
       "True if the given string or variable's value matches the given "
       "regular expression.\n"
-      "  IF(variable LESS number)\n"
-      "  IF(string LESS number)\n"
-      "  IF(variable GREATER number)\n"
-      "  IF(string GREATER number)\n"
-      "  IF(variable EQUAL number)\n"
-      "  IF(string EQUAL number)\n"
+      "  if(variable LESS number)\n"
+      "  if(string LESS number)\n"
+      "  if(variable GREATER number)\n"
+      "  if(string GREATER number)\n"
+      "  if(variable EQUAL number)\n"
+      "  if(string EQUAL number)\n"
       "True if the given string or variable's value is a valid number and "
       "the inequality or equality is true.\n"
-      "  IF(variable STRLESS string)\n"
-      "  IF(string STRLESS string)\n"
-      "  IF(variable STRGREATER string)\n"
-      "  IF(string STRGREATER string)\n"
-      "  IF(variable STREQUAL string)\n"
-      "  IF(string STREQUAL string)\n"
+      "  if(variable STRLESS string)\n"
+      "  if(string STRLESS string)\n"
+      "  if(variable STRGREATER string)\n"
+      "  if(string STRGREATER string)\n"
+      "  if(variable STREQUAL string)\n"
+      "  if(string STREQUAL string)\n"
       "True if the given string or variable's value is lexicographically "
       "less (or greater, or equal) than the string on the right.\n"
-      "  IF(DEFINED variable)\n"
+      "  if(DEFINED variable)\n"
       "True if the given variable is defined. It does not matter if the "
       "variable is true or false just if it has been set.";
     }
@@ -174,7 +184,7 @@ public:
   // arguments were valid, and if so, was the response true. If there is
   // an error, the errorString will be set.
   static bool IsTrue(const std::vector<std::string> &args, 
-    char** errorString, const cmMakefile *mf);
+    char** errorString, cmMakefile *mf);
   
   // Get a definition from the makefile.  If it doesn't exist,
   // return the original string.

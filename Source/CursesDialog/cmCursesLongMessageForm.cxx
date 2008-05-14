@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCursesLongMessageForm.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/03/16 15:44:55 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2006-11-29 22:25:46 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,6 +17,7 @@
 #include "../cmCacheManager.h"
 #include "../cmSystemTools.h"
 #include "../cmake.h"
+#include "../cmVersion.h"
 #include "cmCursesLongMessageForm.h"
 #include "cmCursesMainForm.h"
 
@@ -79,8 +80,8 @@ void cmCursesLongMessageForm::UpdateStatusBar()
 
   char version[cmCursesMainForm::MAX_WIDTH];
   char vertmp[128];
-  sprintf(vertmp,"CMake Version %d.%d - %s", cmake::GetMajorVersion(),
-          cmake::GetMinorVersion(),cmake::GetReleaseVersion());
+  sprintf(vertmp,"CMake Version %d.%d - %s", cmVersion::GetMajorVersion(),
+          cmVersion::GetMinorVersion(),cmVersion::GetReleaseVersion().c_str());
   int sideSpace = (width-strlen(vertmp));
   for(int i=0; i<sideSpace; i++) { version[i] = ' '; }
   sprintf(version+sideSpace, "%s", vertmp);

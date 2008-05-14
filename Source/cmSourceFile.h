@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFile.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.15.2.2 $
+  Date:      $Date: 2008-05-01 16:35:40 $
+  Version:   $Revision: 1.25.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,11 @@
 #ifndef cmSourceFile_h
 #define cmSourceFile_h
 
+#include "cmSourceFileLocation.h"
 #include "cmCustomCommand.h"
+#include "cmPropertyMap.h"
+
+class cmake;
 
 /** \class cmSourceFile
  * \brief Represent a class loaded from a makefile.
@@ -29,93 +33,92 @@ class cmSourceFile
 {
 public:
   /**
-   * Construct instance as a concrete class with both a
-   * .h and .cxx file.
+   * Construct with the makefile storing the source and the initial
+   * name referencing it.
    */
-  cmSourceFile()
-    {
-      this->CustomCommand = 0;
-    }
-  ~cmSourceFile()
-    {
-      this->SetCustomCommand(0);
-    }
-  
-  /**
-   * Set the name of the file, given the directory the file should be
-   * in.  The various extensions provided are tried on the name
-   * (e.g., cxx, cpp) in the directory to find the actual file.
-   */
-  bool SetName(const char* name, const char* dir,
-               const std::vector<std::string>& sourceExts,
-               const std::vector<std::string>& headerExts,
-               const char* target = 0);
+  cmSourceFile(cmMakefile* mf, const char* name);
+
+  ~cmSourceFile();
 
   /**
    * Get the list of the custom commands for this source file
    */
-  const cmCustomCommand *GetCustomCommand() const 
-    {return this->CustomCommand;}
-  cmCustomCommand *GetCustomCommand() {return this->CustomCommand;}
+  cmCustomCommand* GetCustomCommand();
+  cmCustomCommand const* GetCustomCommand() const;
   void SetCustomCommand(cmCustomCommand *cc);
-    
-  /**
-   * Set the name of the file, given the directory the file should be in.  IN
-   * this version the extension is provided in the call. This is useful for
-   * generated files that do not exist prior to the build.  
-   */
-  void SetName(const char* name, const char* dir, const char *ext, 
-               bool headerFileOnly);
-
-  /**
-   * Print the structure to std::cout.
-   */
-  void Print() const;
 
   ///! Set/Get a property of this source file
   void SetProperty(const char *prop, const char *value);
+  void AppendProperty(const char* prop, const char* value);
   const char *GetProperty(const char *prop) const;
   bool GetPropertyAsBool(const char *prop) const;
-    
-  /**
-   * The full path to the file.
-   */
-  const std::string &GetFullPath() const {return this->FullPath;}
-  void SetFullPath(const char *name) {this->FullPath = name;}
+
+  /** Implement getting a property when called from a CMake language
+      command like get_property or get_source_file_property.  */
+  const char* GetPropertyForUser(const char *prop);
 
   /**
-   * The file name associated with stripped off directory and extension.
-   * (In most cases this is the name of the class.)
+   * The full path to the file.  The non-const version of this method
+   * may attempt to locate the file on disk and finalize its location.
+   * The const version of this method may return an empty string if
+   * the non-const version has not yet been called (yes this is a
+   * horrible interface, but is necessary for backwards
+   * compatibility).
    */
-  const std::string &GetSourceName() const {return this->SourceName;}
-  void SetSourceName(const char *name) {this->SourceName = name;}
+  std::string const& GetFullPath();
+  std::string const& GetFullPath() const;
 
   /**
-   * The file extension associated with source file
+   * Get the information currently known about the source file
+   * location without attempting to locate the file as GetFullPath
+   * would.  See cmSourceFileLocation documentation.
    */
-  const std::string &GetSourceExtension() const {
-    return this->SourceExtension;}
-  void SetSourceExtension(const char *name) {this->SourceExtension = name;}
+  cmSourceFileLocation const& GetLocation() const;
+
+  /**
+   * Get the file extension of this source file.
+   */
+  std::string const& GetExtension() const;
+
+  /**
+   * Get the language of the compiler to use for this source file.
+   */
+  const char* GetLanguage();
+  const char* GetLanguage() const;
 
   /**
    * Return the vector that holds the list of dependencies
    */
   const std::vector<std::string> &GetDepends() const {return this->Depends;}
-  std::vector<std::string> &GetDepends() {return this->Depends;}
+  void AddDepend(const char* d) { this->Depends.push_back(d); }
+
+  // Get the properties
+  cmPropertyMap &GetProperties() { return this->Properties; };
+
+  // Define the properties
+  static void DefineProperties(cmake *cm);
 
   /**
-   * Get the source name without last extension
+   * Check whether the given source file location could refer to this
+   * source.
    */
-  const std::string& GetSourceNameWithoutLastExtension();
+  bool Matches(cmSourceFileLocation const&);
 
 private:
-  std::map<cmStdString,cmStdString> Properties;
-  cmCustomCommand *CustomCommand;
+  cmSourceFileLocation Location;
+  cmPropertyMap Properties;
+  cmCustomCommand* CustomCommand;
+  std::string Extension;
+  std::string Language;
   std::string FullPath;
-  std::string SourceName;
-  std::string SourceExtension;
+  bool FindFullPathFailed;
+
+  bool FindFullPath();
+  bool TryFullPath(const char* tryPath, const char* ext);
+  void CheckExtension();
+  void CheckLanguage(std::string const& ext);
+
   std::vector<std::string> Depends;
-  std::string SourceNameWithoutLastExtension;
 };
 
 #endif

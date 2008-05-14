@@ -17,6 +17,10 @@
 #include KWSYS_HEADER(ios/iostream)
 #include KWSYS_HEADER(stl/string)
 
+#if defined(__BEOS__)
+#include <be/kernel/OS.h>  /* disable_debugger() API. */
+#endif
+
 // Work-around CMake dependency scanning limitation.  This must
 // duplicate the above list of headers.
 #if 0
@@ -25,7 +29,9 @@
 # include "kwsys_stl_string.hxx.in"
 #endif
 
-#include "testSystemTools.h"
+// Include with <> instead of "" to avoid getting any in-source copy
+// left on disk.
+#include <testSystemTools.h>
 
 kwsys_stl::string GetLibName(const char* lname)
 {
@@ -84,22 +90,29 @@ int TestDynamicLoader(const char* libname, const char* symbol, int r1, int r2, i
   return 0;
 }
 
-int main(int argc, char *argv[])
+int testDynamicLoader(int argc, char *argv[])
 {
 #if defined(_WIN32)
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+#elif defined(__BEOS__)
+  disable_debugger(1);
 #endif
-  int res;
+  int res = 0;
   if( argc == 3 )
     {
     // User specify a libname and symbol to check.
     res = TestDynamicLoader(argv[1], argv[2],1,1,1);
     return res;
     }
+
+// dlopen() on Syllable before 11/22/2007 doesn't return 0 on error
+#ifndef __SYLLABLE__
   // Make sure that inexistant lib is giving correct result
-  res = TestDynamicLoader("azerty_", "foo_bar",0,0,0);
+  res += TestDynamicLoader("azerty_", "foo_bar",0,0,0);
   // Make sure that random binary file cannnot be assimilated as dylib
   res += TestDynamicLoader(TEST_SYSTEMTOOLS_BIN_FILE, "wp",0,0,0);
+#endif
+
 #ifdef __linux__
   // This one is actually fun to test, since dlopen is by default loaded...wonder why :)
   res += TestDynamicLoader("foobar.lib", "dlopen",0,1,0);
@@ -107,7 +120,7 @@ int main(int argc, char *argv[])
   res += TestDynamicLoader("libdl.so", "TestDynamicLoader",1,0,1);
 #endif
   // Now try on the generated library
-  kwsys_stl::string libname = GetLibName("testDynload");
+  kwsys_stl::string libname = GetLibName(KWSYS_NAMESPACE_STRING "TestDynload");
   res += TestDynamicLoader(libname.c_str(), "dummy",1,0,1);
   res += TestDynamicLoader(libname.c_str(), "TestDynamicLoaderSymbolPointer",1,1,1);
   res += TestDynamicLoader(libname.c_str(), "_TestDynamicLoaderSymbolPointer",1,0,1);

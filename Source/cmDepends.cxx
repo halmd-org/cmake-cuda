@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDepends.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:43 $
-  Version:   $Revision: 1.12.2.2 $
+  Date:      $Date: 2007-12-28 16:49:59 $
+  Version:   $Revision: 1.17 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,6 +16,8 @@
 =========================================================================*/
 #include "cmDepends.h"
 
+#include "cmLocalGenerator.h"
+#include "cmMakefile.h"
 #include "cmGeneratedFileStream.h"
 #include "cmSystemTools.h"
 #include "cmFileTimeComparison.h"
@@ -41,14 +43,50 @@ cmDepends::~cmDepends()
 }
 
 //----------------------------------------------------------------------------
-bool cmDepends::Write(const char *src, const char *obj,
-  std::ostream &makeDepends, std::ostream &internalDepends)
+bool cmDepends::Write(std::ostream &makeDepends,
+                      std::ostream &internalDepends)
 {
-  return this->WriteDependencies(src, obj, makeDepends, internalDepends);
+  // Lookup the set of sources to scan.
+  std::string srcLang = "CMAKE_DEPENDS_CHECK_";
+  srcLang += this->Language;
+  cmMakefile* mf = this->LocalGenerator->GetMakefile();
+  const char* srcStr = mf->GetSafeDefinition(srcLang.c_str());
+  std::vector<std::string> pairs;
+  cmSystemTools::ExpandListArgument(srcStr, pairs);
+
+  for(std::vector<std::string>::iterator si = pairs.begin();
+      si != pairs.end();)
+    {
+    // Get the source and object file.
+    std::string const& src = *si++;
+    if(si == pairs.end()) { break; }
+    std::string obj = *si++;
+
+    // Make sure the object file is relative to the top of the build tree.
+    obj = this->LocalGenerator->Convert(obj.c_str(),
+                                        cmLocalGenerator::HOME_OUTPUT,
+                                        cmLocalGenerator::MAKEFILE);
+
+    // Write the dependencies for this pair.
+    if(!this->WriteDependencies(src.c_str(), obj.c_str(),
+                                makeDepends, internalDepends))
+      {
+      return false;
+      }
+    }
+
+  return this->Finalize(makeDepends, internalDepends);
 }
 
 //----------------------------------------------------------------------------
-void cmDepends::Check(const char *makeFile, const char *internalFile)
+bool cmDepends::Finalize(std::ostream&,
+                         std::ostream&)
+{
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool cmDepends::Check(const char *makeFile, const char *internalFile)
 {
   // Dependency checks must be done in proper working directory.
   std::string oldcwd = ".";
@@ -61,12 +99,14 @@ void cmDepends::Check(const char *makeFile, const char *internalFile)
     }
 
   // Check whether dependencies must be regenerated.
+  bool okay = true;
   std::ifstream fin(internalFile);
   if(!(fin && this->CheckDependencies(fin)))
     {
     // Clear all dependencies so they will be regenerated.
     this->Clear(makeFile);
-    this->Clear(internalFile);
+    cmSystemTools::RemoveFile(internalFile);
+    okay = false;
     }
 
   // Restore working directory.
@@ -74,6 +114,8 @@ void cmDepends::Check(const char *makeFile, const char *internalFile)
     {
     cmSystemTools::ChangeDirectory(oldcwd.c_str());
     }
+
+  return okay;
 }
 
 //----------------------------------------------------------------------------
@@ -87,17 +129,19 @@ void cmDepends::Clear(const char *file)
     cmSystemTools::Stdout(msg.str().c_str());
     }
 
-  // Remove the dependency mark file to be sure dependencies will be
-  // regenerated.
-  std::string markFile = file;
-  markFile += ".mark";
-  cmSystemTools::RemoveFile(markFile.c_str());
-  
   // Write an empty dependency file.
   cmGeneratedFileStream depFileStream(file);
   depFileStream
     << "# Empty dependencies file\n"
     << "# This may be replaced when dependencies are built." << std::endl;
+}
+
+//----------------------------------------------------------------------------
+bool cmDepends::WriteDependencies(const char*, const char*,
+                                  std::ostream&, std::ostream&)
+{
+  // This should be implemented by the subclass.
+  return false;
 }
 
 //----------------------------------------------------------------------------

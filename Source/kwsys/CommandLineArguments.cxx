@@ -158,28 +158,28 @@ bool CommandLineArguments::GetMatchedArguments(
   const kwsys_stl::string& arg)
 {
   matches->clear();
-    CommandLineArguments::Internal::CallbacksMap::iterator it;
+  CommandLineArguments::Internal::CallbacksMap::iterator it;
 
-    // Does the argument match to any we know about?
-    for ( it = this->Internals->Callbacks.begin();
-      it != this->Internals->Callbacks.end();
-      it ++ )
+  // Does the argument match to any we know about?
+  for ( it = this->Internals->Callbacks.begin();
+    it != this->Internals->Callbacks.end();
+    it ++ )
+    {
+    const CommandLineArguments::Internal::String& parg = it->first;
+    CommandLineArgumentsCallbackStructure *cs = &it->second;
+    if (cs->ArgumentType == CommandLineArguments::NO_ARGUMENT ||
+      cs->ArgumentType == CommandLineArguments::SPACE_ARGUMENT) 
       {
-      const CommandLineArguments::Internal::String& parg = it->first;
-      CommandLineArgumentsCallbackStructure *cs = &it->second;
-      if (cs->ArgumentType == CommandLineArguments::NO_ARGUMENT ||
-        cs->ArgumentType == CommandLineArguments::SPACE_ARGUMENT) 
+      if ( arg == parg )
         {
-        if ( arg == parg )
-          {
         matches->push_back(parg);
-          }
-        }
-      else if ( arg.find( parg ) == 0 )
-        {
-      matches->push_back(parg);
         }
       }
+    else if ( arg.find( parg ) == 0 )
+      {
+      matches->push_back(parg);
+      }
+    }
   return matches->size() > 0;
 }
 
@@ -226,7 +226,7 @@ int CommandLineArguments::Parse()
       case NO_ARGUMENT:
         // No value
         if ( !this->PopulateVariable(cs, 0) )
-        {
+          {
           return 0;
           }
         break;
@@ -240,7 +240,7 @@ int CommandLineArguments::Parse()
           << " value: " << this->Internals->Argv[cc+1].c_str());
         // Value is the next argument
         if ( !this->PopulateVariable(cs, this->Internals->Argv[cc+1].c_str()) )
-        {
+          {
           return 0;
           }
         cc ++;
@@ -253,7 +253,7 @@ int CommandLineArguments::Parse()
           }
         // Value is everythng followed the '=' sign
         if ( !this->PopulateVariable(cs, arg.c_str() + sarg.size() + 1) )
-        {
+          {
           return 0;
           }
         break;
@@ -275,26 +275,26 @@ int CommandLineArguments::Parse()
             {
             CommandLineArguments_DEBUG("End of multi argument " << arg << " with value: " << marg);
             break;
-          }
+            }
           CommandLineArguments_DEBUG(" populate multi argument value: " << marg);
           if ( !this->PopulateVariable(cs, marg.c_str()) )
-          {
-            return 0;
-          }
-            }
-        if ( cc != this->Internals->Argv.size() )
             {
+            return 0;
+            }
+          }
+        if ( cc != this->Internals->Argv.size() )
+          {
           CommandLineArguments_DEBUG("Again End of multi argument " << arg);
           cc--;
           continue;
-            }
+          }
         break;
       default:
         kwsys_ios::cerr << "Got unknown argument type: \"" << cs->ArgumentType << "\"" << kwsys_ios::endl;
-          this->Internals->LastArgument --;
-          return 0;
-          }
+        this->Internals->LastArgument --;
+        return 0;
         }
+      }
     else
       {
       // Handle unknown arguments
@@ -428,17 +428,17 @@ void CommandLineArguments::AddArgument(const char* argument, ArgumentTypeEnum ty
     this->AddArgument(argument, type, CommandLineArguments::type##_TYPE, variable, help); \
   }
 
-CommandLineArgumentsAddArgumentMacro(BOOL,       bool);
-CommandLineArgumentsAddArgumentMacro(INT,        int);
-CommandLineArgumentsAddArgumentMacro(DOUBLE,     double);
-CommandLineArgumentsAddArgumentMacro(STRING,     char*);
-CommandLineArgumentsAddArgumentMacro(STL_STRING, kwsys_stl::string);
+CommandLineArgumentsAddArgumentMacro(BOOL,       bool)
+CommandLineArgumentsAddArgumentMacro(INT,        int)
+CommandLineArgumentsAddArgumentMacro(DOUBLE,     double)
+CommandLineArgumentsAddArgumentMacro(STRING,     char*)
+CommandLineArgumentsAddArgumentMacro(STL_STRING, kwsys_stl::string)
 
-CommandLineArgumentsAddArgumentMacro(VECTOR_BOOL,       kwsys_stl::vector<bool>);
-CommandLineArgumentsAddArgumentMacro(VECTOR_INT,        kwsys_stl::vector<int>);
-CommandLineArgumentsAddArgumentMacro(VECTOR_DOUBLE,     kwsys_stl::vector<double>);
-CommandLineArgumentsAddArgumentMacro(VECTOR_STRING,     kwsys_stl::vector<char*>);
-CommandLineArgumentsAddArgumentMacro(VECTOR_STL_STRING, kwsys_stl::vector<kwsys_stl::string>);
+CommandLineArgumentsAddArgumentMacro(VECTOR_BOOL,       kwsys_stl::vector<bool>)
+CommandLineArgumentsAddArgumentMacro(VECTOR_INT,        kwsys_stl::vector<int>)
+CommandLineArgumentsAddArgumentMacro(VECTOR_DOUBLE,     kwsys_stl::vector<double>)
+CommandLineArgumentsAddArgumentMacro(VECTOR_STRING,     kwsys_stl::vector<char*>)
+CommandLineArgumentsAddArgumentMacro(VECTOR_STL_STRING, kwsys_stl::vector<kwsys_stl::string>)
 
 //----------------------------------------------------------------------------
 #define CommandLineArgumentsAddBooleanArgumentMacro(type, ctype) \
@@ -449,11 +449,11 @@ CommandLineArgumentsAddArgumentMacro(VECTOR_STL_STRING, kwsys_stl::vector<kwsys_
       CommandLineArguments::type##_TYPE, variable, help); \
   }
 
-CommandLineArgumentsAddBooleanArgumentMacro(BOOL,       bool);
-CommandLineArgumentsAddBooleanArgumentMacro(INT,        int);
-CommandLineArgumentsAddBooleanArgumentMacro(DOUBLE,     double);
-CommandLineArgumentsAddBooleanArgumentMacro(STRING,     char*);
-CommandLineArgumentsAddBooleanArgumentMacro(STL_STRING, kwsys_stl::string);
+CommandLineArgumentsAddBooleanArgumentMacro(BOOL,       bool)
+CommandLineArgumentsAddBooleanArgumentMacro(INT,        int)
+CommandLineArgumentsAddBooleanArgumentMacro(DOUBLE,     double)
+CommandLineArgumentsAddBooleanArgumentMacro(STRING,     char*)
+CommandLineArgumentsAddBooleanArgumentMacro(STL_STRING, kwsys_stl::string)
 
 //----------------------------------------------------------------------------
 void CommandLineArguments::SetClientData(void* client_data)
@@ -608,7 +608,7 @@ void CommandLineArguments::GenerateHelp()
       {
       str << kwsys_ios::endl;
       char argument[100];
-      sprintf(argument, sit->c_str());
+      sprintf(argument, "%s", sit->c_str());
       switch ( this->Internals->Callbacks[*sit].ArgumentType )
         {
         case CommandLineArguments::NO_ARGUMENT: break;

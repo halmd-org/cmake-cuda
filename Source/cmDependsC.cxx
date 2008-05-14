@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsC.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.21.2.4 $
+  Date:      $Date: 2007-12-15 01:31:27 $
+  Version:   $Revision: 1.33 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,6 +22,14 @@
 
 #include <ctype.h> // isspace
 
+
+#define INCLUDE_REGEX_LINE \
+  "^[ \t]*#[ \t]*(include|import)[ \t]*[<\"]([^\">]+)([\">])"
+
+#define INCLUDE_REGEX_LINE_MARKER "#IncludeRegexLine: "
+#define INCLUDE_REGEX_SCAN_MARKER "#IncludeRegexScan: "
+#define INCLUDE_REGEX_COMPLAIN_MARKER "#IncludeRegexComplain: "
+
 //----------------------------------------------------------------------------
 cmDependsC::cmDependsC():
   IncludePath(0)
@@ -33,10 +41,13 @@ cmDependsC::cmDependsC(std::vector<std::string> const& includes,
                        const char* scanRegex, const char* complainRegex,
                        const cmStdString& cacheFileName):
   IncludePath(&includes),
-  IncludeRegexLine(
-    "^[ \t]*#[ \t]*(include|import)[ \t]*[<\"]([^\">]+)([\">])"),
+  IncludeRegexLine(INCLUDE_REGEX_LINE),
   IncludeRegexScan(scanRegex),
   IncludeRegexComplain(complainRegex),
+  IncludeRegexLineString(INCLUDE_REGEX_LINE_MARKER INCLUDE_REGEX_LINE),
+  IncludeRegexScanString(std::string(INCLUDE_REGEX_SCAN_MARKER)+scanRegex),
+  IncludeRegexComplainString(
+    std::string(INCLUDE_REGEX_COMPLAIN_MARKER)+complainRegex),
   CacheFileName(cacheFileName)
 {
   this->ReadCacheFile();
@@ -102,13 +113,13 @@ bool cmDependsC::WriteDependencies(const char *src, const char *obj,
     std::string fullName;
     if(first || cmSystemTools::FileIsFullPath(current.FileName.c_str()))
       {
-      if(cmSystemTools::FileExists(current.FileName.c_str()))
+      if(cmSystemTools::FileExists(current.FileName.c_str(), true))
         {
         fullName = current.FileName;
         }
       }
     else if(!current.QuotedLocation.empty() &&
-            cmSystemTools::FileExists(current.QuotedLocation.c_str()))
+            cmSystemTools::FileExists(current.QuotedLocation.c_str(), true))
       {
       // The include statement producing this entry was a double-quote
       // include and the included file is present in the directory of
@@ -156,7 +167,7 @@ bool cmDependsC::WriteDependencies(const char *src, const char *obj,
           }
 
         // Look for the file in this location.
-        if(cmSystemTools::FileExists(tempPathStr.c_str()))
+        if(cmSystemTools::FileExists(tempPathStr.c_str(), true))
           {
             fullName = tempPathStr;
             HeaderLocationCache[cacheKey]=fullName;
@@ -281,6 +292,32 @@ void cmDependsC::ReadCacheFile()
         cacheEntry=new cmIncludeLines;
         this->FileCache[line]=cacheEntry;
         }
+      // file doesn't exist, check that the regular expressions
+      // haven't changed
+      else if (res==false)
+        {
+        if (line.find(INCLUDE_REGEX_LINE_MARKER) == 0)
+          {
+          if (line != this->IncludeRegexLineString)
+            {
+            return;
+            }
+          }
+        else if (line.find(INCLUDE_REGEX_SCAN_MARKER) == 0)
+          {
+          if (line != this->IncludeRegexScanString)
+            {
+            return;
+            }
+          }
+        else if (line.find(INCLUDE_REGEX_COMPLAIN_MARKER) == 0)
+          {
+          if (line != this->IncludeRegexComplainString)
+            {
+            return;
+            }
+          }
+        }
       }
     else if (cacheEntry!=0)
       {
@@ -311,6 +348,10 @@ void cmDependsC::WriteCacheFile() const
     return;
     }
   
+  cacheOut << this->IncludeRegexLineString << "\n\n";
+  cacheOut << this->IncludeRegexScanString << "\n\n";
+  cacheOut << this->IncludeRegexComplainString << "\n\n";
+
   for (std::map<cmStdString, cmIncludeLines*>::const_iterator fileIt=
          this->FileCache.begin();
        fileIt!=this->FileCache.end(); ++fileIt)

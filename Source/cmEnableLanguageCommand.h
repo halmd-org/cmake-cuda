@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmEnableLanguageCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/11/16 15:33:49 $
-  Version:   $Revision: 1.3 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -42,19 +42,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "ENABLE_LANGUAGE";}
+  virtual const char* GetName() {return "enable_language";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Set a name for the entire project.";
+    return "Enable a language (CXX/C/Fortran/etc)";
     }
   
   /**
@@ -63,8 +64,13 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ENABLE_LANGUAGE(languageName)\n"
-      "This command enables support for the named language in CMake.";
+      "  enable_language(languageName [OPTIONAL] )\n"
+      "This command enables support for the named language in CMake. "
+      "This is the same as the project command but does not create "
+      "any of the extra variables that are created by the project command. "
+      "Example languages are CXX, C, Fortran.\n"
+      "If OPTIONAL is used, use the CMAKE_<languageName>_COMPILER_WORKS "
+      "variable to check whether the language has been enabled successfully.";
     }
   
   cmTypeMacro(cmEnableLanguageCommand, cmCommand);

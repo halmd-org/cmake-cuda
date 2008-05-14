@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddCustomCommandCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.31.2.1 $
+  Date:      $Date: 2008-01-30 16:22:10 $
+  Version:   $Revision: 1.37 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,8 +21,8 @@
 #include "cmSourceFile.h"
 
 // cmAddCustomCommandCommand
-bool cmAddCustomCommandCommand::InitialPass(
-  std::vector<std::string> const& args)
+bool cmAddCustomCommandCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   /* Let's complain at the end of this function about the lack of a particular
      arg. For the moment, let's say that COMMAND, and either TARGET or SOURCE
@@ -40,6 +40,8 @@ bool cmAddCustomCommandCommand::InitialPass(
   std::vector<std::string> depends, outputs, output;
   bool verbatim = false;
   bool append = false;
+  std::string implicit_depends_lang;
+  cmCustomCommand::ImplicitDependsList implicit_depends;
 
   // Accumulate one command line at a time.
   cmCustomCommandLine currentLine;
@@ -54,6 +56,8 @@ bool cmAddCustomCommandCommand::InitialPass(
     doing_command,
     doing_target,
     doing_depends,
+    doing_implicit_depends_lang,
+    doing_implicit_depends_file,
     doing_main_dependency,
     doing_output,
     doing_outputs,
@@ -131,6 +135,10 @@ bool cmAddCustomCommandCommand::InitialPass(
       {
       doing = doing_main_dependency;
       }
+    else if (copy == "IMPLICIT_DEPENDS")
+      {
+      doing = doing_implicit_depends_lang;
+      }
     else if (copy == "COMMENT")
       {
       doing = doing_comment;
@@ -144,7 +152,17 @@ bool cmAddCustomCommandCommand::InitialPass(
         case doing_outputs:
           if (!cmSystemTools::FileIsFullPath(copy.c_str()))
             {
-            filename = this->Makefile->GetStartDirectory();
+            // This is an output to be generated, so it should be
+            // under the build tree.  CMake 2.4 placed this under the
+            // source tree.  However the only case that this change
+            // will break is when someone writes
+            //
+            //   add_custom_command(OUTPUT out.txt ...)
+            //
+            // and later references "${CMAKE_CURRENT_SOURCE_DIR}/out.txt".
+            // This is fairly obscure so we can wait for someone to
+            // complain.
+            filename = this->Makefile->GetCurrentOutputDirectory();
             filename += "/";
             }
           filename += copy;
@@ -172,6 +190,25 @@ bool cmAddCustomCommandCommand::InitialPass(
            break;
          case doing_main_dependency:
            main_dependency = copy;
+           break;
+         case doing_implicit_depends_lang:
+           implicit_depends_lang = copy;
+           doing = doing_implicit_depends_file;
+           break;
+         case doing_implicit_depends_file:
+           {
+           // An implicit dependency starting point is also an
+           // explicit dependency.
+           depends.push_back(copy);
+
+           // Add the implicit dependency language and file.
+           cmCustomCommand::ImplicitDependsPair
+             entry(implicit_depends_lang, copy);
+           implicit_depends.push_back(entry);
+
+           // Switch back to looking for a language.
+           doing = doing_implicit_depends_lang;
+           }
            break;
          case doing_command:
            currentLine.push_back(copy);
@@ -240,6 +277,7 @@ bool cmAddCustomCommandCommand::InitialPass(
         {
         cc->AppendCommands(commandLines);
         cc->AppendDepends(depends);
+        cc->AppendImplicitDepends(implicit_depends);
         return true;
         }
       }
@@ -259,7 +297,7 @@ bool cmAddCustomCommandCommand::InitialPass(
     // Source is empty, use the target.
     std::vector<std::string> no_depends;
     this->Makefile->AddCustomCommandToTarget(target.c_str(), no_depends,
-                                         commandLines, cctype,
+                                             commandLines, cctype,
                                              comment, working.c_str(),
                                              escapeOldStyle);
     }
@@ -267,18 +305,42 @@ bool cmAddCustomCommandCommand::InitialPass(
     {
     // Target is empty, use the output.
     this->Makefile->AddCustomCommandToOutput(output, depends,
-                                         main_dependency.c_str(),
+                                             main_dependency.c_str(),
                                              commandLines, comment,
                                              working.c_str(), false,
                                              escapeOldStyle);
+
+    // Add implicit dependency scanning requests if any were given.
+    if(!implicit_depends.empty())
+      {
+      bool okay = false;
+      if(cmSourceFile* sf =
+         this->Makefile->GetSourceFileWithOutput(output[0].c_str()))
+        {
+        if(cmCustomCommand* cc = sf->GetCustomCommand())
+          {
+          okay = true;
+          cc->SetImplicitDepends(implicit_depends);
+          }
+        }
+      if(!okay)
+        {
+        cmOStringStream e;
+        e << "could not locate source file with a custom command producing \""
+          << output[0] << "\" even though this command tried to create it!";
+        this->SetError(e.str().c_str());
+        return false;
+        }
+      }
     }
   else
     {
     // Use the old-style mode for backward compatibility.
     this->Makefile->AddCustomCommandOldStyle(target.c_str(), outputs, depends,
-                                         source.c_str(), commandLines,
+                                             source.c_str(), commandLines,
                                              comment);
     }
+
   return true;
 }
 

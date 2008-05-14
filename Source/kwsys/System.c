@@ -50,6 +50,15 @@ just NOT quote them and let the listfile author deal with it.
 
 */
 
+/*
+TODO: For windows echo:
+
+To display a pipe (|) or redirection character (< or >) when using the
+echo command, use a caret character immediately before the pipe or
+redirection character (for example, ^>, ^<, or ^| ). If you need to
+use the caret character itself (^), use two in a row (^^).
+*/
+
 /*--------------------------------------------------------------------------*/
 static int kwsysSystem_Shell__CharIsWhitespace(char c)
 {
@@ -60,7 +69,16 @@ static int kwsysSystem_Shell__CharIsWhitespace(char c)
 static int kwsysSystem_Shell__CharNeedsQuotesOnUnix(char c)
 {
   return ((c == '\'') || (c == '`') || (c == ';') || (c == '#') ||
-          (c == '&') || (c == '$') || (c == '(') || (c == ')'));
+          (c == '&') || (c == '$') || (c == '(') || (c == ')') ||
+          (c == '~') || (c == '<') || (c == '>') || (c == '|') ||
+          (c == '*') || (c == '^') || (c == '\\'));
+}
+
+/*--------------------------------------------------------------------------*/
+static int kwsysSystem_Shell__CharNeedsQuotesOnWindows(char c)
+{
+  return ((c == '\'') || (c == '#') || (c == '&') ||
+          (c == '<') || (c == '>') || (c == '|') || (c == '^'));
 }
 
 /*--------------------------------------------------------------------------*/
@@ -88,14 +106,10 @@ static int kwsysSystem_Shell__CharNeedsQuotes(char c, int isUnix, int flags)
     }
   else
     {
-    /* On Windows single-quotes must be escaped in some make
-       environments, such as in mingw32-make.  */
-    if(flags & kwsysSystem_Shell_Flag_Make)
+    /* On Windows several special characters need quotes to preserve them.  */
+    if(kwsysSystem_Shell__CharNeedsQuotesOnWindows(c))
       {
-      if(c == '\'')
-        {
-        return 1;
-        }
+      return 1;
       }
     }
   return 0;
@@ -157,6 +171,7 @@ static int kwsysSystem_Shell__ArgumentNeedsQuotes(const char* in, int isUnix,
                                                   int flags)
 {
   /* Scan the string for characters that require quoting.  */
+  {
   const char* c;
   for(c=in; *c; ++c)
     {
@@ -189,6 +204,18 @@ static int kwsysSystem_Shell__ArgumentNeedsQuotes(const char* in, int isUnix,
       return 1;
       }
     }
+  }
+
+  /* On Windows some single character arguments need quotes.  */
+  if(!isUnix && *in && !*(in+1))
+    {
+    char c = *in;
+    if((c == '?') || (c == '&') || (c == '^') || (c == '|') || (c == '#'))
+      {
+      return 1;
+      }
+    }
+
   return 0;
 }
 
@@ -287,6 +314,27 @@ static int kwsysSystem_Shell__GetArgumentSize(const char* in,
         ++size;
         }
       }
+    else if(*c == '%')
+      {
+      if((flags & kwsysSystem_Shell_Flag_VSIDE) ||
+         ((flags & kwsysSystem_Shell_Flag_Make) &&
+          ((flags & kwsysSystem_Shell_Flag_MinGWMake) ||
+           (flags & kwsysSystem_Shell_Flag_NMake))))
+        {
+        /* In the VS IDE, NMake, or MinGW make a percent is written %%
+           so we need one extra characters.  */
+        size += 1;
+        }
+      }
+    else if(*c == ';')
+      {
+      if(flags & kwsysSystem_Shell_Flag_VSIDE)
+        {
+        /* In a VS IDE a semicolon is written ";" so we need two extra
+           characters.  */
+        size += 2;
+        }
+      }
     }
 
   /* Check whether the argument needs surrounding quotes.  */
@@ -334,6 +382,10 @@ static char* kwsysSystem_Shell__GetArgument(const char* in, char* out,
           {
           *out++ = *c++;
           }
+
+        /* The make variable reference eliminates any escaping needed
+           for preceding backslashes.  */
+        windows_backslashes = 0;
 
         /* Stop if we have reached the end of the string.  */
         if(!*c)
@@ -430,6 +482,42 @@ static char* kwsysSystem_Shell__GetArgument(const char* in, char* out,
         {
         /* Otherwise a pound is written just #. */
         *out++ = '#';
+        }
+      }
+    else if(*c == '%')
+      {
+      if((flags & kwsysSystem_Shell_Flag_VSIDE) ||
+         ((flags & kwsysSystem_Shell_Flag_Make) &&
+          ((flags & kwsysSystem_Shell_Flag_MinGWMake) ||
+           (flags & kwsysSystem_Shell_Flag_NMake))))
+        {
+        /* In the VS IDE, NMake, or MinGW make a percent is written %%.  */
+        *out++ = '%';
+        *out++ = '%';
+        }
+      else
+        {
+        /* Otherwise a percent is written just %. */
+        *out++ = '%';
+        }
+      }
+    else if(*c == ';')
+      {
+      if(flags & kwsysSystem_Shell_Flag_VSIDE)
+        {
+        /* In a VS IDE a semicolon is written ";".  If this is written
+           in an un-quoted argument it starts a quoted segment,
+           inserts the ; and ends the segment.  If it is written in a
+           quoted argument it ends quoting, inserts the ; and restarts
+           quoting.  Either way the ; is isolated.  */
+        *out++ = '"';
+        *out++ = ';';
+        *out++ = '"';
+        }
+      else
+        {
+        /* Otherwise a semicolon is written just ;. */
+        *out++ = ';';
         }
       }
     else

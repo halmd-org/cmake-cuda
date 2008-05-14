@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmUtilitySourceCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:44 $
-  Version:   $Revision: 1.21.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.25 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,8 @@
 #include "cmUtilitySourceCommand.h"
 
 // cmUtilitySourceCommand
-bool cmUtilitySourceCommand::InitialPass(std::vector<std::string> const& args)
+bool cmUtilitySourceCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 3)
     {
@@ -36,11 +37,31 @@ bool cmUtilitySourceCommand::InitialPass(std::vector<std::string> const& args)
   // CMAKE_CFG_INTDIR setting then the value is out of date.
   const char* intDir = 
     this->Makefile->GetRequiredDefinition("CMAKE_CFG_INTDIR");
-  if(cacheValue &&
+
+  bool haveCacheValue = false;
+  if (this->Makefile->IsOn("CMAKE_CROSSCOMPILING"))
+    {
+    haveCacheValue = (cacheValue != 0);
+    if (!haveCacheValue)
+      {
+      std::string msg = "UTILITY_SOURCE is used in cross compiling mode for ";
+      msg += cacheEntry;
+      msg += ". If your intention is to run this executable, you need to "
+            "preload the cache with the full path to a version of that "
+            "program, which runs on this build machine.";
+      cmSystemTools::Message(msg.c_str() ,"Warning");
+      }
+    }
+  else
+    {
+    haveCacheValue = (cacheValue &&
      (strstr(cacheValue, "(IntDir)") == 0 ||
       intDir && strcmp(intDir, "$(IntDir)") == 0) &&
      (this->Makefile->GetCacheMajorVersion() != 0 &&
-      this->Makefile->GetCacheMinorVersion() != 0 ))
+      this->Makefile->GetCacheMinorVersion() != 0 ));
+    }
+
+  if(haveCacheValue)
     {
     return true;
     }
@@ -88,7 +109,7 @@ bool cmUtilitySourceCommand::InitialPass(std::vector<std::string> const& args)
   // Construct the cache entry for the executable's location.
   std::string utilityExecutable =
     utilityDirectory+"/"+cmakeCFGout+"/"
-    +utilityName+cmSystemTools::GetExecutableExtension();
+    +utilityName+this->Makefile->GetDefinition("CMAKE_EXECUTABLE_SUFFIX");
 
   // make sure we remove any /./ in the name
   cmSystemTools::ReplaceString(utilityExecutable, "/./", "/");

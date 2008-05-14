@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLinkLibrariesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.15.6.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,19 +41,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "LINK_LIBRARIES";}
+  virtual const char* GetName() { return "link_libraries";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Link libraries to all targets added later.";
+    return "Deprecated. Use the target_link_libraries() command instead.";
     }
   
   /**
@@ -62,13 +63,11 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  LINK_LIBRARIES(library1 <debug | optimized> library2 ...)\n"
-      "This is an old CMake command for linking libraries.  Use "
-      "TARGET_LINK_LIBRARIES unless you have a good reason for every target "
-      "to link to the same set of libraries.\n"
+      "Link libraries to all targets added later.\n"
+      "  link_libraries(library1 <debug | optimized> library2 ...)\n"
       "Specify a list of libraries to be linked into "
-      "any following targets (typically added with the ADD_EXECUTABLE "
-      "or ADD_LIBRARY calls).  This command is passed "
+      "any following targets (typically added with the add_executable "
+      "or add_library calls).  This command is passed "
       "down to all subdirectories.  "
       "The debug and optimized strings may be used to indicate that "
       "the next library listed is to be used only for that specific "

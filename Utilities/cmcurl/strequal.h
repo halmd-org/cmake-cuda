@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2004, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2005, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -20,14 +20,10 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: strequal.h,v 1.1 2005/06/24 13:00:13 andy Exp $
+ * $Id: strequal.h,v 1.2 2007-03-15 19:22:13 andy Exp $
  ***************************************************************************/
 
-/*
- * These two actually are public functions.
- */
-int curl_strequal(const char *first, const char *second);
-int curl_strnequal(const char *first, const char *second, size_t max);
+#include <curl/curl.h>
 
 #define strequal(a,b) curl_strequal(a,b)
 #define strnequal(a,b,c) curl_strnequal(a,b,c)
@@ -41,7 +37,7 @@ char *Curl_strcasestr(const char *haystack, const char *needle);
 
 #ifndef HAVE_STRLCAT
 #define strlcat(x,y,z) Curl_strlcat(x,y,z)
-size_t Curl_strlcat(char *dst, const char *src, size_t siz);
 #endif
+size_t strlcat(char *dst, const char *src, size_t siz);
 
 #endif

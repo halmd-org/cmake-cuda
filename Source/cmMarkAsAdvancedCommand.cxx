@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMarkAsAdvancedCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.11.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,7 @@
 
 // cmMarkAsAdvancedCommand
 bool cmMarkAsAdvancedCommand
-::InitialPass(std::vector<std::string> const& args)
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -46,8 +46,9 @@ bool cmMarkAsAdvancedCommand
       manager->GetCacheIterator(variable.c_str());
     if ( it.IsAtEnd() )
       {
-      this->Makefile->AddCacheDefinition(variable.c_str(), 0, 0,
-                                     cmCacheManager::UNINITIALIZED);
+      this->Makefile->GetCacheManager()
+        ->AddCacheEntry(variable.c_str(), 0, 0,
+          cmCacheManager::UNINITIALIZED);
       overwrite = true;
       }
     it.Find(variable.c_str());

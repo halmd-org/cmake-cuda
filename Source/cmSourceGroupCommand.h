@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceGroupCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.12.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,12 +40,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
   
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "SOURCE_GROUP";}
+  virtual const char* GetName() {return "source_group";}
 
   /**
    * Succinct documentation.
@@ -61,7 +62,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  SOURCE_GROUP(name [REGULAR_EXPRESSION regex] "
+      "  source_group(name [REGULAR_EXPRESSION regex] "
       "[FILES src1 src2 ...])\n"
       "Defines a group into which sources will be placed in project files.  "
       "This is mainly used to setup file tabs in Visual Studio.  "
@@ -71,10 +72,10 @@ public:
       "group explicitly lists the file, the LAST group whose regular "
       "expression matches the file will be favored.\n"
       "The name of the group may contain backslashes to specify subgroups:\n"
-      "  SOURCE_GROUP(outer\\\\inner ...)\n"
+      "  source_group(outer\\\\inner ...)\n"
       "For backwards compatibility, this command is also supports the "
       "format:\n"
-      "  SOURCE_GROUP(name regex)";
+      "  source_group(name regex)";
     }
   
   cmTypeMacro(cmSourceGroupCommand, cmCommand);

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmOptionCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/01/27 17:58:53 $
-  Version:   $Revision: 1.12 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "OPTION";}
+  virtual const char* GetName() {return "option";}
   
   /**
    * Succinct documentation.
@@ -60,12 +61,17 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  OPTION(OPTION_VAR \"help string describing option\"\n"
+      "  option(<option_variable> \"help string describing option\"\n"
       "         [initial value])\n"
       "Provide an option for the user to select as ON or OFF.  If no "
       "initial value is provided, OFF is used.";
     }
-  
+
+  /**
+   * This determines if the command is invoked when in script mode.
+   */
+  virtual bool IsScriptable() { return true; }
+
   cmTypeMacro(cmOptionCommand, cmCommand);
 };
 

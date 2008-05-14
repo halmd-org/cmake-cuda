@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindLibraryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/07/24 15:19:35 $
-  Version:   $Revision: 1.37.2.2 $
+  Date:      $Date: 2008-02-11 22:00:45 $
+  Version:   $Revision: 1.58 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,9 +20,15 @@
 cmFindLibraryCommand::cmFindLibraryCommand()
 { 
   cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "FIND_XXX", "FIND_LIBRARY");
+                               "FIND_XXX", "find_library");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "CMAKE_XXX_PATH", "CMAKE_LIBRARY_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_XXX_MAC_PATH",
+                               "CMAKE_FRAMEWORK_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_SYSTEM_XXX_MAC_PATH",
+                               "CMAKE_SYSTEM_FRAMEWORK_PATH");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "XXX_SYSTEM", "LIB");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
@@ -32,6 +38,13 @@ cmFindLibraryCommand::cmFindLibraryCommand()
                                "SEARCH_XXX_DESC", "library");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "SEARCH_XXX", "library");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "XXX_SUBDIR", "lib");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_FIND_ROOT_PATH_MODE_XXX", 
+                               "CMAKE_FIND_ROOT_PATH_MODE_LIBRARY");
+
+  this->EnvironmentPath = "LIB";
   this->GenericDocumentation += 
     "\n"
     "If the library found is a framework, then VAR will be set to "
@@ -42,7 +55,8 @@ cmFindLibraryCommand::cmFindLibraryCommand()
 }
 
 // cmFindLibraryCommand
-bool cmFindLibraryCommand::InitialPass(std::vector<std::string> const& argsIn)
+bool cmFindLibraryCommand
+::InitialPass(std::vector<std::string> const& argsIn, cmExecutionStatus &)
 {
   this->VariableDocumentation = "Path to a library.";
   this->CMakePathName = "LIBRARY";
@@ -63,15 +77,32 @@ bool cmFindLibraryCommand::InitialPass(std::vector<std::string> const& argsIn)
       }
     return true;
     }
-  // add special 64 bit paths if this is a 64 bit compile.
-  this->AddLib64Paths();
+
+  if(const char* abi_name =
+     this->Makefile->GetDefinition("CMAKE_INTERNAL_PLATFORM_ABI"))
+    {
+    std::string abi = abi_name;
+    if(abi.find("ELF N32") != abi.npos)
+      {
+      // Convert lib to lib32.
+      this->AddArchitecturePaths("32");
+      }
+    }
+
+  if(this->Makefile->GetCMakeInstance()
+     ->GetPropertyAsBool("FIND_LIBRARY_USE_LIB64_PATHS"))
+    {
+    // add special 64 bit paths if this is a 64 bit compile.
+    this->AddLib64Paths();
+    }
+
   std::string library;
   for(std::vector<std::string>::iterator i = this->Names.begin();
       i != this->Names.end() ; ++i)
     {
     library = this->FindLibrary(i->c_str());
     if(library != "")
-      {  
+      {
       this->Makefile->AddCacheDefinition(this->VariableName.c_str(),
                                          library.c_str(),
                                          this->VariableDocumentation.c_str(),
@@ -87,6 +118,47 @@ bool cmFindLibraryCommand::InitialPass(std::vector<std::string> const& argsIn)
   return true;
 }
 
+//----------------------------------------------------------------------------
+void cmFindLibraryCommand::AddArchitecturePaths(const char* suffix)
+{
+  std::vector<std::string> newPaths;
+  bool found = false;
+  std::string subpath = "lib";
+  subpath += suffix;
+  subpath += "/";
+  for(std::vector<std::string>::iterator i = this->SearchPaths.begin();
+      i != this->SearchPaths.end(); ++i)
+    {
+    // Try replacing lib/ with lib<suffix>/
+    std::string s = *i;
+    cmSystemTools::ReplaceString(s, "lib/", subpath.c_str());
+    if((s != *i) && cmSystemTools::FileIsDirectory(s.c_str()))
+      {
+      found = true;
+      newPaths.push_back(s);
+      }
+
+    // Now look for lib<suffix>
+    s = *i;
+    s += suffix;
+    if(cmSystemTools::FileIsDirectory(s.c_str()))
+      {
+      found = true;
+      newPaths.push_back(s);
+      }
+    // now add the original unchanged path
+    if(cmSystemTools::FileIsDirectory(i->c_str()))
+      {
+      newPaths.push_back(*i);
+      }
+    }
+
+  // If any new paths were found replace the original set.
+  if(found)
+    {
+    this->SearchPaths = newPaths;
+    }
+}
 
 void cmFindLibraryCommand::AddLib64Paths()
 {  
@@ -95,14 +167,14 @@ void cmFindLibraryCommand::AddLib64Paths()
     {
     return;
     }
-  std::string voidsize = 
-    this->Makefile->GetRequiredDefinition("CMAKE_SIZEOF_VOID_P");
+  std::string voidsize =
+    this->Makefile->GetSafeDefinition("CMAKE_SIZEOF_VOID_P");
   int size = atoi(voidsize.c_str());
-  std::vector<std::string> path64;
   if(size != 8)
     {
     return;
     }
+  std::vector<std::string> path64;
   bool found64 = false;
   for(std::vector<std::string>::iterator i = this->SearchPaths.begin(); 
       i != this->SearchPaths.end(); ++i)
@@ -162,6 +234,34 @@ std::string cmFindLibraryCommand::FindLibrary(const char* name)
   std::vector<std::string> suffixes;
   cmSystemTools::ExpandListArgument(prefixes_list, prefixes, true);
   cmSystemTools::ExpandListArgument(suffixes_list, suffixes, true);
+
+  // If the original library name provided by the user matches one of
+  // the suffixes, try it first.
+  bool tryOrig = false;
+  {
+  std::string nm = name;
+  for(std::vector<std::string>::const_iterator si = suffixes.begin();
+      !tryOrig && si != suffixes.end(); ++si)
+    {
+    std::string const& suffix = *si;
+    if(nm.length() > suffix.length() &&
+       nm.substr(nm.size()-suffix.length()) == suffix)
+      {
+      tryOrig = true;
+      }
+    }
+  }
+
+  // Add a trailing slash to all paths to aid the search process.
+  for(std::vector<std::string>::iterator i = this->SearchPaths.begin();
+      i != this->SearchPaths.end(); ++i)
+    {
+    std::string& p = *i;
+    if(p.empty() || p[p.size()-1] != '/')
+      {
+      p += "/";
+      }
+    }
   std::string tryPath;
   for(std::vector<std::string>::const_iterator p = this->SearchPaths.begin();
       p != this->SearchPaths.end(); ++p)
@@ -169,7 +269,6 @@ std::string cmFindLibraryCommand::FindLibrary(const char* name)
     if(supportFrameworks)
       {
       tryPath = *p;
-      tryPath += "/";
       tryPath += name;
       tryPath += ".framework";
       if(cmSystemTools::FileExists(tryPath.c_str())
@@ -182,6 +281,19 @@ std::string cmFindLibraryCommand::FindLibrary(const char* name)
       }
     if(!onlyFrameworks)
       {
+      // Try the original library name as specified by the user.
+      if(tryOrig)
+        {
+        tryPath = *p;
+        tryPath += name;
+        if(cmSystemTools::FileExists(tryPath.c_str(), true))
+          {
+          tryPath = cmSystemTools::CollapseFullPath(tryPath.c_str());
+          cmSystemTools::ConvertToUnixSlashes(tryPath);
+          return tryPath;
+          }
+        }
+
       // Try various library naming conventions.
       for(std::vector<std::string>::iterator prefix = prefixes.begin();
           prefix != prefixes.end(); ++prefix)
@@ -190,7 +302,6 @@ std::string cmFindLibraryCommand::FindLibrary(const char* name)
             suffix != suffixes.end(); ++suffix)
           {
           tryPath = *p;
-          tryPath += "/";
           tryPath += *prefix;
           tryPath += name;
           tryPath += *suffix;

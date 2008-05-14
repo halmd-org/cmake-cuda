@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetTargetPropertiesCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/02/15 17:45:07 $
-  Version:   $Revision: 1.3.2.2 $
+  Date:      $Date: 2008-01-28 13:38:36 $
+  Version:   $Revision: 1.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,8 +19,8 @@
 #include "cmGlobalGenerator.h"
 
 // cmSetTargetPropertiesCommand
-bool cmSetTargetPropertiesCommand::InitialPass(
-  std::vector<std::string> const& args)
+bool cmSetTargetPropertiesCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 2 )
     {
@@ -77,24 +77,10 @@ bool cmSetTargetPropertiesCommand::InitialPass(
   int i;
   for(i = 0; i < numFiles; ++i)
     {   
-    // if the file is already in the makefile just set properites on it
-    cmTarget* target = 
-      this->GetMakefile()
-      ->GetLocalGenerator()->GetGlobalGenerator()->FindTarget(0, 
-                                                              args[i].c_str());
-    if ( target )
+    bool ret = cmSetTargetPropertiesCommand::SetOneTarget
+      (args[i].c_str(),propertyPairs,this->Makefile);
+    if (!ret)
       {
-      // now loop through all the props and set them
-      unsigned int k;
-      for (k = 0; k < propertyPairs.size(); k = k + 2)
-        {
-        target->SetProperty(propertyPairs[k].c_str(),
-                            propertyPairs[k+1].c_str());
-        }
-      }
-    // if file is not already in the makefile, then report error
-    else
-      { 
       std::string message = "Can not find target to add properties to: ";
       message += args[i];
       this->SetError(message.c_str());
@@ -104,3 +90,25 @@ bool cmSetTargetPropertiesCommand::InitialPass(
   return true;
 }
 
+bool cmSetTargetPropertiesCommand
+::SetOneTarget(const char *tname, 
+               std::vector<std::string> &propertyPairs,
+               cmMakefile *mf)
+{
+  if(cmTarget* target = mf->FindTargetToUse(tname))
+    {
+    // now loop through all the props and set them
+    unsigned int k;
+    for (k = 0; k < propertyPairs.size(); k = k + 2)
+      {
+      target->SetProperty(propertyPairs[k].c_str(),
+                          propertyPairs[k+1].c_str());
+      }
+    }
+  // if file is not already in the makefile, then add it
+  else
+    { 
+    return false;
+    }
+  return true;
+}

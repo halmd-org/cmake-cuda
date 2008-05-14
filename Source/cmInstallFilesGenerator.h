@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallFilesGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.3.2.2 $
+  Date:      $Date: 2007-07-02 18:56:57 $
+  Version:   $Revision: 1.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -35,13 +35,11 @@ public:
   virtual ~cmInstallFilesGenerator();
 
 protected:
-  virtual void GenerateScript(std::ostream& os);
+  typedef cmInstallGeneratorIndent Indent;
+  virtual void GenerateScriptActions(std::ostream& os, Indent const& indent);
   std::vector<std::string> Files;
-  std::string Destination;
   bool Programs;
   std::string FilePermissions;
-  std::vector<std::string> Configurations;
-  std::string Component;
   std::string Rename;
   bool Optional;
 };

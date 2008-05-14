@@ -4,8 +4,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsFortranLexer.in.l,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.5.4.1 $
+  Date:      $Date: 2008-04-24 16:56:25 $
+  Version:   $Revision: 1.10.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,9 +16,9 @@
 
 =========================================================================*/
 /*-------------------------------------------------------------------------
-  Portions of this source have been derived from makefdep90 version 2.6.2,
+  Portions of this source have been derived from makedepf90 version 2.8.8,
 
-   Copyright (C) 2000,2001 Erik Edelmann <eedelman@beam.helsinki.fi>.
+   Copyright (C) 2000--2006 Erik Edelmann <erik.edelmann@iki.fi>
 
   The code was originally distributed under the GPL but permission
   from the copyright holder has been obtained to distribute this
@@ -64,6 +64,7 @@ Modify cmDependsFortranLexer.h:
 /*--------------------------------------------------------------------------*/
 %}
 
+
 %option reentrant
 %option noyywrap
 %pointer
@@ -75,16 +76,19 @@ Modify cmDependsFortranLexer.h:
 
 \"              {
   cmDependsFortranParser_StringStart(yyextra);
+  cmDependsFortranParser_SetOldStartcond(yyextra, YY_START);
   BEGIN(str_dq);
 }
 
 '               {
   cmDependsFortranParser_StringStart(yyextra);
+  cmDependsFortranParser_SetOldStartcond(yyextra, YY_START);
   BEGIN(str_sq);
 }
 
 <str_dq>\" |
 <str_sq>'  {
+  BEGIN(cmDependsFortranParser_GetOldStartcond(yyextra) );
   yylvalp->string = strdup(cmDependsFortranParser_StringEnd(yyextra));
   return STRING;
 }
@@ -92,7 +96,15 @@ Modify cmDependsFortranLexer.h:
 <str_dq,str_sq>&[ \t]*\n |
 <str_dq,str_sq>&[ \t]*\n[ \t]*&  /* Ignore (continued strings, free fmt) */
 
-<fixed_fmt,str_dq,str_sq>\n[ ]{5}[^ \t\n] /*Ignore (cont. strings, fixed fmt) */
+<fixed_fmt,str_dq,str_sq>\n[ ]{5}[^ \t\n] {
+  if (cmDependsFortranParser_GetOldStartcond(yyextra) == fixed_fmt)
+    ; /* Ignore (cont. strings, fixed fmt) */
+  else
+    {
+    unput(yytext[strlen(yytext)-1]);
+    }
+}
+
 
 <str_dq,str_sq>\n {
   unput ('\n');
@@ -107,39 +119,22 @@ Modify cmDependsFortranLexer.h:
 !.*\n                   { return EOSTMT; } /* Treat comments like */
 <fixed_fmt>^[cC*dD].*\n { return EOSTMT; } /* empty lines */
 
-#[ \t]*include  { return CPP_INCLUDE; }
+^[ \t]*#[ \t]*include  { return CPP_INCLUDE; }
 \$[ \t]*include { return F90PPR_INCLUDE; }
 \?\?[ \t]*include { return COCO_INCLUDE; }
-INCLUDE         { return F_INCLUDE; }
-USE             { return USE; }
 
-END" "*INTERFACE {
-  cmDependsFortranParser_SetInInterface(yyextra, 0);
-}
-INTERFACE        {
-  cmDependsFortranParser_SetInInterface(yyextra, 1);
-}
-
-END" "*MODULE   /* Ignore */
-MODULE          {
- if(!cmDependsFortranParser_GetInInterface(yyextra))
-   {
-   return MODULE;
-   }
-}
-
-#[ \t]*define   { return CPP_DEFINE; }
+^[ \t]*#[ \t]*define   { return CPP_DEFINE; }
 \$[ \t]*DEFINE   { return F90PPR_DEFINE; }
 
-#[ \t]*undef    { return CPP_UNDEF; }
+^[ \t]*#[ \t]*undef    { return CPP_UNDEF; }
 \$[ \t]*UNDEF   { return F90PPR_UNDEF; }
 
-#[ \t]*ifdef    { return CPP_IFDEF; }
-#[ \t]*ifndef   { return CPP_IFNDEF; }
-#[ \t]*if       { return CPP_IF; }
-#[ \t]*elif     { return CPP_ELIF; }
-#[ \t]*else     { return CPP_ELSE; }
-#[ \t]*endif    { return CPP_ENDIF; }
+^[ \t]*#[ \t]*ifdef    { return CPP_IFDEF; }
+^[ \t]*#[ \t]*ifndef   { return CPP_IFNDEF; }
+^[ \t]*#[ \t]*if       { return CPP_IF; }
+^[ \t]*#[ \t]*elif     { return CPP_ELIF; }
+^[ \t]*#[ \t]*else     { return CPP_ELSE; }
+^[ \t]*#[ \t]*endif    { return CPP_ENDIF; }
 
 $[ \t]*ifdef    { return F90PPR_IFDEF; }
 $[ \t]*ifndef   { return F90PPR_IFNDEF; }
@@ -148,23 +143,38 @@ $[ \t]*elif     { return F90PPR_ELIF; }
 $[ \t]*else     { return F90PPR_ELSE; }
 $[ \t]*endif    { return F90PPR_ENDIF; }
 
-&[ \t]*\n |
-&[ \t]*\n[ \t]*& /* Ignore */
+ /* Line continuations, possible involving comments.  */
+&([ \t\n]*|!.*)*
+&([ \t\n]*|!.*)*&
 
+, { return COMMA; }
 
-[^ \t\n\r;,!'""']+ { yylvalp->string = strdup(yytext); return WORD; }
+:: { return DCOLON; }
 
-;|\n          { return EOSTMT; }
+<fixed_fmt>\n[ ]{5}[^ ]  { return GARBAGE; }
+
+=|=>                     { return ASSIGNMENT_OP; }
+
+[a-zA-Z_][a-zA-Z_0-9]* {
+  yylvalp->string = strdup(yytext);
+  return WORD;
+}
+
+[^ \t\n\r;,!'"a-zA-Z=&]+ { return GARBAGE; }
+
+;|\n { return EOSTMT; }
+
 
 [ \t\r,]         /* Ignore */
+\\[ \t]*\n       /* Ignore line-endings preceeded by \ */
 
-.               { return *yytext; }
+. { return *yytext; }
 
 <<EOF>> {
- if(!cmDependsFortranParser_FilePop(yyextra))
-   {
-   return YY_NULL;
-   }
+  if(!cmDependsFortranParser_FilePop(yyextra) )
+    {
+    return YY_NULL;
+    }
 }
 
 %%

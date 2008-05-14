@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSubdirCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:06 $
-  Version:   $Revision: 1.14.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.21 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,19 +41,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SUBDIRS";}
+  virtual const char* GetName() { return "subdirs";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Add a list of subdirectories to the build.";
+    return "Deprecated. Use the add_subdirectory() command instead.";
     }
   
   /**
@@ -62,10 +63,11 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  SUBDIRS(dir1 dir2 ..."
+      "Add a list of subdirectories to the build.\n"
+      "  subdirs(dir1 dir2 ..."
       "[EXCLUDE_FROM_ALL exclude_dir1 exclude_dir2 ...] [PREORDER] )\n"
-      "Add a list of subdirectories to the build. The ADD_SUBDIRECTORY "
-      "command should be used instead of SUBDIRS although SUBDIRS will "
+      "Add a list of subdirectories to the build. The add_subdirectory "
+      "command should be used instead of subdirs although subdirs will "
       "still work. "
       "This will cause any CMakeLists.txt files in the sub directories "
       "to be processed by CMake.  Any directories after the PREORDER flag "

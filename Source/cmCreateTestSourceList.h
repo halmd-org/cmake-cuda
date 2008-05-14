@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCreateTestSourceList.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:08 $
-  Version:   $Revision: 1.10.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,12 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() {return "CREATE_TEST_SOURCELIST";}
+  virtual const char* GetName() {return "create_test_sourcelist";}
   
   /**
    * Succinct documentation.
@@ -60,7 +61,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CREATE_TEST_SOURCELIST(SourceListName DriverName\n"
+      "  create_test_sourcelist(sourceListName driverName\n"
       "                         test1 test2 test3\n"
       "                         EXTRA_INCLUDE include.h\n"
       "                         FUNCTION function)\n"
@@ -68,12 +69,13 @@ public:
       "a single executable.  This is useful when building static executables "
       "with large libraries to shrink the total required size.  "
       "The list of source files "
-      "needed to build the test driver will be in SourceListName.  "
+      "needed to build the test driver will be in sourceListName.  "
       "DriverName is the name of the test driver program.  The rest of "
       "the arguments consist of a list of test source files, can be "
       "semicolon separated.  Each test source file should have a function in "
       "it that is the same name as the file with no extension (foo.cxx "
-      "should have int foo();) DriverName will be able to call each of the "
+      "should have int foo(int, char*[]);) DriverName will be able to "
+      "call each of the "
       "tests by name on the command line. If EXTRA_INCLUDE is specified, "
       "then the next argument is included into the generated file. If "
       "FUNCTION is specified, then the next argument is taken as a function "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudioGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008/01/15 21:02:31 $
-  Version:   $Revision: 1.2.2.6 $
+  Date:      $Date: 2008-01-15 19:00:52 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,6 +19,7 @@
 #include "cmMakefile.h"
 #include "cmSourceFile.h"
 #include "cmSystemTools.h"
+#include "windows.h"
 
 //----------------------------------------------------------------------------
 cmLocalVisualStudioGenerator::cmLocalVisualStudioGenerator()
@@ -51,6 +52,61 @@ bool cmLocalVisualStudioGenerator::SourceFileCompiles(const cmSourceFile* sf)
 }
 
 //----------------------------------------------------------------------------
+void cmLocalVisualStudioGenerator::CountObjectNames(
+    const std::vector<cmSourceGroup>& groups,
+    std::map<cmStdString, int>& counts)
+{
+  for(unsigned int i = 0; i < groups.size(); ++i)
+    {
+    cmSourceGroup sg = groups[i];
+    std::vector<const cmSourceFile*> const& srcs = sg.GetSourceFiles();
+    for(std::vector<const cmSourceFile*>::const_iterator s = srcs.begin();
+        s != srcs.end(); ++s)
+      {
+      const cmSourceFile* sf = *s;
+      if(this->SourceFileCompiles(sf))
+        {
+        std::string objectName = cmSystemTools::LowerCase(
+            cmSystemTools::GetFilenameWithoutLastExtension(
+              sf->GetFullPath()));
+        objectName += ".obj";
+        counts[objectName] += 1;
+        }
+      }
+    this->CountObjectNames(sg.GetGroupChildren(), counts);
+    }
+}
+
+//----------------------------------------------------------------------------
+void cmLocalVisualStudioGenerator::InsertNeedObjectNames(
+   const std::vector<cmSourceGroup>& groups,
+    std::map<cmStdString, int>& count)
+{
+  for(unsigned int i = 0; i < groups.size(); ++i)
+    {
+    cmSourceGroup sg = groups[i];
+    std::vector<const cmSourceFile*> const& srcs = sg.GetSourceFiles();
+    for(std::vector<const cmSourceFile*>::const_iterator s = srcs.begin();
+        s != srcs.end(); ++s)
+      {
+      const cmSourceFile* sf = *s;
+      if(this->SourceFileCompiles(sf))
+        {
+        std::string objectName = cmSystemTools::LowerCase(
+           cmSystemTools::GetFilenameWithoutLastExtension(sf->GetFullPath()));
+        objectName += ".obj";
+        if(count[objectName] > 1)
+          {
+          this->NeedObjectName.insert(sf);
+          }
+        }
+      }
+    this->InsertNeedObjectNames(sg.GetGroupChildren(), count);
+    }
+}
+
+
+//----------------------------------------------------------------------------
 void cmLocalVisualStudioGenerator::ComputeObjectNameRequirements
 (std::vector<cmSourceGroup> const& sourceGroups)
 {
@@ -60,50 +116,11 @@ void cmLocalVisualStudioGenerator::ComputeObjectNameRequirements
   // Count the number of object files with each name.  Note that
   // windows file names are not case sensitive.
   std::map<cmStdString, int> objectNameCounts;
-  for(unsigned int i = 0; i < sourceGroups.size(); ++i)
-    {
-    cmSourceGroup sg = sourceGroups[i];
-    std::vector<const cmSourceFile*> const& srcs = sg.GetSourceFiles();
-    for(std::vector<const cmSourceFile*>::const_iterator s = srcs.begin();
-        s != srcs.end(); ++s)
-      {
-      const cmSourceFile* sf = *s;
-      if(this->SourceFileCompiles(sf))
-        {
-        std::string objectName =
-          cmSystemTools::LowerCase(
-          cmSystemTools::GetFilenameWithoutLastExtension(
-              sf->GetFullPath().c_str()));
-        objectName += ".obj";
-        objectNameCounts[objectName] += 1;
-        }
-      }
-    }
+  this->CountObjectNames(sourceGroups, objectNameCounts);
 
   // For all source files producing duplicate names we need unique
   // object name computation.
-  for(unsigned int i = 0; i < sourceGroups.size(); ++i)
-    {
-    cmSourceGroup sg = sourceGroups[i];
-    std::vector<const cmSourceFile*> const& srcs = sg.GetSourceFiles();
-    for(std::vector<const cmSourceFile*>::const_iterator s = srcs.begin();
-        s != srcs.end(); ++s)
-      {
-      const cmSourceFile* sf = *s;
-      if(this->SourceFileCompiles(sf))
-        {
-        std::string objectName =
-          cmSystemTools::LowerCase(
-          cmSystemTools::GetFilenameWithoutLastExtension(
-              sf->GetFullPath().c_str()));
-        objectName += ".obj";
-        if(objectNameCounts[objectName] > 1)
-          {
-          this->NeedObjectName.insert(sf);
-          }
-        }
-      }
-    }
+  this->InsertNeedObjectNames(sourceGroups, objectNameCounts);
 }
 
 //----------------------------------------------------------------------------
@@ -111,6 +128,7 @@ std::string
 cmLocalVisualStudioGenerator
 ::ConstructScript(const cmCustomCommandLines& commandLines,
                   const char* workingDirectory,
+                  const char* configName,
                   bool escapeOldStyle,
                   bool escapeAllowMakeVars,
                   const char* newline_text)
@@ -122,6 +140,7 @@ cmLocalVisualStudioGenerator
   std::string script;
   if(workingDirectory)
     {
+    // Change the working directory.
     script += newline;
     newline = newline_text;
     script += "cd ";
@@ -161,13 +180,15 @@ cmLocalVisualStudioGenerator
 
     // Start with the command name.
     const cmCustomCommandLine& commandLine = *cl;
+    std::string commandName = this->GetRealLocation(commandLine[0].c_str(), 
+                                                    configName);
     if(!workingDirectory)
       {
-    script += this->Convert(commandLine[0].c_str(),START_OUTPUT,SHELL);
+      script += this->Convert(commandName.c_str(),START_OUTPUT,SHELL);
       }
     else
       {
-      script += this->Convert(commandLine[0].c_str(),NONE,SHELL);
+      script += this->Convert(commandName.c_str(),NONE,SHELL);
       }
 
     // Add the arguments.
@@ -187,3 +208,4 @@ cmLocalVisualStudioGenerator
     }
   return script;
 }
+

@@ -5,8 +5,8 @@
 #  Program:   CMake - Cross-Platform Makefile Generator
 #  Module:    $RCSfile: bootstrap,v $
 #  Language:  Bourne Shell
-#  Date:      $Date: 2006/10/27 20:01:46 $
-#  Version:   $Revision: 1.83.2.5 $
+#  Date:      $Date: 2008-03-07 21:26:29 $
+#  Version:   $Revision: 1.113 $
 #
 #  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
 #  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,18 +25,32 @@ cmake_version_component()
 "
 }
 
+cmake_date_stamp_component()
+{
+  cat "${cmake_source_dir}/Source/kwsys/kwsysDateStamp.cmake" | sed -n "
+/KWSYS_DATE_STAMP_${1}/  {s/^.* \([0-9][0-9]*\))$/\1/;p;}
+"
+}
+
 # Detect system and directory information.
 cmake_system=`uname`
 cmake_source_dir=`echo $0 | sed -n '/\//{s/\/[^\/]*$//;p;}'`
 cmake_source_dir=`(cd "${cmake_source_dir}";pwd)`
 cmake_binary_dir=`pwd`
 cmake_bootstrap_dir="${cmake_binary_dir}/Bootstrap.cmk"
-cmake_version="`cmake_version_component MAJOR`.`cmake_version_component MINOR`"
+cmake_version_major="`cmake_version_component MAJOR`"
+cmake_version_minor="`cmake_version_component MINOR`"
+cmake_version_patch="`cmake_version_component PATCH`"
+cmake_version="${cmake_version_major}.${cmake_version_minor}"
+cmake_version_full="${cmake_version_major}.${cmake_version_minor}.${cmake_version_patch}"
+cmake_date_stamp="`cmake_date_stamp_component YEAR``cmake_date_stamp_component MONTH``cmake_date_stamp_component DAY`"
 cmake_data_dir="/share/cmake-${cmake_version}"
 cmake_doc_dir="/doc/cmake-${cmake_version}"
 cmake_man_dir="/man"
 cmake_init_file=""
 cmake_bootstrap_system_libs=""
+cmake_bootstrap_qt_gui=""
+cmake_bootstrap_qt_qmake=""
 
 # Determine whether this is a MinGW environment.
 if echo "${cmake_system}" | grep MINGW >/dev/null 2>&1; then
@@ -50,6 +64,13 @@ if echo "${cmake_system}" | grep Darwin >/dev/null 2>&1; then
   cmake_system_darwin=true
 else
   cmake_system_darwin=false
+fi
+
+# Determine whether this is BeOS 
+if echo "${cmake_system}" | grep BeOS >/dev/null 2>&1; then
+  cmake_system_beos=true
+else
+  cmake_system_beos=false
 fi
 
 # Choose the generator to use for bootstrapping.
@@ -116,17 +137,30 @@ CMAKE_CXX_SOURCES="\
   cmCommandArgumentParserHelper \
   cmDepends \
   cmDependsC \
+  cmDocumentationFormatter \
+  cmDocumentationFormatterText \
+  cmPolicies \
+  cmProperty \
+  cmPropertyMap \
+  cmPropertyDefinition \
+  cmPropertyDefinitionMap \
   cmMakeDepend \
   cmMakefile \
+  cmExportFileGenerator \
+  cmExportInstallFileGenerator \
+  cmInstallDirectoryGenerator \
   cmGeneratedFileStream \
   cmGlobalGenerator \
   cmLocalGenerator \
   cmInstallGenerator \
+  cmInstallExportGenerator \
   cmInstallFilesGenerator \
   cmInstallScriptGenerator \
   cmInstallTargetGenerator \
   cmSourceFile \
+  cmSourceFileLocation \
   cmSystemTools \
+  cmVersion \
   cmFileTimeComparison \
   cmGlobalUnixMakefileGenerator3 \
   cmLocalUnixMakefileGenerator3 \
@@ -139,9 +173,17 @@ CMAKE_CXX_SOURCES="\
   cmTarget \
   cmTest \
   cmCustomCommand \
+  cmDocumentVariables \
   cmCacheManager \
   cmListFileCache \
-  cmOrderLinkDirectories \
+  cmComputeLinkDepends \
+  cmComputeLinkInformation \
+  cmOrderDirectories \
+  cmComputeTargetDepends \
+  cmComputeComponentGraph \
+  cmExprLexer \
+  cmExprParser \
+  cmExprParserHelper \
 "
 
 if ${cmake_system_mingw}; then
@@ -158,6 +200,7 @@ CMAKE_C_SOURCES="\
 if ${cmake_system_mingw}; then
   KWSYS_C_SOURCES="\
     ProcessWin32 \
+    String \
     System"
   KWSYS_C_MINGW_SOURCES="\
     ProcessFwd9x \
@@ -167,6 +210,7 @@ if ${cmake_system_mingw}; then
 else
   KWSYS_C_SOURCES="\
     ProcessUNIX \
+    String \
     System"
   KWSYS_C_MINGW_SOURCES=""
   KWSYS_C_GENERATED_SOURCES=""
@@ -179,10 +223,12 @@ KWSYS_CXX_SOURCES="\
   SystemTools"
 
 KWSYS_FILES="\
+  auto_ptr.hxx \
   Directory.hxx \
   Glob.hxx \
   Process.h \
   RegularExpression.hxx \
+  String.h \
   String.hxx \
   System.h \
   SystemTools.hxx"
@@ -210,6 +256,9 @@ Configuration:
                           (for use only by package maintainers)
   --no-system-libs        use cmake-provided third-party libraries
                           (default)
+  --qt-gui                build the Qt-based GUI (requires Qt >= 4.2)
+  --no-qt-gui             do not build the Qt-based GUI (default)
+  --qt-qmake=<qmake>      use <qmake> as the qmake executable to find Qt
 
 Directory and file names:
   --prefix=PREFIX         install files in tree rooted at PREFIX
@@ -225,24 +274,17 @@ EOF
 }
 
 # Display CMake bootstrap usage
-cmake_version()
+cmake_version_display()
 {
+  (
   # Get CMake version
-  CMAKE_VERSION=""
-  for a in MAJOR MINOR PATCH; do
-    CMake_VERSION=`cat "${cmake_source_dir}/CMakeLists.txt" | \
-      grep "SET(CMake_VERSION_${a} *[0-9]*)" | sed "s/SET(CMake_VERSION_${a} *\([0-9]*\))/\1/"`
-    CMAKE_VERSION="${CMAKE_VERSION}.${CMake_VERSION}" 
-  done
-  if echo "$CMAKE_VERSION" | grep "\.[0-9][0-9]*\.[0-9]*[13579]\.[0-9]" > /dev/null 2>&1; then
-
-    CMake_DATE=`cat "${cmake_source_dir}/Source/cmVersion.cxx" | grep "\".Date: [0-9][0-9]*/[0-9][0-9]*/[0-9][0-9]* [0-9][0-9]*:[0-9][0-9]*:[0-9][0-9]* .\";"`
-    CMake_DATE=`echo "${CMake_DATE}" | sed "s/.*Date: \([0-9][0-9]*\)\/\([0-9][0-9]*\)\/\([0-9][0-9]*\) .*/\1\2\3/" `
-    CMAKE_VERSION=`echo $CMAKE_VERSION | sed "s/\.\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\)/\1.\2-${CMake_DATE}/"`
+  if echo "${cmake_version_full}" | grep "[0-9]\.[0-9]*[13579]\.[0-9]" > /dev/null 2>&1; then
+    version="${cmake_version}-${cmake_date_stamp}"
   else
-    CMAKE_VERSION=`echo $CMAKE_VERSION | sed "s/\.\([0-9][0-9]*\)\.\([0-9][0-9]*\)\.\([0-9][0-9]*\)/\1.\2-\3/"`
+    version="${cmake_version}-${cmake_version_patch}"
   fi
-  echo "CMake ${CMAKE_VERSION}, Copyright (c) 2006 Kitware, Inc., Insight Consortium"
+  echo "CMake ${version}, Copyright (c) 2007 Kitware, Inc., Insight Consortium"
+  )
 }
 
 # Display CMake bootstrap error, display the log file and exit
@@ -455,11 +497,20 @@ for a in "$@"; do
   if echo $a | grep "^--no-system-libs" > /dev/null 2> /dev/null; then
     cmake_bootstrap_system_libs="-DCMAKE_USE_SYSTEM_LIBRARIES=0"
   fi
+  if echo $a | grep "^--qt-gui" > /dev/null 2> /dev/null; then
+    cmake_bootstrap_qt_gui="1"
+  fi
+  if echo $a | grep "^--no-qt-gui" > /dev/null 2> /dev/null; then
+    cmake_bootstrap_qt_gui="0"
+  fi
+  if echo $a | grep "^--qt-qmake=" > /dev/null 2> /dev/null; then
+    cmake_bootstrap_qt_qmake=`echo $a | sed "s/^--qt-qmake=//"`
+  fi
   if echo $a | grep "^--help" > /dev/null 2> /dev/null; then
     cmake_usage
   fi
   if echo $a | grep "^--version" > /dev/null 2> /dev/null; then
-    cmake_version
+    cmake_version_display
     exit 2
   fi
   if echo $a | grep "^--verbose" > /dev/null 2> /dev/null; then
@@ -482,7 +533,7 @@ fi
 
 echo "---------------------------------------------"
 # Get CMake version
-echo "`cmake_version`"
+echo "`cmake_version_display`"
 
 # Check for in-source build
 cmake_in_source_build=
@@ -540,12 +591,16 @@ rm -f "${cmake_bootstrap_dir}/cmConfigure.h.tmp"
 # If exist compiler flags, set them
 cmake_c_flags=${CFLAGS}
 cmake_cxx_flags=${CXXFLAGS}
+cmake_ld_flags=${LDFLAGS}
 
 # Add Carbon framework on Darwin
 if ${cmake_system_darwin}; then
   cmake_ld_flags="${LDFLAGS} -framework Carbon"  
-else
-  cmake_ld_flags=${LDFLAGS}
+fi
+
+# Add BeOS toolkits...
+if ${cmake_system_beos}; then
+  cmake_ld_flags="${LDFLAGS} -lroot -lbe"
 fi
 
 # Test C compiler
@@ -1074,7 +1129,7 @@ fi
 
 # Just to be safe, let us store compiler and flags to the header file
 
-cmake_bootstrap_version='$Revision: 1.83.2.5 $'
+cmake_bootstrap_version='$Revision: 1.113 $'
 cmake_compiler_settings_comment="/*
  * Generated by ${cmake_source_dir}/bootstrap
  * Version:     ${cmake_bootstrap_version}
@@ -1137,11 +1192,9 @@ else
 fi
 
 # Write CMake version
-for a in MAJOR MINOR PATCH; do
-  CMake_VERSION=`cat "${cmake_source_dir}/CMakeLists.txt" | \
-    grep "SET(CMake_VERSION_${a} *[0-9]*)" | sed "s/SET(CMake_VERSION_${a} *\([0-9]*\))/\1/"`
-  cmake_report cmConfigure.h.tmp "#define CMake_VERSION_${a} ${CMake_VERSION}"
-done
+cmake_report cmConfigure.h.tmp "#define CMake_VERSION_MAJOR ${cmake_version_major}"
+cmake_report cmConfigure.h.tmp "#define CMake_VERSION_MINOR ${cmake_version_minor}"
+cmake_report cmConfigure.h.tmp "#define CMake_VERSION_PATCH ${cmake_version_patch}"
 cmake_report cmConfigure.h.tmp "#define CMAKE_ROOT_DIR \"${cmake_root_dir}\""
 cmake_report cmConfigure.h.tmp "#define CMAKE_DATA_DIR \"${cmake_data_dir}\""
 cmake_report cmConfigure.h.tmp "#define CMAKE_BOOTSTRAP"
@@ -1163,6 +1216,14 @@ cmake_kwsys_config_replace_string \
   "${cmake_bootstrap_dir}/cmsys/Configure.h" \
   "${cmake_compiler_settings_comment}"
 
+cat>"${cmake_bootstrap_dir}/cmsys/DateStamp.h"<<EOF
+/* Minimal DateStamp header for CMake bootstrap build.  */
+#ifndef cmsys_DateStamp_h
+#define cmsys_DateStamp_h
+#define cmsys_DATE_STAMP_STRING_FULL "${cmake_date_stamp}"
+#endif
+EOF
+
 for a in ${KWSYS_FILES}; do 
   cmake_replace_string "${cmake_source_dir}/Source/kwsys/${a}.in" \
      "${cmake_bootstrap_dir}/cmsys/${a}" KWSYS_NAMESPACE cmsys
@@ -1179,7 +1240,7 @@ cmake_replace_string "${cmake_source_dir}/Source/kwsys/kwsys_stl.hxx.in" \
 cmake_replace_string "${cmake_bootstrap_dir}/cmsys/stl/stl.hxx.in" \
    "${cmake_bootstrap_dir}/cmsys/stl/stl.h.in" KWSYS_NAMESPACE cmsys
 
-for a in string vector map; do
+for a in string vector map algorithm; do
   cmake_replace_string "${cmake_bootstrap_dir}/cmsys/stl/stl.h.in" \
     "${cmake_bootstrap_dir}/cmsys/stl/${a}" KWSYS_STL_HEADER ${a}
 done
@@ -1264,6 +1325,18 @@ SET (CMAKE_DOC_DIR "${cmake_doc_dir}" CACHE PATH "Install location for documenta
 SET (CMAKE_MAN_DIR "${cmake_man_dir}" CACHE PATH "Install location for man pages (relative to prefix)." FORCE)
 SET (CMAKE_DATA_DIR "${cmake_data_dir}" CACHE PATH "Install location for data (relative to prefix)." FORCE)
 EOF
+
+# Add configuration settings given as command-line options.
+if [ "x${cmake_bootstrap_qt_gui}" != "x" ]; then
+  cat >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake" <<EOF
+SET (BUILD_QtDialog ${cmake_bootstrap_qt_gui} CACHE BOOL "Build Qt dialog for CMake" FORCE)
+EOF
+fi
+if [ "x${cmake_bootstrap_qt_qmake}" != "x" ]; then
+  cat >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake" <<EOF
+SET (QT_QMAKE_EXECUTABLE "${cmake_bootstrap_qt_qmake}" CACHE FILEPATH "Location of Qt qmake" FORCE)
+EOF
+fi
 
 # Add user-specified settings.  Handle relative-path case for
 # specification of cmake_init_file.

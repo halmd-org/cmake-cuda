@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallFilesGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.3.2.2 $
+  Date:      $Date: 2008-01-28 13:38:35 $
+  Version:   $Revision: 1.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -27,9 +27,10 @@ cmInstallFilesGenerator
                           const char* component,
                           const char* rename,
                           bool optional):
-  Files(files), Destination(dest), Programs(programs),
-  FilePermissions(file_permissions), Configurations(configurations),
-  Component(component), Rename(rename), Optional(optional)
+  cmInstallGenerator(dest, configurations, component),
+  Files(files), Programs(programs),
+  FilePermissions(file_permissions),
+  Rename(rename), Optional(optional)
 {
 }
 
@@ -40,22 +41,18 @@ cmInstallFilesGenerator
 }
 
 //----------------------------------------------------------------------------
-void cmInstallFilesGenerator::GenerateScript(std::ostream& os)
+void cmInstallFilesGenerator::GenerateScriptActions(std::ostream& os,
+                                                    Indent const& indent)
 {
   // Write code to install the files.
-  for(std::vector<std::string>::const_iterator fi = this->Files.begin();
-      fi != this->Files.end(); ++fi)
-    {
-    const char* no_properties = 0;
-    const char* no_dir_permissions = 0;
-    this->AddInstallRule(os, this->Destination.c_str(),
-                         (this->Programs
-                          ? cmTarget::INSTALL_PROGRAMS
-                          : cmTarget::INSTALL_FILES), fi->c_str(),
-                         this->Optional, no_properties,
-                         this->FilePermissions.c_str(), no_dir_permissions,
-                         this->Configurations,
-                         this->Component.c_str(),
-                         this->Rename.c_str());
-    }
+  const char* no_properties = 0;
+  const char* no_dir_permissions = 0;
+  this->AddInstallRule(os,
+                       (this->Programs
+                        ? cmTarget::INSTALL_PROGRAMS
+                        : cmTarget::INSTALL_FILES),
+                       this->Files,
+                       this->Optional, no_properties,
+                       this->FilePermissions.c_str(), no_dir_permissions,
+                       this->Rename.c_str(), 0, indent);
 }

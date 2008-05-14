@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestGenericHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 02:15:09 $
-  Version:   $Revision: 1.11.2.3 $
+  Date:      $Date: 2007-08-28 17:46:57 $
+  Version:   $Revision: 1.16 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,6 +16,7 @@
 =========================================================================*/
 
 #include "cmCTestGenericHandler.h"
+#include "cmSystemTools.h"
 
 #include "cmCTest.h"
 
@@ -118,7 +119,15 @@ bool cmCTestGenericHandler::StartResultingXML(const char* name,
     {
     ostr << "_" << this->SubmitIndex;
     }
-  ostr << ".xml";
+  ostr << ".xml"; 
+  if(this->CTest->GetCurrentTag().empty())
+    {
+    cmCTestLog(this->CTest, ERROR_MESSAGE,
+               "Current Tag empty, this may mean"
+               " NightlyStartTime was not set correctly." << std::endl);
+    cmSystemTools::SetFatalErrorOccured();
+    return false;
+    }
   if( !this->CTest->OpenOutputFile(this->CTest->GetCurrentTag(),
       ostr.str().c_str(), xofs, true) )
     {

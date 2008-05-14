@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMessageCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:06 $
-  Version:   $Revision: 1.18.2.2 $
+  Date:      $Date: 2008-04-21 00:44:52 $
+  Version:   $Revision: 1.22.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,7 +17,8 @@
 #include "cmMessageCommand.h"
 
 // cmLibraryCommand
-bool cmMessageCommand::InitialPass(std::vector<std::string> const& args)
+bool cmMessageCommand
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if(args.size() < 1 )
     {
@@ -59,34 +60,22 @@ bool cmMessageCommand::InitialPass(std::vector<std::string> const& args)
 
   if (send_error || fatal_error)
     {
-    if( !this->Makefile->GetCMakeInstance()->GetDebugOutput())
-      {
-      cmSystemTools::Error(message.c_str());
-      }
-    else
-      {
-    this->SetError(message.c_str());
-    }
+    this->Makefile->IssueMessage(cmake::FATAL_ERROR, message.c_str());
     }
   else
     {
-      if (status)
-        {
-          this->Makefile->DisplayStatus(message.c_str(), -1);
-        }
-      else
-        {
-          cmSystemTools::Message(message.c_str());
-        }
+    if (status)
+      {
+      this->Makefile->DisplayStatus(message.c_str(), -1);
+      }
+    else
+      {
+      cmSystemTools::Message(message.c_str());
+      }
     }
   if(fatal_error )
     {
     cmSystemTools::SetFatalErrorOccured();
-    }
-  // if debug is on then retru
-  if(this->Makefile->GetCMakeInstance()->GetDebugOutput())
-    {
-  return (!send_error && !fatal_error);
     }
   return true;
 }

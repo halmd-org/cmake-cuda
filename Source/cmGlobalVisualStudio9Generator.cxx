@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio9Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008/01/21 17:56:51 $
-  Version:   $Revision: 1.4.2.2 $
+  Date:      $Date: 2008-02-15 16:49:58 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,6 +33,7 @@ void cmGlobalVisualStudio9Generator::AddPlatformDefinitions(cmMakefile* mf)
   mf->AddDefinition("MSVC90", "1");
 }
 
+//----------------------------------------------------------------------------
 void cmGlobalVisualStudio9Generator::WriteSLNHeader(std::ostream& fout)
 {
   fout << "Microsoft Visual Studio Solution File, Format Version 10.00\n";
@@ -53,17 +54,17 @@ cmLocalGenerator *cmGlobalVisualStudio9Generator::CreateLocalGenerator()
 void cmGlobalVisualStudio9Generator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates Visual Studio 9 2008 project files.";
-  entry.full = "";
+  entry.Name = this->GetName();
+  entry.Brief = "Generates Visual Studio 9 2008 project files.";
+  entry.Full = "";
 }
 
 //----------------------------------------------------------------------------
 void cmGlobalVisualStudio9Generator
 ::EnableLanguage(std::vector<std::string>const &  lang, 
-                 cmMakefile *mf)
+                 cmMakefile *mf, bool optional)
 {
-  cmGlobalVisualStudio8Generator::EnableLanguage(lang, mf);
+  cmGlobalVisualStudio8Generator::EnableLanguage(lang, mf, optional);
 }
 
 //----------------------------------------------------------------------------
@@ -91,4 +92,10 @@ std::string cmGlobalVisualStudio9Generator::GetUserMacrosDirectory()
   // path is (correctly) still empty if we did not read the base value from
   // the Registry value
   return path;
+}
+
+//----------------------------------------------------------------------------
+std::string cmGlobalVisualStudio9Generator::GetUserMacrosRegKeyBase()
+{
+  return "Software\\Microsoft\\VisualStudio\\9.0\\vsmacros";
 }

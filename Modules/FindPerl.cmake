@@ -6,28 +6,32 @@
 
 INCLUDE(FindCygwin)
 
-FIND_PROGRAM(PERL_EXECUTABLE
-  perl
-  "C:/Perl/bin" 
-  [HKEY_LOCAL_MACHINE\\SOFTWARE\\ActiveState\\ActivePerl\\804]/bin
-  [HKEY_LOCAL_MACHINE\\SOFTWARE\\ActiveState\\ActivePerl\\628]/bin
+SET(PERL_POSSIBLE_BIN_PATHS
   ${CYGWIN_INSTALL_PATH}/bin
   )
 
-MARK_AS_ADVANCED(
-  PERL_EXECUTABLE
+IF(WIN32)
+  GET_FILENAME_COMPONENT(
+    ActivePerl_CurrentVersion 
+    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\ActiveState\\ActivePerl;CurrentVersion]" 
+    NAME)
+  SET(PERL_POSSIBLE_BIN_PATHS ${PERL_POSSIBLE_BIN_PATHS}
+    "C:/Perl/bin" 
+    [HKEY_LOCAL_MACHINE\\SOFTWARE\\ActiveState\\ActivePerl\\${ActivePerl_CurrentVersion}]/bin
+    )
+ENDIF(WIN32)
+
+FIND_PROGRAM(PERL_EXECUTABLE
+  NAMES perl
+  PATHS ${PERL_POSSIBLE_BIN_PATHS}
   )
 
-IF (NOT PERL_EXECUTABLE)
-  SET(PERL_FOUND "NO")
-ELSE (NOT PERL_EXECUTABLE)
-  SET(PERL_FOUND "YES")
+# Deprecated settings for compatibility with CMake1.4
+SET(PERL ${PERL_EXECUTABLE})
 
-  # Deprecated settings for compatibility with CMake1.4
-  SET (PERL ${PERL_EXECUTABLE})
-ENDIF (NOT PERL_EXECUTABLE)
+# handle the QUIETLY and REQUIRED arguments and set PERL_FOUND to TRUE if 
+# all listed variables are TRUE
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Perl DEFAULT_MSG PERL_EXECUTABLE)
 
-
-IF (NOT PERL_FOUND AND Perl_FIND_REQUIRED)
-   MESSAGE(FATAL_ERROR "Could not find Perl")
-ENDIF (NOT PERL_FOUND AND Perl_FIND_REQUIRED)
+MARK_AS_ADVANCED(PERL_EXECUTABLE)

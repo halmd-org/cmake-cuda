@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackSTGZGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:47 $
-  Version:   $Revision: 1.12.2.2 $
+  Date:      $Date: 2006-05-12 18:44:24 $
+  Version:   $Revision: 1.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

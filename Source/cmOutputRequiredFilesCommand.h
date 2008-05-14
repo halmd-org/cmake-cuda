@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmOutputRequiredFilesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:02:06 $
-  Version:   $Revision: 1.10 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.12 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,14 +39,13 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
-
-  virtual void FinalPass();
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "OUTPUT_REQUIRED_FILES";}
+  virtual const char* GetName() { return "output_required_files";}
 
   /**
    * Succinct documentation.
@@ -63,7 +62,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  OUTPUT_REQUIRED_FILES(srcfile outputfile)\n"
+      "  output_required_files(srcfile outputfile)\n"
       "Outputs a list of all the source files that are required by the "
       "specified srcfile. This list is written into outputfile. This is "
       "similar to writing out the dependencies for srcfile except that it "

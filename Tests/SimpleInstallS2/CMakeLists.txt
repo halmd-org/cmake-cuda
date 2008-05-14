@@ -1,8 +1,12 @@
+cmake_minimum_required (VERSION 2.6)
 PROJECT (TestSimpleInstall)
 SET(CMAKE_VERBOSE_MAKEFILE 1)
-#SET(EXECUTABLE_OUTPUT_PATH "${TestSimpleInstall_BINARY_DIR}/This is exec path")
-SET(EXECUTABLE_OUTPUT_PATH "${TestSimpleInstall_BINARY_DIR}/ExecPath")
-SET(LIBRARY_OUTPUT_PATH "${EXECUTABLE_OUTPUT_PATH}")
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY
+  "${TestSimpleInstall_BINARY_DIR}/bin")
+SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
+  "${TestSimpleInstall_BINARY_DIR}/lib/static")
+SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY
+  "${TestSimpleInstall_BINARY_DIR}/lib")
 
 # Skip generating the rpath pointing at the build tree to make sure
 # the executable is installed with the proper rpath in the install
@@ -15,6 +19,7 @@ SET(CMAKE_INSTALL_NAME_DIR ${CMAKE_INSTALL_PREFIX}/MyTest/lib)
 # Skip the dependency that causes a build when installing.  This
 # avoids infinite loops when the post-build rule below installs.
 SET(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY 1)
+SET(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY 1)
 
 SET(CMAKE_DEBUG_POSTFIX "_test_debug_postfix")
 
@@ -62,9 +67,9 @@ IF(STAGE2)
     DOC "Fourth library")
 
   INCLUDE_DIRECTORIES(${CMAKE_INSTALL_PREFIX}/MyTest/include)
-  ADD_EXECUTABLE (SimpleInstallS2 inst2.cxx foo.c foo.h)
-  TARGET_LINK_LIBRARIES(SimpleInstallS2 ${TEST1_LIBRARY} ${TEST2_LIBRARY} ${TEST4_LIBRARY})
-  SET(install_target SimpleInstallS2)
+  ADD_EXECUTABLE (SimpleInstExeS2 inst2.cxx foo.c foo.h)
+  TARGET_LINK_LIBRARIES(SimpleInstExeS2 ${TEST1_LIBRARY} ${TEST2_LIBRARY} ${TEST4_LIBRARY})
+  SET(install_target SimpleInstExeS2)
 
   IF("${TEST1_LIBRARY}" MATCHES "static")
     MESSAGE(STATUS "test1 correctly found in lib/static")
@@ -81,11 +86,6 @@ IF(STAGE2)
   ENDIF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/include/Debug/lib1release.h")
 
   # Check for failure of directory installation.
-  IF(WIN32 AND NOT CYGWIN)
-    SET(BAT .bat)
-  ELSE(WIN32 AND NOT CYGWIN)
-    SET(BAT)
-  ENDIF(WIN32 AND NOT CYGWIN)
   IF(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/TestSubDir/TSD.h")
     MESSAGE(FATAL_ERROR "Directory installation did not install TSD.h")
   ENDIF(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/TestSubDir/TSD.h")
@@ -95,17 +95,38 @@ IF(STAGE2)
   IF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/CVS")
     MESSAGE(FATAL_ERROR "Directory installation installed CVS directory.")
   ENDIF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/CVS")
-  EXECUTE_PROCESS(
-    COMMAND "${CMAKE_INSTALL_PREFIX}/MyTest/share/sample_script${BAT}"
-    RESULT_VARIABLE SAMPLE_SCRIPT_RESULT
-    OUTPUT_VARIABLE SAMPLE_SCRIPT_OUTPUT
-    )
-  IF(NOT "${SAMPLE_SCRIPT_RESULT}" MATCHES "^0$")
-    MESSAGE(FATAL_ERROR "Sample script failed: [${SAMPLE_SCRIPT_RESULT}]")
-  ENDIF(NOT "${SAMPLE_SCRIPT_RESULT}" MATCHES "^0$")
-  IF(NOT "${SAMPLE_SCRIPT_OUTPUT}" MATCHES "Sample Script Output")
-    MESSAGE(FATAL_ERROR "Bad sample script output: [${SAMPLE_SCRIPT_OUTPUT}]")
-  ENDIF(NOT "${SAMPLE_SCRIPT_OUTPUT}" MATCHES "Sample Script Output")
+  IF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/CMakeLists.txt")
+    MESSAGE(FATAL_ERROR "Directory installation installed CMakeLists.txt.")
+  ENDIF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/CMakeLists.txt")
+  IF(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/alt/TestSubDir/TSD.h")
+    MESSAGE(FATAL_ERROR "Directory installation did not install alternate TSD.h")
+  ENDIF(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/alt/TestSubDir/TSD.h")
+  IF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/alt/TestSubDir/TSD.cxx")
+    MESSAGE(FATAL_ERROR "Directory installation installed alternate TSD.cxx")
+  ENDIF(EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/alt/TestSubDir/TSD.cxx")
+
+  # Check that scripts properly installed.
+  IF(WIN32 AND NOT CYGWIN)
+    SET(BAT .bat)
+  ELSE(WIN32 AND NOT CYGWIN)
+    SET(BAT)
+  ENDIF(WIN32 AND NOT CYGWIN)
+  FOREACH(loc share share/old1 share/old2 share/old3 share/alt)
+    SET(CUR_SCRIPT "${CMAKE_INSTALL_PREFIX}/MyTest/${loc}/sample_script${BAT}")
+    EXECUTE_PROCESS(
+      COMMAND ${CUR_SCRIPT}
+      RESULT_VARIABLE SAMPLE_SCRIPT_RESULT
+      OUTPUT_VARIABLE SAMPLE_SCRIPT_OUTPUT
+      )
+    IF(NOT "${SAMPLE_SCRIPT_RESULT}" MATCHES "^0$")
+      MESSAGE(FATAL_ERROR
+        "Sample script [${CUR_SCRIPT}] failed: [${SAMPLE_SCRIPT_RESULT}]")
+    ENDIF(NOT "${SAMPLE_SCRIPT_RESULT}" MATCHES "^0$")
+    IF(NOT "${SAMPLE_SCRIPT_OUTPUT}" MATCHES "Sample Script Output")
+      MESSAGE(FATAL_ERROR
+        "Bad sample script [${CUR_SCRIPT}] output: [${SAMPLE_SCRIPT_OUTPUT}]")
+    ENDIF(NOT "${SAMPLE_SCRIPT_OUTPUT}" MATCHES "Sample Script Output")
+  ENDFOREACH(loc)
 
   # Check for failure of empty directory installation.
   IF(NOT EXISTS "${CMAKE_INSTALL_PREFIX}/MyTest/share/empty")
@@ -117,11 +138,23 @@ IF(STAGE2)
   ENDIF(EMPTY_FILES)
 
   # Make sure the test executable can run from the install tree.
-  SET_TARGET_PROPERTIES(SimpleInstallS2 PROPERTIES
+  SET_TARGET_PROPERTIES(SimpleInstExeS2 PROPERTIES
     INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/MyTest/lib)
 
-  INSTALL_TARGETS(/MyTest/bin SimpleInstallS2)
+  INSTALL_TARGETS(/MyTest/bin SimpleInstExeS2)
+
+# try to import the exported targets again
+  SET(SimpleInstallS1_DIR ${CMAKE_INSTALL_PREFIX}/MyTest/lib)
+  FIND_PACKAGE(SimpleInstallS1 REQUIRED)
+  GET_TARGET_PROPERTY(simpleInstallImported S1_SimpleInstall IMPORTED)
+  IF(NOT simpleInstallImported)
+    MESSAGE(FATAL_ERROR "Target S1_SimpleInstall could not be imported")
+  ENDIF(NOT simpleInstallImported)
+
 ELSE(STAGE2)
+  # Wipe out the install directory to do a fresh test.
+  FILE(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/MyTest)
+
   # this is stage 1, so create libraries and modules and install everything
   ADD_LIBRARY(test1 STATIC lib1.cxx)
   ADD_LIBRARY(test2 SHARED lib2.cxx)
@@ -138,6 +171,7 @@ ELSE(STAGE2)
 
   # Test per-configuration output name.
   SET_TARGET_PROPERTIES(test1 PROPERTIES RELEASE_OUTPUT_NAME test1rel)
+  SET_TARGET_PROPERTIES(test2 PROPERTIES PUBLIC_HEADER foo.h)
 
   IF(CMAKE_GENERATOR MATCHES "Makefiles")
     ADD_SUBDIRECTORY(TestSubDir)
@@ -148,23 +182,46 @@ ELSE(STAGE2)
   ADD_DEPENDENCIES(test2 test3)
   ADD_DEPENDENCIES(test4 test2)
 
-  INSTALL(TARGETS SimpleInstall test1 test2 test3
+  INSTALL(TARGETS SimpleInstall test1 test2 test3 EXPORT SimpleInstallS1
     RUNTIME DESTINATION MyTest/bin        COMPONENT Runtime     # .exe, .dll
     LIBRARY DESTINATION MyTest/lib        COMPONENT Runtime     # .so, mod.dll
     ARCHIVE DESTINATION MyTest/lib/static COMPONENT Development # .a, .lib
+    PUBLIC_HEADER DESTINATION MyTest/include COMPONENT Development 
     )
+
   INSTALL(TARGETS test4 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
     RUNTIME DESTINATION MyTest/bin
     LIBRARY DESTINATION MyTest/lib
     ARCHIVE DESTINATION MyTest/lib/static
+    OPTIONAL # for coverage...target should always exist
     )
   INSTALL(FILES lib1.h DESTINATION MyTest/include/foo)
   INSTALL(FILES lib2.h
     DESTINATION MyTest/include/foo
+    COMPONENT Development
     PERMISSIONS OWNER_READ OWNER_WRITE
     RENAME lib2renamed.h
     )
+
+  # Test old-style install commands.
   INSTALL_FILES(/MyTest/include FILES lib3.h)
+  INSTALL_FILES(/MyTest/include/old .h lib3)
+  INSTALL_FILES(/MyTest/include/old "^lib2.h$")
+  INSTALL_PROGRAMS(/MyTest/share/old1 FILES
+    scripts/sample_script scripts/sample_script.bat)
+  INSTALL_PROGRAMS(/MyTest/share/old2
+    scripts/sample_script scripts/sample_script.bat)
+
+# "export" the targets collected in "SimpleInstallS1"
+  INSTALL(EXPORT SimpleInstallS1 FILE SimpleInstallS1Config.cmake 
+                                 DESTINATION MyTest/lib 
+                                 NAMESPACE S1_ )
+
+  EXPORT(TARGETS SimpleInstall test1 test2 test3 
+         FILE "${CMAKE_CURRENT_BINARY_DIR}/SimpleInstallS1Config.cmake"
+         NAMESPACE S2_ )
+
+  ADD_SUBDIRECTORY(scripts)
 
   # Test optional installation.
   INSTALL(FILES does_not_exist.h DESTINATION MyTest/include/foo OPTIONAL)
@@ -182,25 +239,54 @@ ELSE(STAGE2)
   FILE(REMOVE_RECURSE "${CMAKE_INSTALL_PREFIX}/MyTest/share/TestSubDir/CVS")
   INSTALL(
     DIRECTORY TestSubDir scripts/ DESTINATION MyTest/share
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE
+    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                          GROUP_READ GROUP_EXECUTE
     PATTERN "CVS" EXCLUDE
+    REGEX "\\.txt$" EXCLUDE
     PATTERN "scripts/*" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+    )
+
+  # Alternate directory installation for coverage.
+  INSTALL(
+    DIRECTORY scripts/ DESTINATION MyTest/share/alt
+    COMPONENT Development
+    USE_SOURCE_PERMISSIONS
+    PATTERN "CVS" EXCLUDE
+    REGEX "\\.txt$" EXCLUDE
+    )
+  INSTALL(
+    DIRECTORY TestSubDir DESTINATION MyTest/share/alt
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE
+    DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                          GROUP_READ GROUP_EXECUTE
+    FILES_MATCHING PATTERN "*.h"
     )
 
   # Test empty directory installation.
   INSTALL(DIRECTORY DESTINATION MyTest/share/empty)
 
-  # Test user-specified install scripts.
+  # Test user-specified install scripts, with and without COMPONENT.
   INSTALL(
     SCRIPT InstallScript1.cmake
     CODE "SET(INSTALL_CODE_DID_RUN 1)"
     SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/InstallScript2.cmake
     )
+  INSTALL(
+    SCRIPT InstallScript3.cmake
+    CODE "SET(INSTALL_CODE_WITH_COMPONENT_DID_RUN 1)"
+    SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/InstallScript4.cmake
+    COMPONENT Development
+    )
   SET_DIRECTORY_PROPERTIES(PROPERTIES
-    ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_INSTALL_PREFIX}/InstallScriptOut.cmake)
+    ADDITIONAL_MAKE_CLEAN_FILES
+    "${CMAKE_INSTALL_PREFIX}/InstallScriptOut.cmake;${CMAKE_INSTALL_PREFIX}/InstallScript4Out.cmake")
 
-  SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES OUTPUT_NAME SimpleInstallExe)
+  SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES OUTPUT_NAME SimpleInstExe)
   # Disable VERSION test until it is implemented in the XCode generator.
-  #SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES VERSION 1.2)
+  IF(NOT XCODE)
+    SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES VERSION 1.2)
+  ENDIF(NOT XCODE)
   SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES PRE_INSTALL_SCRIPT 
     ${CMAKE_CURRENT_SOURCE_DIR}/PreInstall.cmake)
   SET_TARGET_PROPERTIES(SimpleInstall PROPERTIES POST_INSTALL_SCRIPT 
@@ -265,41 +351,45 @@ ENDIF(UNIX AND NOT APPLE)
 
 SET(CPACK_PACKAGE_EXECUTABLES "SimpleInstall" "Simple Install")
 SET(CMAKE_INSTALL_MFC_LIBRARIES 1)
+SET(CMAKE_INSTALL_DEBUG_LIBRARIES 1)
 INCLUDE(InstallRequiredSystemLibraries)
 INCLUDE(CPack)
 
+# Disable packaging test on Apple 10.3 and below.  PackageMaker starts
+# DiskManagementTool as root and disowns it
+# (http://lists.apple.com/archives/installer-dev/2005/Jul/msg00005.html).
+# It is left holding open pipe handles and preventing ProcessUNIX from
+# detecting end-of-data even after its immediate child exits.  Then
+# the test hangs until it times out and is killed.  This is a
+# well-known bug in kwsys process execution that I would love to get
+# time to fix.
+SET(PACKAGE_TARGET --build-target package)
 IF(APPLE AND NOT CTEST_TEST_CPACK)
-  # Issue with packaging on the mac, so disable it for now
-  ADD_CUSTOM_COMMAND(
-    TARGET ${install_target}
-    POST_BUILD
-    COMMAND ${CMAKE_CTEST_COMMAND}
-    ARGS ${SI_CONFIG}
-    --build-and-test
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_BINARY_DIR}
-    --build-generator ${CMAKE_GENERATOR}
-    --build-project ${PROJECT_NAME}
-    --build-makeprogram ${CMAKE_MAKE_PROGRAM}
-    --build-noclean
-    --build-target install
-    COMMENT "Install Project"
+  EXECUTE_PROCESS(
+    COMMAND sw_vers -productVersion
+    OUTPUT_VARIABLE OSX_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-ELSE(APPLE AND NOT CTEST_TEST_CPACK)
-  ADD_CUSTOM_COMMAND(
-    TARGET ${install_target}
-    POST_BUILD
-    COMMAND ${CMAKE_CTEST_COMMAND}
-    ARGS ${SI_CONFIG}
-    --build-and-test
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_BINARY_DIR}
-    --build-generator ${CMAKE_GENERATOR}
-    --build-project ${PROJECT_NAME}
-    --build-makeprogram ${CMAKE_MAKE_PROGRAM}
-    --build-noclean
-    --build-target install
-    --build-target package
-    COMMENT "Install Project"
-    )
+  IF("${OSX_VERSION}" MATCHES "^10\\.[0123]" OR "${OSX_VERSION}" MATCHES "ProductVersion:\t10\\.[0123]")
+    MESSAGE(STATUS "Disabling package test on OSX < 10.4")
+    MESSAGE(STATUS "OSX_VERSION='${OSX_VERSION}'")
+    SET(PACKAGE_TARGET)
+  ENDIF("${OSX_VERSION}" MATCHES "^10\\.[0123]" OR "${OSX_VERSION}" MATCHES "ProductVersion:\t10\\.[0123]")
 ENDIF(APPLE AND NOT CTEST_TEST_CPACK)
+
+ADD_CUSTOM_COMMAND(
+  TARGET ${install_target}
+  POST_BUILD
+  COMMAND ${CMAKE_CTEST_COMMAND}
+  ARGS ${SI_CONFIG}
+  --build-and-test
+  ${CMAKE_SOURCE_DIR}
+  ${CMAKE_BINARY_DIR}
+  --build-generator ${CMAKE_GENERATOR}
+  --build-project ${PROJECT_NAME}
+  --build-makeprogram ${CMAKE_MAKE_PROGRAM}
+  --build-noclean
+  --build-target install
+  ${PACKAGE_TARGET}
+  COMMENT "Install Project"
+  )

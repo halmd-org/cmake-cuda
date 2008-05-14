@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallProgramsCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.13.2.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,19 +40,20 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "INSTALL_PROGRAMS";}
+  virtual const char* GetName() { return "install_programs";}
 
   /**
    * Succinct documentation.
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Old installation command.  Use the INSTALL command.";
+    return "Deprecated. Use the install(PROGRAMS ) command instead.";
     }
   
   /**
@@ -69,17 +70,17 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "This command has been superceded by the INSTALL command.  It "
+      "This command has been superceded by the install command.  It "
       "is provided for compatibility with older CMake code.  "
       "The FILES form is directly replaced by the PROGRAMS form of the "
       "INSTALL command.  The regexp form can be expressed more clearly "
       "using the GLOB form of the FILE command.\n"
-      "  INSTALL_PROGRAMS(<dir> file1 file2 [file3 ...])\n"
-      "  INSTALL_PROGRAMS(<dir> FILES file1 [file2 ...])\n"
-      "Create rules to install the listed programs into the given directory.  "
+      "  install_programs(<dir> file1 file2 [file3 ...])\n"
+      "  install_programs(<dir> FILES file1 [file2 ...])\n"
+      "Create rules to install the listed programs into the given directory. "
       "Use the FILES argument to guarantee that the file list version of "
       "the command will be used even when there is only one argument.\n"
-      "  INSTALL_PROGRAMS(<dir> regexp)\n"
+      "  install_programs(<dir> regexp)\n"
       "In the second form any program in the current source directory that "
       "matches the regular expression will be installed.\n"
       "This command is intended to install programs that are not built "
@@ -101,8 +102,9 @@ public:
 protected:
   std::string FindInstallSource(const char* name) const;
 private:
-  std::string TargetName;
   std::vector<std::string> FinalArgs;
+  std::string Destination;
+  std::vector<std::string> Files;
 };
 
 

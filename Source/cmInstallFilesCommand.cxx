@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallFilesCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.20.2.2 $
+  Date:      $Date: 2008-01-28 13:38:35 $
+  Version:   $Revision: 1.29 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -16,9 +16,11 @@
 =========================================================================*/
 #include "cmInstallFilesCommand.h"
 
+#include "cmInstallFilesGenerator.h"
+
 // cmExecutableCommand
 bool cmInstallFilesCommand
-::InitialPass(std::vector<std::string> const& argsIn)
+::InitialPass(std::vector<std::string> const& argsIn, cmExecutionStatus &)
 {
   if(argsIn.size() < 2)
     {
@@ -33,13 +35,8 @@ bool cmInstallFilesCommand
   std::vector<std::string> args;
   this->Makefile->ExpandSourceListArguments(argsIn, args, 2);
 
-  // Create an INSTALL_FILES target specifically for this path.
-  this->TargetName = "INSTALL_FILES_"+args[0];
-  cmTarget& target = this->Makefile->GetTargets()[this->TargetName];
-  target.SetInAll(false);
-  target.SetType(cmTarget::INSTALL_FILES, this->TargetName.c_str());
-  target.SetInstallPath(args[0].c_str());
-  
+  this->Destination = args[0];
+
   if((args.size() > 1) && (args[1] == "FILES"))
     {
     this->IsFilesForm = true;    
@@ -48,8 +45,9 @@ bool cmInstallFilesCommand
       {
       // Find the source location for each file listed.
       std::string f = this->FindInstallSource(s->c_str());
-      target.GetSourceLists().push_back(f);
+      this->Files.push_back(f);
       }
+    this->CreateInstallGenerator();
     }
   else
     {
@@ -74,8 +72,6 @@ void cmInstallFilesCommand::FinalPass()
   
   std::string testf;
   std::string ext = this->FinalArgs[0];
-  std::vector<std::string>& targetSourceLists =
-    this->Makefile->GetTargets()[this->TargetName].GetSourceLists();
   
   // two different options
   if (this->FinalArgs.size() > 1)
@@ -99,7 +95,7 @@ void cmInstallFilesCommand::FinalPass()
         }
       
       // add to the result
-      targetSourceLists.push_back(this->FindInstallSource(testf.c_str()));
+      this->Files.push_back(this->FindInstallSource(testf.c_str()));
       }
     }
   else     // reg exp list
@@ -113,10 +109,32 @@ void cmInstallFilesCommand::FinalPass()
     // for each argument, get the files 
     for (;s != files.end(); ++s)
       {
-      targetSourceLists.push_back(this->FindInstallSource(s->c_str()));
+      this->Files.push_back(this->FindInstallSource(s->c_str()));
       }
     }
+
+  this->CreateInstallGenerator();
 }
+
+void cmInstallFilesCommand::CreateInstallGenerator() const
+{
+  // Construct the destination.  This command always installs under
+  // the prefix.  We skip the leading slash given by the user.
+  std::string destination = this->Destination.substr(1);
+  cmSystemTools::ConvertToUnixSlashes(destination);
+
+  // Use a file install generator.
+  const char* no_permissions = "";
+  const char* no_rename = "";
+  const char* no_component = "";
+  std::vector<std::string> no_configurations;
+  this->Makefile->AddInstallGenerator(
+    new cmInstallFilesGenerator(this->Files,
+                                destination.c_str(), false,
+                                no_permissions, no_configurations,
+                                no_component, no_rename));
+}
+
 
 /**
  * Find a file in the build or source tree for installation given a

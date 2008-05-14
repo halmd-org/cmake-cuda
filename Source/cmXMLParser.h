@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmXMLParser.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:45 $
-  Version:   $Revision: 1.1.6.1 $
+  Date:      $Date: 2007-07-26 18:36:06 $
+  Version:   $Revision: 1.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -52,7 +52,8 @@ public:
    * them.
    */
   virtual int InitializeParser();
-  virtual int ParseChunk(const char* inputString, unsigned int length);
+  virtual int ParseChunk(const char* inputString, 
+                         std::string::size_type length);
   virtual int CleanupParser();
 
 protected:
@@ -95,7 +96,8 @@ protected:
   static int IsSpace(char c);  
   
   //! Send the given buffer to the XML parser.
-  virtual int ParseBuffer(const char* buffer, unsigned int count);
+  virtual int ParseBuffer(const char* buffer, 
+                          std::string::size_type length);
   
   //! Send the given c-style string to the XML parser.
   int ParseBuffer(const char* buffer);

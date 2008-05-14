@@ -3,8 +3,8 @@
   Program:   Insight Segmentation & Registration Toolkit
   Module:    $RCSfile: FLTKPropertyItemRow.cxx,v $
   Language:  C++
-  Date:      $Date: 2005/09/23 21:47:32 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2007-08-21 20:21:09 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Insight Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
@@ -22,7 +22,7 @@
 #include <FL/Fl_Input.H>
 #include <FL/Fl_Tile.H>
 #include <FL/fl_ask.H>
-#include <FL/fl_file_chooser.H>
+#include <FL/Fl_File_Chooser.H>
 #include <FL/Fl_Color_Chooser.H>
 #include <FL/Fl_Menu_Button.H>
 #include "../cmCacheManager.h"

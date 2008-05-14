@@ -1,18 +1,18 @@
 #
 # This convenience include finds if wxWindows is installed
-# and set the appropriate libs, incdirs, flags etc. 
+# and set the appropriate libs, incdirs, flags etc.
 # author Jan Woetzel <jw -at- mip.informatik.uni-kiel.de> (07/2003)
 ##
 # -----------------------------------------------------
-# USAGE: 
-#   just include Use_wxWindows.cmake 
+# USAGE:
+#   just include Use_wxWindows.cmake
 #   in your projects CMakeLists.txt
 # INCLUDE( ${CMAKE_MODULE_PATH}/Use_wxWindows.cmake)
 ##
-# if you are sure you need GL then
-#  SET(WXWINDOWS_USE_GL 1)
-# *before* you include this file.
-# 
+#   if you are sure you need GL then
+# SET(WXWINDOWS_USE_GL 1)
+#   *before* you include this file.
+#
 # -----------------------------------------------------
 # 16.Feb.2004: changed INCLUDE to FIND_PACKAGE to read from users own non-system CMAKE_MODULE_PATH (Jan Woetzel JW)
 # 07/2006: rewrite as FindwxWidgets.cmake, kept for backward compatibilty JW
@@ -26,13 +26,13 @@ MESSAGE(STATUS "Use_wxWindows.cmake is DEPRECATED. \n"
 FIND_PACKAGE( wxWindows )
 
 IF(WXWINDOWS_FOUND)
-  
+
 #MESSAGE("DBG Use_wxWindows.cmake:  WXWINDOWS_INCLUDE_DIR=${WXWINDOWS_INCLUDE_DIR} WXWINDOWS_LINK_DIRECTORIES=${WXWINDOWS_LINK_DIRECTORIES}     WXWINDOWS_LIBRARIES=${WXWINDOWS_LIBRARIES}  CMAKE_WXWINDOWS_CXX_FLAGS=${CMAKE_WXWINDOWS_CXX_FLAGS} WXWINDOWS_DEFINITIONS=${WXWINDOWS_DEFINITIONS}")
-  
-  IF(WXWINDOWS_INCLUDE_DIR)
+
+ IF(WXWINDOWS_INCLUDE_DIR)
     INCLUDE_DIRECTORIES(${WXWINDOWS_INCLUDE_DIR})
   ENDIF(WXWINDOWS_INCLUDE_DIR)
-  IF(WXWINDOWS_LINK_DIRECTORIES)
+ IF(WXWINDOWS_LINK_DIRECTORIES)
     LINK_DIRECTORIES(${WXWINDOWS_LINK_DIRECTORIES})
   ENDIF(WXWINDOWS_LINK_DIRECTORIES)
   IF(WXWINDOWS_LIBRARIES)

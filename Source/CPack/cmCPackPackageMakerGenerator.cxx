@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackPackageMakerGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/10/30 16:36:06 $
-  Version:   $Revision: 1.16.2.3 $
+  Date:      $Date: 2008-02-19 19:26:19 $
+  Version:   $Revision: 1.23 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -30,12 +30,28 @@
 //----------------------------------------------------------------------
 cmCPackPackageMakerGenerator::cmCPackPackageMakerGenerator()
 {
-  this->PackageMakerVersion = 0;
+  this->PackageMakerVersion = 0.0;
 }
 
 //----------------------------------------------------------------------
 cmCPackPackageMakerGenerator::~cmCPackPackageMakerGenerator()
 {
+}
+
+int cmCPackPackageMakerGenerator::CopyInstallScript(const char* resdir,
+                                                    const char* script,
+                                                    const char* name)
+{
+  std::string dst = resdir;
+  dst += "/";
+  dst += name;
+  cmSystemTools::CopyFileAlways(script, dst.c_str());
+  cmSystemTools::SetPermissions(dst.c_str(),0777);
+  cmCPackLogger(cmCPackLog::LOG_VERBOSE,
+                "copy script : " << script << "\ninto " << dst.c_str() << 
+                std::endl);
+
+  return 1;
 }
 
 //----------------------------------------------------------------------
@@ -50,15 +66,51 @@ int cmCPackPackageMakerGenerator::CompressFiles(const char* outFileName,
   resDir += "/Resources";
   std::string preflightDirName = resDir + "/PreFlight";
   std::string postflightDirName = resDir + "/PostFlight";
-
-  if ( !cmsys::SystemTools::MakeDirectory(preflightDirName.c_str())
-    || !cmsys::SystemTools::MakeDirectory(postflightDirName.c_str()) )
+  const char* preflight = this->GetOption("CPACK_PREFLIGHT_SCRIPT");
+  const char* postflight = this->GetOption("CPACK_POSTFLIGHT_SCRIPT");
+  const char* postupgrade = this->GetOption("CPACK_POSTUPGRADE_SCRIPT");
+  // if preflight or postflight scripts not there create directories
+  // of the same name, I think this makes it work
+  if(!preflight)
     {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Problem creating installer directories: "
-      << preflightDirName.c_str() << " and "
-      << postflightDirName.c_str() << std::endl);
-    return 0;
+    if ( !cmsys::SystemTools::MakeDirectory(preflightDirName.c_str()))
+      {
+      cmCPackLogger(cmCPackLog::LOG_ERROR,
+                    "Problem creating installer directory: "
+                    << preflightDirName.c_str() << std::endl);
+      return 0;
+      }
+    }
+  if(!postflight)
+    {
+    if ( !cmsys::SystemTools::MakeDirectory(postflightDirName.c_str()))
+      {
+      cmCPackLogger(cmCPackLog::LOG_ERROR,
+                    "Problem creating installer directory: "
+                    << postflightDirName.c_str() << std::endl);
+      return 0;
+      }
+    }
+  // if preflight, postflight, or postupgrade are set 
+  // then copy them into the resource directory and make
+  // them executable
+  if(preflight)
+    {
+      this->CopyInstallScript(resDir.c_str(),
+                              preflight,
+                              "preflight");
+    }
+  if(postflight)
+    {
+      this->CopyInstallScript(resDir.c_str(),
+                              postflight,
+                              "postflight");
+    }
+  if(postupgrade)
+    {
+      this->CopyInstallScript(resDir.c_str(),
+                              postupgrade,
+                              "postupgrade");
     }
 
   if ( !this->CopyCreateResourceFile("License")
@@ -112,7 +164,23 @@ int cmCPackPackageMakerGenerator::CompressFiles(const char* outFileName,
       << std::endl);
     return 0;
     }
-
+  // sometimes the pkgCmd finishes but the directory is not yet
+  // created, so try 10 times to see if it shows up
+  int tries = 10;
+  while(tries > 0 && 
+        !cmSystemTools::FileExists(packageDirFileName.c_str()))
+    {
+    cmSystemTools::Delay(500);
+    tries--;
+    }
+  if(!cmSystemTools::FileExists(packageDirFileName.c_str()))
+    {
+    cmCPackLogger(
+      cmCPackLog::LOG_ERROR,
+      "Problem running PackageMaker command: " << pkgCmd.str().c_str()
+      << std::endl << "Package not created: " << packageDirFileName.c_str()
+      << std::endl);
+    }
   tmpFile = this->GetOption("CPACK_TOPLEVEL_DIRECTORY");
   tmpFile += "/hdiutilOutput.log";
   cmOStringStream dmgCmd;
@@ -141,6 +209,7 @@ int cmCPackPackageMakerGenerator::InitializeInternal()
 {
   cmCPackLogger(cmCPackLog::LOG_DEBUG,
     "cmCPackPackageMakerGenerator::Initialize()" << std::endl);
+  this->SetOptionIfNotSet("CPACK_PACKAGING_INSTALL_PREFIX", "/usr");
   std::vector<std::string> path;
   std::string pkgPath
     = "/Developer/Applications/Utilities/PackageMaker.app/Contents";
@@ -195,7 +264,7 @@ int cmCPackPackageMakerGenerator::InitializeInternal()
     return 0;
     }
   this->PackageMakerVersion = atof(rexVersion.match(1).c_str());
-  if ( this->PackageMakerVersion < 1 )
+  if ( this->PackageMakerVersion < 1.0 )
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR, "Require PackageMaker 1.0 or higher"
       << std::endl);
@@ -239,14 +308,14 @@ bool cmCPackPackageMakerGenerator::CopyCreateResourceFile(const char* name)
                   << " not specified. It should point to " 
                   << (name ? name : "(NULL)")
                   << ".rtf, " << name
-      << ".html, or " << name << ".txt file" << std::endl);
+                  << ".html, or " << name << ".txt file" << std::endl);
     return false;
     }
   if ( !cmSystemTools::FileExists(inFileName) )
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR, "Cannot find " 
                   << (name ? name : "(NULL)")
-      << " resource file: " << inFileName << std::endl);
+                  << " resource file: " << inFileName << std::endl);
     return false;
     }
   std::string ext = cmSystemTools::GetFilenameLastExtension(inFileName);
@@ -265,7 +334,7 @@ bool cmCPackPackageMakerGenerator::CopyCreateResourceFile(const char* name)
 
   cmCPackLogger(cmCPackLog::LOG_VERBOSE, "Configure file: " 
                 << (inFileName ? inFileName : "(NULL)")
-    << " to " << destFileName.c_str() << std::endl);
+                << " to " << destFileName.c_str() << std::endl);
   this->ConfigureFile(inFileName, destFileName.c_str());
   return true;
 }

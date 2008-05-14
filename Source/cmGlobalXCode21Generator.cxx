@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalXCode21Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/05/11 20:05:57 $
-  Version:   $Revision: 1.5.2.1 $
+  Date:      $Date: 2007-08-14 15:45:14 $
+  Version:   $Revision: 1.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,6 +17,7 @@
 #include "cmGlobalXCode21Generator.h"
 #include "cmXCode21Object.h"
 
+//----------------------------------------------------------------------------
 cmGlobalXCode21Generator::cmGlobalXCode21Generator()
 {
   this->XcodeVersion = 21;

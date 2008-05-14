@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetDirectoryPropertiesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2005/12/07 16:39:08 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,7 +31,8 @@ public:
    * This is called when the command is first encountered in
    * the input file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -41,7 +42,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "SET_DIRECTORY_PROPERTIES";}
+  virtual const char* GetName() { return "set_directory_properties";}
 
   /**
    * Succinct documentation.
@@ -52,12 +53,20 @@ public:
     }
   
   /**
+   * Static entry point for use by other commands
+   */
+  static bool RunCommand(cmMakefile *mf,
+                         std::vector<std::string>::const_iterator ait,
+                         std::vector<std::string>::const_iterator aitend,
+                         std::string &errors);
+
+  /**
    * Longer documentation.
    */
   virtual const char* GetFullDocumentation()
     {
       return
-        "  SET_DIRECTORY_PROPERTIES(PROPERTIES prop1 value1 prop2 value2)\n"
+        "  set_directory_properties(PROPERTIES prop1 value1 prop2 value2)\n"
         "Set a property for the current directory and subdirectories. If the "
         "property is not found, CMake will report an error. The properties "
         "include: INCLUDE_DIRECTORIES, LINK_DIRECTORIES, "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPluginAPI.h,v $
   Language:  C++
-  Date:      $Date: 2006/04/18 18:48:33 $
-  Version:   $Revision: 1.23.2.1 $
+  Date:      $Date: 2006-12-07 14:44:45 $
+  Version:   $Revision: 1.25 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -26,7 +26,7 @@
 #define cmCPluginAPI_h
 
 #define CMAKE_VERSION_MAJOR 2
-#define CMAKE_VERSION_MINOR 4
+#define CMAKE_VERSION_MINOR 5
 
 #ifdef  __cplusplus
 extern "C" {
@@ -170,6 +170,13 @@ typedef struct
   /* display status information */
   void  (CCONV *DisplaySatus) (void *info, const char *message);
 
+  /* new functions added after 2.4 */
+  void *(CCONV *CreateNewSourceFile) (void *mf);
+  void (CCONV *DefineSourceFileProperty) (void *mf, const char *name,
+                                          const char *briefDocs, 
+                                          const char *longDocs,
+                                          int chained);
+  
   /* this is the end of the C function stub API structure */
 } cmCAPI;
 

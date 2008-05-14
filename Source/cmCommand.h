@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/13 14:52:02 $
-  Version:   $Revision: 1.23.2.1 $
+  Date:      $Date: 2008-03-01 20:20:35 $
+  Version:   $Revision: 1.27 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,6 +20,7 @@
 #include "cmObject.h"
 #include "cmListFileCache.h"
 #include "cmMakefile.h"
+#include "cmCommandArgumentsHelper.h"
 
 /** \class cmCommand
  * \brief Superclass for all commands in CMake.
@@ -59,18 +60,20 @@ public:
    * encountered in the CMakeLists.txt file.  It expands the command's
    * arguments and then invokes the InitialPass.
    */
-  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args)
+  virtual bool InvokeInitialPass(const std::vector<cmListFileArgument>& args,
+                                 cmExecutionStatus &status)
     {
     std::vector<std::string> expandedArguments;
     this->Makefile->ExpandArguments(args, expandedArguments);
-    return this->InitialPass(expandedArguments);
+    return this->InitialPass(expandedArguments,status);
     }
 
   /**
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args) = 0;
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &) = 0;
 
   /**
    * This is called at the end after all the information
@@ -89,14 +92,6 @@ public:
    * This determines if the command is invoked when in script mode.
    */
   virtual bool IsScriptable()
-    {
-    return false;
-    }
-
-  /**
-   * This determines if the method is deprecated or not. 
-   */
-  virtual bool IsDeprecated(int /*major*/, int /*minor*/)
     {
     return false;
     }
@@ -174,6 +169,7 @@ public:
 
 protected:
   cmMakefile* Makefile;
+  cmCommandArgumentsHelper Helper;
 
 private:
   bool Enabled;

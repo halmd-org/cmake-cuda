@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindBase.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/01/03 21:09:14 $
-  Version:   $Revision: 1.14.2.5 $
+  Date:      $Date: 2008-04-08 16:22:49 $
+  Version:   $Revision: 1.35.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,34 +18,19 @@
   
 cmFindBase::cmFindBase()
 {
+  cmSystemTools::ReplaceString(this->GenericDocumentationPathsOrder,
+                               "FIND_ARGS_XXX", "<VAR> NAMES name");
   this->AlreadyInCache = false;
   this->AlreadyInCacheWithoutMetaInfo = false;
-  this->NoDefaultPath = false;
-  this->NoCMakePath = false;
-  this->NoCMakeEnvironmentPath = false;
-  this->NoSystemEnvironmentPath = false;
-  this->NoCMakeSystemPath = false;
-  // default is to search frameworks first on apple
-#if defined(__APPLE__)
-  this->SearchFrameworkFirst = true;
-  this->SearchAppBundleFirst = true;
-#else
-  this->SearchFrameworkFirst = false;
-  this->SearchAppBundleFirst = false;
-#endif
-  this->SearchFrameworkOnly = false;
-  this->SearchFrameworkLast = false;
-  this->SearchAppBundleOnly = false;
-  this->SearchAppBundleLast = false;
   this->GenericDocumentation = 
-    "   FIND_XXX(<VAR> name1 path1 path2 ...)\n"
+    "   FIND_XXX(<VAR> name1 [path1 path2 ...])\n"
     "This is the short-hand signature for the command that "
     "is sufficient in many cases.  It is the same "
-    "as FIND_XXX(<VAR> name1 PATHS path2 path2 ...)\n"
+    "as FIND_XXX(<VAR> name1 [PATHS path1 path2 ...])\n"
     "   FIND_XXX(\n"
-    "             <VAR> \n"
+    "             <VAR>\n"
     "             name | NAMES name1 [name2 ...]\n"
-    "             PATHS path1 [path2 ... ENV var]\n"
+    "             [PATHS path1 [path2 ... ENV var]]\n"
     "             [PATH_SUFFIXES suffix1 [suffix2 ...]]\n"
     "             [DOC \"cache documentation string\"]\n"
     "             [NO_DEFAULT_PATH]\n"
@@ -53,6 +38,9 @@ cmFindBase::cmFindBase()
     "             [NO_CMAKE_PATH]\n"
     "             [NO_SYSTEM_ENVIRONMENT_PATH]\n"
     "             [NO_CMAKE_SYSTEM_PATH]\n"
+    "             [CMAKE_FIND_ROOT_PATH_BOTH |\n"
+    "              ONLY_CMAKE_FIND_ROOT_PATH |\n"
+    "              NO_CMAKE_FIND_ROOT_PATH]\n"
     "            )\n"
     ""
     "This command is used to find a SEARCH_XXX_DESC. "
@@ -80,18 +68,18 @@ cmFindBase::cmFindBase()
     "1. Search cmake specific environment variables.  This "
     "can be skipped if NO_CMAKE_ENVIRONMENT_PATH is passed.\n"
     ""
-    "   CMAKE_FRAMEWORK_PATH\n"
-    "   CMAKE_APPBUNDLE_PATH\n"
+    "   <prefix>/XXX_SUBDIR for each <prefix> in CMAKE_PREFIX_PATH\n"
     "   CMAKE_XXX_PATH\n"
+    "   CMAKE_XXX_MAC_PATH\n"
     "2. Search cmake variables with the same names as "
     "the cmake specific environment variables.  These "
     "are intended to be used on the command line with a "
     "-DVAR=value.  This can be skipped if NO_CMAKE_PATH "
     "is passed.\n"
     ""
-    "   CMAKE_FRAMEWORK_PATH\n"
-    "   CMAKE_APPBUNDLE_PATH\n"
+    "   <prefix>/XXX_SUBDIR for each <prefix> in CMAKE_PREFIX_PATH\n"
     "   CMAKE_XXX_PATH\n"
+    "   CMAKE_XXX_MAC_PATH\n"
     "3. Search the standard system environment variables. "
     "This can be skipped if NO_SYSTEM_ENVIRONMENT_PATH is an argument.\n"
     "   PATH\n"
@@ -99,36 +87,15 @@ cmFindBase::cmFindBase()
     "4. Search cmake variables defined in the Platform files "
     "for the current system.  This can be skipped if NO_CMAKE_SYSTEM_PATH "
     "is passed.\n"
-    "   CMAKE_SYSTEM_FRAMEWORK_PATH\n"
-    "   CMAKE_SYSTEM_APPBUNDLE_PATH\n"
+    "   <prefix>/XXX_SUBDIR for each <prefix> in CMAKE_SYSTEM_PREFIX_PATH\n"
     "   CMAKE_SYSTEM_XXX_PATH\n"
+    "   CMAKE_SYSTEM_XXX_MAC_PATH\n"
     "5. Search the paths specified after PATHS or in the short-hand version "
     "of the command.\n"
-    "On Darwin or systems supporting OSX Frameworks, the cmake variable"
-    "    CMAKE_FIND_FRAMEWORK can be set to empty or one of the following:\n"
-    "   \"FIRST\"  - Try to find frameworks before standard\n"
-    "              libraries or headers. This is the default on Darwin.\n"
-    "   \"LAST\"   - Try to find frameworks after standard\n"
-    "              libraries or headers.\n"
-    "   \"ONLY\"   - Only try to find frameworks.\n"
-    "   \"NEVER\". - Never try to find frameworks.\n"
-    "On Darwin or systems supporting OSX Application Bundles, the cmake "
-    "variable CMAKE_FIND_APPBUNDLE can be set to empty or one of the "
-    "following:\n"
-    "   \"FIRST\"  - Try to find application bundles before standard\n"
-    "              programs. This is the default on Darwin.\n"
-    "   \"LAST\"   - Try to find application bundles after standard\n"
-    "              programs.\n"
-    "   \"ONLY\"   - Only try to find application bundles.\n"
-    "   \"NEVER\". - Never try to find application bundles.\n"
-    "The reason the paths listed in the call to the command are searched "
-    "last is that most users of CMake would expect things to be found "
-    "first in the locations specified by their environment. Projects may "
-    "override this behavior by simply calling the command twice:\n"
-    "   FIND_XXX(<VAR> NAMES name PATHS paths NO_DEFAULT_PATH)\n"
-    "   FIND_XXX(<VAR> NAMES name)\n"
-    "Once one of these calls succeeds the result variable will be set "
-    "and stored in the cache so that neither call will search again.";
+    ;
+  this->GenericDocumentation += this->GenericDocumentationMacPolicy;
+  this->GenericDocumentation += this->GenericDocumentationRootPath;
+  this->GenericDocumentation += this->GenericDocumentationPathsOrder;
 }
   
 bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
@@ -138,74 +105,11 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
     this->SetError("called with incorrect number of arguments");
     return false;
     }
-  std::string ff = this->Makefile->GetSafeDefinition("CMAKE_FIND_FRAMEWORK");
-  if(ff == "NEVER")
-    {
-    this->SearchFrameworkLast = false;
-    this->SearchFrameworkFirst = false;
-    this->SearchFrameworkOnly = false;
-    }
-  else if (ff == "ONLY")
-    {
-    this->SearchFrameworkLast = false;
-    this->SearchFrameworkFirst = false;
-    this->SearchFrameworkOnly = true;
-    }
-  else if (ff == "FIRST")
-    {
-    this->SearchFrameworkLast = false;
-    this->SearchFrameworkFirst = true;
-    this->SearchFrameworkOnly = false;
-    }
-  else if (ff == "LAST")
-    {
-    this->SearchFrameworkLast = true;
-    this->SearchFrameworkFirst = false;
-    this->SearchFrameworkOnly = false;
-    }
-
-  std::string fab = this->Makefile->GetSafeDefinition("CMAKE_FIND_APPBUNDLE");
-  if(fab == "NEVER")
-    {
-    this->SearchAppBundleLast = false;
-    this->SearchAppBundleFirst = false;
-    this->SearchAppBundleOnly = false;
-    }
-  else if (fab == "ONLY")
-    {
-    this->SearchAppBundleLast = false;
-    this->SearchAppBundleFirst = false;
-    this->SearchAppBundleOnly = true;
-    }
-  else if (fab == "FIRST")
-    {
-    this->SearchAppBundleLast = false;
-    this->SearchAppBundleFirst = true;
-    this->SearchAppBundleOnly = false;
-    }
-  else if (fab == "LAST")
-    {
-    this->SearchAppBundleLast = true;
-    this->SearchAppBundleFirst = false;
-    this->SearchAppBundleOnly = false;
-    }
 
   // CMake versions below 2.3 did not search all these extra
   // locations.  Preserve compatibility unless a modern argument is
   // passed.
-  bool compatibility = false;
-  const char* versionValue =
-    this->Makefile->GetDefinition("CMAKE_BACKWARDS_COMPATIBILITY");
-  int major = 0;
-  int minor = 0;
-  if(versionValue && sscanf(versionValue, "%d.%d", &major, &minor) != 2)
-    {
-    versionValue = 0;
-    }
-  if(versionValue && (major < 2 || major == 2 && minor < 3))
-    {
-    compatibility = true;
-    }
+  bool compatibility = this->Makefile->NeedBackwardsCompatibility(2,3);
 
   // copy argsIn into args so it can be modified,
   // in the process extract the DOC "documentation" 
@@ -250,6 +154,13 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
     return true;
     }
   this->AlreadyInCache = false; 
+
+  // Find the current root path mode.
+  this->SelectDefaultRootPathMode();
+
+  // Find the current bundle/framework search policy.
+  this->SelectDefaultMacMode();
+
   std::vector<std::string> userPaths;
   std::string doc;
   bool doingNames = true; // assume it starts with a name
@@ -288,45 +199,12 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
       doingNames = false;
       this->NoDefaultPath = true;
       }
-    else if (args[j] == "NO_DEFAULT_PATH")
+    else if (this->CheckCommonArgument(args[j]))
       {
       compatibility = false;
       doingPaths = false;
       doingPathSuf = false;
       doingNames = false;
-      this->NoDefaultPath = true;
-      }
-    else if (args[j] == "NO_CMAKE_ENVIRONMENT_PATH")
-      {
-      compatibility = false;
-      doingPaths = false;
-      doingPathSuf = false;
-      doingNames = false;
-      this->NoCMakeEnvironmentPath = true;
-      }
-    else if (args[j] == "NO_CMAKE_PATH")
-      {
-      compatibility = false;
-      doingPaths = false;
-      doingPathSuf = false;
-      doingNames = false;
-      this->NoCMakePath = true;
-      }
-    else if (args[j] == "NO_SYSTEM_ENVIRONMENT_PATH")
-      {
-      compatibility = false;
-      doingPaths = false;
-      doingPathSuf = false;
-      doingNames = false;
-      this->NoSystemEnvironmentPath = true;
-      }
-    else if (args[j] == "NO_CMAKE_SYSTEM_PATH")
-      {
-      compatibility = false;
-      doingPaths = false;
-      doingPathSuf = false;
-      doingNames = false;
-      this->NoCMakeSystemPath = true;
       }
     else
       {
@@ -339,8 +217,8 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
         userPaths.push_back(args[j]);
         }
       else if(doingPathSuf)
-        { 
-        this->SearchPathSuffixes.push_back(args[j]);
+        {
+        this->AddPathSuffix(args[j]);
         }
       }
     }
@@ -358,7 +236,7 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
 
   if(this->VariableDocumentation.size() == 0)
     {
-    this->VariableDocumentation = "Whare can ";
+    this->VariableDocumentation = "Where can ";
     if(this->Names.size() == 0)
       {
       this->VariableDocumentation += "the (unknown) library be found";
@@ -392,6 +270,9 @@ bool cmFindBase::ParseArguments(std::vector<std::string> const& argsIn)
       }
     }
   this->ExpandPaths(userPaths);
+
+  // Handle search root stuff.
+  this->RerootPaths(this->SearchPaths);
   return true;
 }
 
@@ -401,11 +282,11 @@ void cmFindBase::ExpandPaths(std::vector<std::string> userPaths)
   // standard search paths.
   if(!this->NoDefaultPath)
     {
-    if(this->SearchFrameworkFirst)
+    if(this->SearchFrameworkFirst || this->SearchFrameworkOnly)
       {
       this->AddFrameWorkPaths();
       }
-    if(this->SearchAppBundleFirst)
+    if(this->SearchAppBundleFirst || this->SearchAppBundleOnly)
       {
       this->AddAppBundlePaths();
       }
@@ -413,7 +294,7 @@ void cmFindBase::ExpandPaths(std::vector<std::string> userPaths)
        !(this->SearchFrameworkOnly || this->SearchAppBundleOnly))
       {
       // Add CMAKE_*_PATH environment variables
-      this->AddEnvironmentVairables();
+      this->AddEnvironmentVariables();
       }
     if(!this->NoCMakePath && 
        !(this->SearchFrameworkOnly || this->SearchAppBundleOnly))
@@ -421,13 +302,13 @@ void cmFindBase::ExpandPaths(std::vector<std::string> userPaths)
       // Add CMake varibles of the same name as the previous environment
       // varibles CMAKE_*_PATH to be used most of the time with -D
       // command line options
-      this->AddCMakeVairables();
+      this->AddCMakeVariables();
       }
     if(!this->NoSystemEnvironmentPath && 
        !(this->SearchFrameworkOnly || this->SearchAppBundleOnly))
       {
       // add System environment PATH and (LIB or INCLUDE)
-      this->AddSystemEnvironmentVairables();
+      this->AddSystemEnvironmentVariables();
       }
     if(!this->NoCMakeSystemPath && 
        !(this->SearchFrameworkOnly || this->SearchAppBundleOnly))
@@ -453,55 +334,67 @@ void cmFindBase::ExpandPaths(std::vector<std::string> userPaths)
   this->AddPaths(paths);
 }
 
-void cmFindBase::AddEnvironmentVairables()
+//----------------------------------------------------------------------------
+void cmFindBase::AddEnvironmentVariables()
 { 
+  std::vector<std::string> paths;
+
+  std::vector<std::string> prefixPaths;
+  cmSystemTools::GetPath(prefixPaths, "CMAKE_PREFIX_PATH");
+  this->AddFindPrefix(paths, prefixPaths);
+
   std::string var = "CMAKE_";
   var += this->CMakePathName;
   var += "_PATH";
-  std::vector<std::string> paths;
   cmSystemTools::GetPath(paths, var.c_str());
-  if(this->SearchAppBundleLast)
+  this->AddPaths(paths);
+}
+
+void cmFindBase::AddFindPrefix(std::vector<std::string>& dest, 
+                               const std::vector<std::string>& src)
+{
+  // default for programs
+  std::string subdir = "bin";
+
+  if (this->CMakePathName == "INCLUDE")
     {
-    cmSystemTools::GetPath(paths, "CMAKE_APPBUNDLE_PATH");
+    subdir = "include";
     }
-  if(this->SearchFrameworkLast)
+  else if (this->CMakePathName == "LIBRARY")
     {
-    cmSystemTools::GetPath(paths, "CMAKE_FRAMEWORK_PATH");
+    subdir = "lib";
     }
-   this->AddPaths(paths);
+  else if (this->CMakePathName == "FRAMEWORK")
+    {
+    subdir = "";  // ? what to do for frameworks ?
+    }
+
+  for (std::vector<std::string>::const_iterator it = src.begin();
+       it != src.end();
+       ++it)
+    {
+    std::string dir = it->c_str();
+    if(!subdir.empty() && !dir.empty() && dir[dir.size()-1] != '/')
+      {
+      dir += "/";
+      }
+    dest.push_back(dir + subdir);
+    if (subdir == "bin")
+      {
+      dest.push_back(dir + "sbin");
+      }
+    if(!subdir.empty())
+      {
+      dest.push_back(*it);
+      }
+    }
 }
 
 void cmFindBase::AddFrameWorkPaths()
 {
-  if(this->NoDefaultPath)
-    {
-    return;
-    }
   std::vector<std::string> paths;
-  // first environment variables
-  if(!this->NoCMakeEnvironmentPath)
-    {
-    cmSystemTools::GetPath(paths, "CMAKE_FRAMEWORK_PATH");
-    }
-  // add cmake variables
-  if(!this->NoCMakePath)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_FRAMEWORK_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
-  // AddCMakeSystemVariables
-   if(!this->NoCMakeSystemPath)
-     {
-     if(const char* path = 
-        this->Makefile->GetDefinition("CMAKE_SYSTEM_FRAMEWORK_PATH"))
-       {
-       cmSystemTools::ExpandListArgument(path, paths);
-       }
-     }
-   this->AddPaths(paths);
+  this->GetFrameworkPaths(paths);
+  this->AddPaths(paths);
 }
 
 void cmFindBase::AddPaths(std::vector<std::string> & paths)
@@ -516,67 +409,34 @@ void cmFindBase::AddPaths(std::vector<std::string> & paths)
 
 void cmFindBase::AddAppBundlePaths()
 {
-  if(this->NoDefaultPath)
-    {
-    return;
-    }
   std::vector<std::string> paths;
-  // first environment variables
-  if(!this->NoCMakeEnvironmentPath)
-    {
-    cmSystemTools::GetPath(paths, "CMAKE_APPBUNDLE_PATH");
-    }
-  // add cmake variables
-  if(!this->NoCMakePath)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_APPBUNDLE_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
-  // AddCMakeSystemVariables
-   if(!this->NoCMakeSystemPath)
-     {
-     if(const char* path = 
-        this->Makefile->GetDefinition("CMAKE_SYSTEM_APPBUNDLE_PATH"))
-       {
-       cmSystemTools::ExpandListArgument(path, paths);
-       }
-     }
-   this->AddPaths(paths);
+  this->GetAppBundlePaths(paths);
+  this->AddPaths(paths);
 }
 
-void cmFindBase::AddCMakeVairables()
+void cmFindBase::AddCMakeVariables()
 { 
   std::string var = "CMAKE_";
   var += this->CMakePathName;
   var += "_PATH";
   std::vector<std::string> paths;
+
+  if(const char* prefixPath = 
+      this->Makefile->GetDefinition("CMAKE_PREFIX_PATH"))
+    {
+    std::vector<std::string> prefixPaths;
+    cmSystemTools::ExpandListArgument(prefixPath, prefixPaths);
+    this->AddFindPrefix(paths, prefixPaths);
+    }
+
   if(const char* path = this->Makefile->GetDefinition(var.c_str()))
     {
     cmSystemTools::ExpandListArgument(path, paths);
     } 
-  if(this->SearchAppBundleLast)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_APPBUNDLE_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
-  if(this->SearchFrameworkLast)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_FRAMEWORK_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
   this->AddPaths(paths);
 }
 
-void cmFindBase::AddSystemEnvironmentVairables()
+void cmFindBase::AddSystemEnvironmentVariables()
 {
   // Add LIB or INCLUDE
   std::vector<std::string> paths;
@@ -595,26 +455,17 @@ void cmFindBase::AddCMakeSystemVariables()
   var += this->CMakePathName;
   var += "_PATH";
   std::vector<std::string> paths;
+  if(const char* prefixPath =
+      this->Makefile->GetDefinition("CMAKE_SYSTEM_PREFIX_PATH"))
+    {
+    std::vector<std::string> prefixPaths;
+    cmSystemTools::ExpandListArgument(prefixPath, prefixPaths);
+    this->AddFindPrefix(paths, prefixPaths);
+    }
   if(const char* path = this->Makefile->GetDefinition(var.c_str()))
     {
     cmSystemTools::ExpandListArgument(path, paths);
     }  
-  if(this->SearchAppBundleLast)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_SYSTEM_APPBUNDLE_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
-  if(this->SearchFrameworkLast)
-    {
-    if(const char* path = 
-       this->Makefile->GetDefinition("CMAKE_SYSTEM_FRAMEWORK_PATH"))
-      {
-      cmSystemTools::ExpandListArgument(path, paths);
-      }
-    }
   this->AddPaths(paths);
 }
 
@@ -644,12 +495,20 @@ void cmFindBase::ExpandRegistryAndCleanPath(std::vector<std::string>& paths)
           this->SearchPathSuffixes.begin();
         j != this->SearchPathSuffixes.end(); ++j)
       {
-      std::string p = *i + std::string("/") + *j;
+      // if *i is only / then do not add a //
+      // this will get incorrectly considered a network
+      // path on windows and cause huge delays.
+      std::string p = *i;
+      if(p.size() && p[p.size()-1] != '/')
+        {
+        p += std::string("/");
+        }
+      p +=  *j;
       // add to all paths because the search path may be modified 
       // later with lib being replaced for lib64 which may exist
       paths.push_back(p);
-        }
       }
+    }
   // now put the path without the path suffixes in the SearchPaths
   for(i = finalPath.begin();
       i != finalPath.end(); ++i)
@@ -657,7 +516,7 @@ void cmFindBase::ExpandRegistryAndCleanPath(std::vector<std::string>& paths)
     // put all search paths in because it may later be replaced
     // by lib64 stuff fixes bug 4009
     paths.push_back(*i);
-      }
+    }
 }
 
 void cmFindBase::PrintFindStuff()
@@ -705,7 +564,7 @@ bool cmFindBase::CheckForVariableInCache()
   if(const char* cacheValue =
      this->Makefile->GetDefinition(this->VariableName.c_str()))
     {
-    cmCacheManager::CacheIterator it = 
+    cmCacheManager::CacheIterator it =
       this->Makefile->GetCacheManager()->
       GetCacheIterator(this->VariableName.c_str());
     bool found = !cmSystemTools::IsNOTFOUND(cacheValue);

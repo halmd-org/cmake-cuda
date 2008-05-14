@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindProgramCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/07/24 15:19:35 $
-  Version:   $Revision: 1.35.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.42 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,9 +25,15 @@
 cmFindProgramCommand::cmFindProgramCommand()
 {
   cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "FIND_XXX", "FIND_PROGRAM");
+                               "FIND_XXX", "find_program");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "CMAKE_XXX_PATH", "CMAKE_PROGRAM_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_XXX_MAC_PATH",
+                               "CMAKE_APPBUNDLE_PATH");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_SYSTEM_XXX_MAC_PATH",
+                               "CMAKE_SYSTEM_APPBUNDLE_PATH");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "XXX_SYSTEM", "");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
@@ -37,10 +43,16 @@ cmFindProgramCommand::cmFindProgramCommand()
                                "SEARCH_XXX_DESC", "program");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "SEARCH_XXX", "program");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "XXX_SUBDIR", "[s]bin");
+  cmSystemTools::ReplaceString(this->GenericDocumentation,
+                               "CMAKE_FIND_ROOT_PATH_MODE_XXX", 
+                               "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM");
 }
 
 // cmFindProgramCommand
-bool cmFindProgramCommand::InitialPass(std::vector<std::string> const& argsIn)
+bool cmFindProgramCommand
+::InitialPass(std::vector<std::string> const& argsIn, cmExecutionStatus &)
 {
   this->VariableDocumentation = "Path to a program.";
   this->CMakePathName = "PROGRAM";
@@ -136,7 +148,7 @@ std::string cmFindProgramCommand::GetBundleExecutable(std::string bundlePath)
   // XXX - Is it safe to assume everything is in UTF8?
   CFStringRef bundlePathCFS = 
     CFStringCreateWithCString(kCFAllocatorDefault , 
-                                                        bundlePath.c_str(), kCFStringEncodingUTF8 );
+                              bundlePath.c_str(), kCFStringEncodingUTF8 );
   
   // Make a CFURLRef from the CFString representation of the
   // bundle’s path.

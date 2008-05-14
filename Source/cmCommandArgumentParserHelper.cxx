@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommandArgumentParserHelper.cxx,v $
   Language:  C++
-  Date:      $Date: 2007/07/02 02:55:07 $
-  Version:   $Revision: 1.12.2.8 $
+  Date:      $Date: 2007-06-06 20:20:02 $
+  Version:   $Revision: 1.20 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -70,7 +70,7 @@ char* cmCommandArgumentParserHelper::ExpandSpecialVariable(const char* key,
   if ( !key )
     {
     return this->ExpandVariable(var);
-    }
+    } 
   if ( strcmp(key, "ENV") == 0 )
     {
     char *ptr = getenv(var);
@@ -131,10 +131,10 @@ char* cmCommandArgumentParserHelper::ExpandVariableForAt(const char* var)
     if(!ret && this->RemoveEmpty)
       {
       return this->AddString(ret);
-    }
+      }
     // if the ret was not 0, then return it
     if(ret)
-    {
+      {
       return ret;
       }
     }
@@ -142,10 +142,10 @@ char* cmCommandArgumentParserHelper::ExpandVariableForAt(const char* var)
   // - this->ReplaceAtSyntax is false  
   // - this->ReplaceAtSyntax is true, but this->RemoveEmpty is false,
   //   and the variable was not defined
-    std::string ref = "@";
-    ref += var;
-    ref += "@";
-    return this->AddString(ref.c_str());
+  std::string ref = "@";
+  ref += var;
+  ref += "@";
+  return this->AddString(ref.c_str());
 }
 
 char* cmCommandArgumentParserHelper::CombineUnions(char* in1, char* in2)

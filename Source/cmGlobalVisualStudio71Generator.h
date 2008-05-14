@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio71Generator.h,v $
   Language:  C++
-  Date:      $Date: 2006/11/10 15:12:55 $
-  Version:   $Revision: 1.12.2.4 $
+  Date:      $Date: 2008-02-15 16:49:58 $
+  Version:   $Revision: 1.18 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -43,6 +43,19 @@ public:
   ///! Create a local generator appropriate to this Global Generator
   virtual cmLocalGenerator *CreateLocalGenerator();
 
+  /**
+   * Where does this version of Visual Studio look for macros for the
+   * current user? Returns the empty string if this version of Visual
+   * Studio does not implement support for VB macros.
+   */
+  virtual std::string GetUserMacrosDirectory();
+
+  /**
+   * What is the reg key path to "vsmacros" for this version of Visual
+   * Studio?
+   */
+  virtual std::string GetUserMacrosRegKeyBase();
+
 protected:
   virtual void AddPlatformDefinitions(cmMakefile* mf);
   virtual void WriteSLNFile(std::ostream& fout, 
@@ -53,10 +66,11 @@ protected:
                             const char* name, const char* path, cmTarget &t);
   virtual void WriteProjectDepends(std::ostream& fout, 
                            const char* name, const char* path, cmTarget &t);
-  virtual void WriteProjectConfigurations(std::ostream& fout, 
+  virtual void WriteProjectConfigurations(std::ostream& fout,
                                           const char* name,
                                           bool partOfDefaultBuild);
-  virtual void WriteExternalProject(std::ostream& fout, const char* name,
+  virtual void WriteExternalProject(std::ostream& fout,
+                                    const char* name,
                                     const char* path,
                                     const std::vector<std::string>& depends);
   virtual void WriteSLNFooter(std::ostream& fout);

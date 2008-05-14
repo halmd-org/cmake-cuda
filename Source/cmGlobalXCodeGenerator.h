@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalXCodeGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2006/06/30 17:48:43 $
-  Version:   $Revision: 1.40.2.3 $
+  Date:      $Date: 2008-01-14 14:20:57 $
+  Version:   $Revision: 1.52 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -53,7 +53,7 @@ public:
    * extension, pthreads, byte order etc.  
    */
   virtual void EnableLanguage(std::vector<std::string>const& languages, 
-                              cmMakefile *);
+                              cmMakefile *, bool optional);
   /**
    * Try running cmake and building a file. This is used for dynalically
    * loaded commands, not as part of the usual build process.
@@ -82,27 +82,41 @@ public:
   ///! What is the configurations directory variable called?
   virtual const char* GetCMakeCFGInitDirectory()  { return "."; }
 
+  void GetTargetObjectFileDirectories(cmTarget* target,
+                                      std::vector<std::string>& 
+                                      dirs);
+  void SetCurrentLocalGenerator(cmLocalGenerator*);
 private: 
   cmXCodeObject* CreateOrGetPBXGroup(cmTarget& cmtarget,
                                      cmSourceGroup* sg);
   void CreateGroups(cmLocalGenerator* root,
                     std::vector<cmLocalGenerator*>&
                     generators);
-  void SetCurrentLocalGenerator(cmLocalGenerator*);
   std::string XCodeEscapePath(const char* p);
   std::string ConvertToRelativeForXCode(const char* p);
   std::string ConvertToRelativeForMake(const char* p);
   void CreateCustomCommands(cmXCodeObject* buildPhases,
                             cmXCodeObject* sourceBuildPhase,
                             cmXCodeObject* headerBuildPhase,
+                            cmXCodeObject* resourceBuildPhase,
+                            std::vector<cmXCodeObject*> contentBuildPhases,
                             cmXCodeObject* frameworkBuildPhase,
                             cmTarget& cmtarget);
-  
+
   void AddCommandsToBuildPhase(cmXCodeObject* buildphase,
                                cmTarget& target,
                                std::vector<cmCustomCommand> 
                                const & commands,
                                const char* commandFileName);
+  
+  void CreateCustomRulesMakefile(const char* makefileBasename, 
+                                 cmTarget& target,
+                                 std::vector<cmCustomCommand> const & commands,
+                                 const char* configName,
+                                 const std::map<cmStdString, cmStdString>& 
+                                     multipleOutputPairs
+                                );
+  
   cmXCodeObject* FindXCodeTarget(cmTarget*);
   // create cmXCodeObject from these functions so that memory can be managed
   // correctly.  All objects created are stored in this->XCodeObjects.
@@ -143,9 +157,9 @@ private:
                           std::vector<cmXCodeObject*>&);
   void AddDependTarget(cmXCodeObject* target,
                        cmXCodeObject* dependTarget);
-  void ConfigureOutputPaths();
   void CreateXCodeDependHackTarget(std::vector<cmXCodeObject*>& targets);
   bool SpecialTargetEmitted(std::string const& tname);
+  void SetGenerationRoot(cmLocalGenerator* root);
   void AddExtraTargets(cmLocalGenerator* root, 
                        std::vector<cmLocalGenerator*>& gens);
   cmXCodeObject* CreateBuildPhase(const char* name, 
@@ -158,6 +172,10 @@ private:
                           const char* varNameLang,
                           const char* varNameSuffix,
                           const char* default_flags);
+
+  void AppendDefines(std::string& defs, const char* defines_list,
+                     bool dflag = false);
+
 protected:
   virtual const char* GetInstallTargetName()      { return "install"; }
   virtual const char* GetPackageTargetName()      { return "package"; }
@@ -168,21 +186,20 @@ protected:
 private:
   cmXCodeObject* MainGroupChildren;
   cmXCodeObject* SourcesGroupChildren;
+  cmXCodeObject* ResourcesGroupChildren;
   cmMakefile* CurrentMakefile;
   cmLocalGenerator* CurrentLocalGenerator;
   std::vector<std::string> CurrentConfigurationTypes;
   std::string CurrentReRunCMakeMakefile;
   std::string CurrentXCodeHackMakefile;
   std::string CurrentProject;
-  std::string OutputDir; 
-  std::string LibraryOutputPath;
-  std::string ExecutableOutputPath;
   std::set<cmStdString> TargetDoneSet;
   std::vector<std::string> CurrentOutputDirectoryComponents;
   std::vector<std::string> ProjectOutputDirectoryComponents;
-  std::map<cmSourceFile*, cmXCodeObject* > GroupMap;
+  std::map<cmStdString, cmXCodeObject* > GroupMap;
   std::map<cmStdString, cmXCodeObject* > GroupNameMap;
   std::map<cmStdString, cmXCodeObject* > TargetGroup;
+  std::map<cmStdString, cmXCodeObject* > FileRefs;
   std::vector<std::string> Architectures;
 };
 

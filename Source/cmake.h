@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.h,v $
   Language:  C++
-  Date:      $Date: 2006/11/10 15:12:55 $
-  Version:   $Revision: 1.65.2.5 $
+  Date:      $Date: 2008-05-01 16:35:40 $
+  Version:   $Revision: 1.109.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -41,6 +41,8 @@
 #define cmake_h
 
 #include "cmSystemTools.h"
+#include "cmPropertyDefinitionMap.h"
+#include "cmPropertyMap.h"
 
 class cmGlobalGenerator;
 class cmLocalGenerator;
@@ -49,23 +51,28 @@ class cmMakefile;
 class cmCommand;
 class cmVariableWatch;
 class cmFileTimeComparison;
+class cmExternalMakefileProjectGenerator;
+class cmDocumentationSection;
+class cmPolicies;
+class cmListFileBacktrace;
 
 class cmake
 {
  public:
+  enum MessageType
+  { AUTHOR_WARNING,
+    FATAL_ERROR,
+    INTERNAL_ERROR,
+    MESSAGE,
+    WARNING,
+    LOG
+  };
   typedef std::map<cmStdString, cmCommand*> RegisteredCommandsMap;
 
   ///! construct an instance of cmake
   cmake();
   ///! destruct an instance of cmake
   ~cmake();
-
-  /**
-   * Return major and minor version numbers for cmake.
-   */
-  static unsigned int GetMajorVersion(); 
-  static unsigned int GetMinorVersion(); 
-  static const char *GetReleaseVersion();
 
   ///! construct an instance of cmake
   static const char *GetCMakeFilesDirectory() {return "/CMakeFiles";};
@@ -134,14 +141,7 @@ class cmake
   int Run(const std::vector<std::string>&args, bool noconfigure);
 
   /**
-   * Generate the SourceFilesList from the SourceLists. This should only be
-   * done once to be safe.  The argument is a list of command line
-   * arguments.  The first argument should be the name or full path
-   * to the command line version of cmake.  For building a GUI,
-   * you would pass in the following arguments:
-   * /path/to/cmake -H/path/to/source -B/path/to/build 
-   * If you only want to parse the CMakeLists.txt files,
-   * but not actually generate the makefiles, use buildMakefiles = false.
+   * Run the global generator Generate step.
    */
   int Generate();
 
@@ -152,6 +152,7 @@ class cmake
    * files for the tree. It will not produce any actual Makefiles, or
    * workspaces. Generate does that.  */
   int Configure();
+  int ActualConfigure();
 
   /**
    * Configure the cmMakefiles. This routine will create a GlobalGenerator if
@@ -166,7 +167,10 @@ class cmake
   cmGlobalGenerator* CreateGlobalGenerator(const char* name);
 
   ///! Return the global generator assigned to this instance of cmake
-  cmGlobalGenerator* GetGlobalGenerator() { return this->GlobalGenerator; };
+  cmGlobalGenerator* GetGlobalGenerator()     { return this->GlobalGenerator; }
+  ///! Return the global generator assigned to this instance of cmake, const
+  const cmGlobalGenerator* GetGlobalGenerator() const 
+                                              { return this->GlobalGenerator; }
 
   ///! Return the global generator assigned to this instance of cmake
   void SetGlobalGenerator(cmGlobalGenerator *);
@@ -194,11 +198,18 @@ class cmake
    */
   static int ExecuteCMakeCommand(std::vector<std::string>&);
 
+  /** 
+   * Get the system information and write it to the file specified
+   */
+  int GetSystemInformation(std::vector<std::string>&);
+
   /**
    * Add a command to this cmake instance
    */
   void AddCommand(cmCommand* );
   void RenameCommand(const char* oldName, const char* newName);
+  void RemoveCommand(const char* name);
+  void RemoveUnscriptableCommands();
 
   /**
    * Get a command by its name
@@ -237,12 +248,36 @@ class cmake
   ///! this is called by generators to update the progress
   void UpdateProgress(const char *msg, float prog);
 
+  ///!  get the cmake policies instance
+  cmPolicies *GetPolicies() {return this->Policies;} ;
 
   ///! Get the variable watch object
   cmVariableWatch* GetVariableWatch() { return this->VariableWatch; }
 
-  void GetCommandDocumentation(std::vector<cmDocumentationEntry>&) const;
+  /** Get the documentation entries for the supported commands.
+   *  If withCurrentCommands is true, the documentation for the 
+   *  recommended set of commands is included.
+   *  If withCompatCommands is true, the documentation for discouraged
+   *  (compatibility) commands is included.
+   *  You probably don't want to set both to false.
+   */
+  void GetCommandDocumentation(std::vector<cmDocumentationEntry>& entries, 
+                               bool withCurrentCommands = true, 
+                               bool withCompatCommands = true) const;
+  void GetPropertiesDocumentation(std::map<std::string,
+                                  cmDocumentationSection *>&);
   void GetGeneratorDocumentation(std::vector<cmDocumentationEntry>&);
+  void GetPolicyDocumentation(std::vector<cmDocumentationEntry>& entries);
+
+  ///! Set/Get a property of this target file
+  void SetProperty(const char *prop, const char *value);
+  void AppendProperty(const char *prop, const char *value);
+  const char *GetProperty(const char *prop);
+  const char *GetProperty(const char *prop, cmProperty::ScopeType scope);
+  bool GetPropertyAsBool(const char *prop);
+
+  // Get the properties
+  cmPropertyMap &GetProperties() { return this->Properties; };
 
   ///! Do all the checks before running configure
   int DoPreConfigureChecks();
@@ -259,15 +294,10 @@ class cmake
   bool GetDebugTryCompile(){return this->DebugTryCompile;}
   void DebugTryCompileOn(){this->DebugTryCompile = true;}
 
-  ///! Get the list of files written by CMake using FILE(WRITE / WRITE_FILE
-  void AddWrittenFile(const char* file);
-  bool HasWrittenFile(const char* file);
-  void CleanupWrittenFiles();
-
   /**
    * Generate CMAKE_ROOT and CMAKE_COMMAND cache entries
    */
-  int AddCMakePaths(const char *arg0);
+  int AddCMakePaths();
 
   /**
    * Get the file comparison class
@@ -279,29 +309,81 @@ class cmake
    */
   const char* GetCTestCommand();
   const char* GetCPackCommand();
-  const char* GetCMakeCommand() { return this->CMakeCommand.c_str(); }
 
   // Do we want debug output during the cmake run.
   bool GetDebugOutput() { return this->DebugOutput; }
-  void DebugOutputOn() { this->DebugOutput = true;}
+  void SetDebugOutputOn(bool b) { this->DebugOutput = b;}
 
+  // Define a property
+  void DefineProperty(const char *name, cmProperty::ScopeType scope,
+                      const char *ShortDescription,
+                      const char *FullDescription,
+                      bool chain = false, 
+                      const char *variableGroup = 0);
+
+  // get property definition
+  cmPropertyDefinition *GetPropertyDefinition
+  (const char *name, cmProperty::ScopeType scope);
+
+  // Is a property defined?
+  bool IsPropertyDefined(const char *name, cmProperty::ScopeType scope);
+  bool IsPropertyChained(const char *name, cmProperty::ScopeType scope);
+
+  // record accesses of properties and variables
+  void RecordPropertyAccess(const char *name, cmProperty::ScopeType scope);
+  void ReportUndefinedPropertyAccesses(const char *filename);
+
+  // Define the properties
+  static void DefineProperties(cmake *cm);
+
+  void SetCMakeEditCommand(const char* s)
+    {
+      this->CMakeEditCommand = s;
+    }
+  void SetSuppressDevWarnings(bool v)
+    {
+      this->SuppressDevWarnings = v; 
+      this->DoSuppressDevWarnings = true;
+    }
+
+  /** Display a message to the user.  */
+  void IssueMessage(cmake::MessageType t, std::string const& text,
+                    cmListFileBacktrace const& backtrace);
 protected:
+  void InitializeProperties();
+  int HandleDeleteCacheVariables(const char* var);
+  cmPropertyMap Properties;
+  std::set<std::pair<cmStdString,cmProperty::ScopeType> > AccessedProperties;
+
+  std::map<cmProperty::ScopeType, cmPropertyDefinitionMap> 
+  PropertyDefinitions;
+
+  typedef 
+     cmExternalMakefileProjectGenerator* (*CreateExtraGeneratorFunctionType)();
+  typedef std::map<cmStdString,
+                CreateExtraGeneratorFunctionType> RegisteredExtraGeneratorsMap;
+
   typedef cmGlobalGenerator* (*CreateGeneratorFunctionType)();
   typedef std::map<cmStdString,
                    CreateGeneratorFunctionType> RegisteredGeneratorsMap;
   RegisteredCommandsMap Commands;
   RegisteredGeneratorsMap Generators;
+  RegisteredExtraGeneratorsMap ExtraGenerators;
   void AddDefaultCommands();
   void AddDefaultGenerators();
+  void AddDefaultExtraGenerators();
+  void AddExtraGenerator(const char* name, 
+                         CreateExtraGeneratorFunctionType newFunction);
 
+  cmPolicies *Policies;                       
   cmGlobalGenerator *GlobalGenerator;
   cmCacheManager *CacheManager;
   std::string cmHomeDirectory; 
   std::string HomeOutputDirectory;
   std::string cmStartDirectory; 
   std::string StartOutputDirectory;
-
-  std::set<cmStdString> WrittenFiles;
+  bool SuppressDevWarnings;
+  bool DoSuppressDevWarnings;
 
   ///! return true if the same cmake was used to make the cache.
   bool CacheVersionMatches();
@@ -324,13 +406,28 @@ protected:
   //macros.
   void CleanupCommandsAndMacros();
 
-  void GenerateGraphViz(const char* fileName);
+  void GenerateGraphViz(const char* fileName) const;
 
   static int ExecuteEchoColor(std::vector<std::string>& args);
   static int ExecuteLinkScript(std::vector<std::string>& args);
-  
+  static int VisualStudioLink(std::vector<std::string>& args, int type);
+  static int VisualStudioLinkIncremental(std::vector<std::string>& args,
+                                         int type, 
+                                         bool verbose);
+  static int VisualStudioLinkNonIncremental(std::vector<std::string>& args,
+                                            int type,
+                                            bool verbose);
+  static int ParseVisualStudioLinkCommand(std::vector<std::string>& args, 
+                                          std::vector<cmStdString>& command, 
+                                          std::string& targetName);
+  static bool RunCommand(const char* comment,
+                         std::vector<cmStdString>& command,
+                         bool verbose,
+                         int* retCodeOut = 0);
   cmVariableWatch* VariableWatch;
-
+  
+  ///! Find the full path to one of the cmake programs like ctest, cpack, etc.
+  std::string FindCMakeProgram(const char* name) const;
 private:
   ProgressCallbackType ProgressCallback;
   void* ProgressCallbackClientData;
@@ -338,10 +435,14 @@ private:
   bool InTryCompile;
   bool ScriptMode;
   bool DebugOutput;
+  std::string CMakeEditCommand;
   std::string CMakeCommand;
   std::string CXXEnvironment;
   std::string CCEnvironment;
   std::string CheckBuildSystemArgument;
+  std::string CheckStampFile;
+  std::string CheckStampList;
+  std::string VSSolutionFile;
   std::string CTestCommand;
   std::string CPackCommand;
   bool ClearBuildSystem;
@@ -368,11 +469,23 @@ private:
    "for the project.  This option may be used to specify a setting " \
    "that takes priority over the project's default value.  The option " \
    "may be repeated for as many cache entries as desired."}, \
+  {"-U <globbing_expr>", "Remove matching entries from CMake cache.", \
+   "This option may be used to remove one or more variables from the " \
+   "CMakeCache.txt file, globbing expressions using * and ? are supported. "\
+   "The option may be repeated for as many cache entries as desired.\n" \
+   "Use with care, you can make your CMakeCache.txt non-working."}, \
   {"-G <generator-name>", "Specify a makefile generator.", \
    "CMake may support multiple native build systems on certain platforms.  " \
    "A makefile generator is responsible for generating a particular build " \
    "system.  Possible generator names are specified in the Generators " \
-   "section."}
+   "section."},\
+  {"-Wno-dev", "Suppress developer warnings.",\
+   "Suppress warnings that are meant for the author"\
+   " of the CMakeLists.txt files."},\
+  {"-Wdev", "Enable developer warnings.",\
+   "Enable warnings that are meant for the author"\
+   " of the CMakeLists.txt files."}
+
 
 #define CMAKE_STANDARD_INTRODUCTION \
   {0, \

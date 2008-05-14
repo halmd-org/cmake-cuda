@@ -3,8 +3,8 @@
 Program:   CMake - Cross-Platform Makefile Generator
 Module:    $RCSfile: cmGlobalVisualStudio9Win64Generator.cxx,v $
 Language:  C++
-Date:      $Date: 2007/12/18 20:58:48 $
-Version:   $Revision: 1.1.2.1 $
+Date:      $Date: 2007-12-17 19:43:11 $
+Version:   $Revision: 1.1 $
 
 Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
 See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -39,15 +39,15 @@ cmLocalGenerator *cmGlobalVisualStudio9Win64Generator::CreateLocalGenerator()
 void cmGlobalVisualStudio9Win64Generator
 ::GetDocumentation(cmDocumentationEntry& entry) const
 {
-  entry.name = this->GetName();
-  entry.brief = "Generates Visual Studio 9 2008 Win64 project files.";
-  entry.full = "";
+  entry.Name = this->GetName();
+  entry.Brief = "Generates Visual Studio 9 2008 Win64 project files.";
+  entry.Full = "";
 }
 
 void cmGlobalVisualStudio9Win64Generator
 ::EnableLanguage(std::vector<std::string>const &  lang, 
-                 cmMakefile *mf)
+                 cmMakefile *mf, bool optional)
 {
   mf->AddDefinition("CMAKE_FORCE_WIN64", "TRUE");
-  cmGlobalVisualStudio9Generator::EnableLanguage(lang, mf);
+  cmGlobalVisualStudio9Generator::EnableLanguage(lang, mf, optional);
 }

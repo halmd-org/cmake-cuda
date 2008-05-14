@@ -6,8 +6,8 @@ MESSAGE("${CMAKE_CURRENT_FILE} is deprecated, please use FindwxWidgets.cmake ins
 ##---------------------------------------------------------------------------
 ## $RCSfile: FindwxWin.cmake,v $
 ## $Source: /cvsroot/CMake/CMake/Source/WXDialog/bin/FindwxWin.cmake,v $
-## $Revision: 1.4.4.1 $
-## $Date: 2006/07/24 15:19:36 $
+## $Revision: 1.5 $
+## $Date: 2006-07-21 19:43:19 $
 ##---------------------------------------------------------------------------
 ## Author:      Jorgen Bodde
 ## Copyright:   (c) Jorgen Bodde

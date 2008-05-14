@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExecuteProcessCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/10/27 20:01:47 $
-  Version:   $Revision: 1.2.2.2 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,13 +40,14 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * The name of the command as specified in CMakeList.txt.
    */
   virtual const char* GetName()
-    {return "EXECUTE_PROCESS";}
+    {return "execute_process";}
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -67,7 +68,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  EXECUTE_PROCESS(COMMAND <cmd1> [args1...]]\n"
+      "  execute_process(COMMAND <cmd1> [args1...]]\n"
       "                  [COMMAND <cmd2> [args2...] [...]]\n"
       "                  [WORKING_DIRECTORY <directory>]\n"
       "                  [TIMEOUT <seconds>]\n"
@@ -106,8 +107,8 @@ public:
       "pipe the precedence is not specified.  "
       "If no OUTPUT_* or ERROR_* options are given the output will be shared "
       "with the corresponding pipes of the CMake process itself.\n"
-      "The EXECUTE_PROCESS command is a newer more powerful version of "
-      "EXEC_PROGRAM, but the old command has been kept for compatibility."
+      "The execute_process command is a newer more powerful version of "
+      "exec_program, but the old command has been kept for compatibility."
       ;
     }
 

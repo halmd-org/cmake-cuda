@@ -46,17 +46,30 @@ ENDIF(NOT CMAKE_COMPILER_IS_GNUCC)
 INCLUDE(Platform/UnixPaths)
 
 IF(NOT CMAKE_COMPILER_IS_GNUCC)
-  SET (CMAKE_C_CREATE_PREPROCESSED_SOURCE "<CMAKE_C_COMPILER> <FLAGS> -E <SOURCE> > <PREPROCESSED_SOURCE>")
+  SET (CMAKE_C_CREATE_PREPROCESSED_SOURCE "<CMAKE_C_COMPILER> <DEFINES> <FLAGS> -E <SOURCE> > <PREPROCESSED_SOURCE>")
   SET (CMAKE_C_CREATE_ASSEMBLY_SOURCE
-    "<CMAKE_C_COMPILER> <FLAGS> -S <SOURCE>"
+    "<CMAKE_C_COMPILER> <DEFINES> <FLAGS> -S <SOURCE>"
     "mv `basename \"<SOURCE>\" | sed 's/\\.[^./]*$$//'`.s <ASSEMBLY_SOURCE>"
     )
 ENDIF(NOT CMAKE_COMPILER_IS_GNUCC)
 
 IF(NOT CMAKE_COMPILER_IS_GNUCXX)
-  SET (CMAKE_CXX_CREATE_PREPROCESSED_SOURCE "<CMAKE_CXX_COMPILER> <FLAGS> -E <SOURCE> > <PREPROCESSED_SOURCE>")
+  SET (CMAKE_CXX_CREATE_PREPROCESSED_SOURCE "<CMAKE_CXX_COMPILER> <DEFINES> <FLAGS> -E <SOURCE> > <PREPROCESSED_SOURCE>")
   SET (CMAKE_CXX_CREATE_ASSEMBLY_SOURCE
-    "<CMAKE_CXX_COMPILER> <FLAGS> -S <SOURCE>"
+    "<CMAKE_CXX_COMPILER> <DEFINES> <FLAGS> -S <SOURCE>"
     "mv `basename \"<SOURCE>\" | sed 's/\\.[^./]*$$//'`.s <ASSEMBLY_SOURCE>"
     )
 ENDIF(NOT CMAKE_COMPILER_IS_GNUCXX)
+
+# Initialize C link type selection flags.  These flags are used when
+# building a shared library, shared module, or executable that links
+# to other libraries to select whether to use the static or shared
+# versions of the libraries.
+FOREACH(type SHARED_LIBRARY SHARED_MODULE EXE)
+  SET(CMAKE_${type}_LINK_STATIC_C_FLAGS "-Wl,-Bstatic")
+  SET(CMAKE_${type}_LINK_DYNAMIC_C_FLAGS "-Wl,-Bdynamic")
+ENDFOREACH(type)
+
+# The IRIX linker needs to find transitive shared library dependencies
+# in the -L path.
+SET(CMAKE_LINK_DEPENDENT_LIBRARY_DIRS 1)

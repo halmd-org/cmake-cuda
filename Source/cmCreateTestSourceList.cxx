@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCreateTestSourceList.cxx,v $
   Language:  C++
-  Date:      $Date: 2006/03/15 16:01:59 $
-  Version:   $Revision: 1.40 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.44 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,7 +18,8 @@
 #include "cmSourceFile.h"
 
 // cmCreateTestSourceList
-bool cmCreateTestSourceList::InitialPass(std::vector<std::string> const& args)
+bool cmCreateTestSourceList
+::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
   if (args.size() < 3)
     {
@@ -170,27 +171,17 @@ bool cmCreateTestSourceList::InitialPass(std::vector<std::string> const& args)
     res = false;
     }
 
-  // Create the source list
-  cmSourceFile cfile;
+  // Construct the source list.
   std::string sourceListValue;
-
-  cfile.SetProperty("ABSTRACT","0");
-  cfile.SetName(cmSystemTools::GetFilenameWithoutExtension(args[1]).c_str(),
-                this->Makefile->GetCurrentOutputDirectory(),
-                cmSystemTools::GetFilenameExtension(args[1]).c_str()+1,
-                false);
-  this->Makefile->AddSource(cfile);
+  {
+  cmSourceFile* sf = this->Makefile->GetOrCreateSource(driver.c_str());
+  sf->SetProperty("ABSTRACT","0");
   sourceListValue = args[1];
-
+  }
   for(i = testsBegin; i != tests.end(); ++i)
     {
-    cmSourceFile icfile;
-    icfile.SetProperty("ABSTRACT","0");
-    icfile.SetName(i->c_str(),
-                  this->Makefile->GetCurrentDirectory(),
-                  this->Makefile->GetSourceExtensions(),
-                  this->Makefile->GetHeaderExtensions());
-    this->Makefile->AddSource(icfile);
+    cmSourceFile* sf = this->Makefile->GetOrCreateSource(i->c_str());
+    sf->SetProperty("ABSTRACT","0");
     sourceListValue += ";";
     sourceListValue += *i;
     }

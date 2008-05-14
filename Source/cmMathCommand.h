@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMathCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006/05/14 19:22:43 $
-  Version:   $Revision: 1.1.4.1 $
+  Date:      $Date: 2008-01-23 15:27:59 $
+  Version:   $Revision: 1.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -38,7 +38,8 @@ public:
    * This is called when the command is first encountered in
    * the CMakeLists.txt file.
    */
-  virtual bool InitialPass(std::vector<std::string> const& args);
+  virtual bool InitialPass(std::vector<std::string> const& args,
+                           cmExecutionStatus &status);
 
   /**
    * This determines if the command is invoked when in script mode.
@@ -48,7 +49,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "MATH";}
+  virtual const char* GetName() { return "math";}
 
   /**
    * Succinct documentation.
@@ -64,10 +65,12 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  MATH(EXPR <output variable> <math expression>)\n"
+      "  math(EXPR <output variable> <math expression>)\n"
       "EXPR evaluates mathematical expression and return result in the "
       "output variable. Example mathematical expression is "
-      "'5 * ( 10 + 13 )'.";
+      "'5 * ( 10 + 13 )'.  Supported operators are "
+      "+ - * / % | & ^ ~ << >> * / %.  They have the same meaning "
+      " as they do in c code.";
     }
   
   cmTypeMacro(cmMathCommand, cmCommand);

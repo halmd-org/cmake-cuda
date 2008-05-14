@@ -1,6 +1,23 @@
+/*=========================================================================
+
+  Program:   CMake - Cross-Platform Makefile Generator
+  Module:    $RCSfile: cmXCodeObject.cxx,v $
+  Language:  C++
+  Date:      $Date: 2007-08-14 15:45:14 $
+  Version:   $Revision: 1.24 $
+
+  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
+  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+
+     This software is distributed WITHOUT ANY WARRANTY; without even 
+     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
+     PURPOSE.  See the above copyright notices for more information.
+
+=========================================================================*/
 #include "cmXCodeObject.h"
 #include "cmSystemTools.h"
 
+//----------------------------------------------------------------------------
 const char* cmXCodeObject::PBXTypeNames[] = {
     "PBXGroup", "PBXBuildStyle", "PBXProject", "PBXHeadersBuildPhase", 
     "PBXSourcesBuildPhase", "PBXFrameworksBuildPhase", "PBXNativeTarget",
@@ -14,11 +31,11 @@ const char* cmXCodeObject::PBXTypeNames[] = {
     "None"
   };
 
+//----------------------------------------------------------------------------
 cmXCodeObject::~cmXCodeObject()
 {
   this->Version = 15;
 }
-
 
 //----------------------------------------------------------------------------
 cmXCodeObject::cmXCodeObject(PBXType ptype, Type type)
@@ -127,7 +144,33 @@ void cmXCodeObject::Print(std::ostream& out)
             object->ObjectAttributes.end(); ++j)
         {
         cmXCodeObject::Indent(4 *indentFactor, out);
-        out << j->first << " = " << j->second->String << ";";
+
+        if(j->second->TypeValue == STRING)
+          {
+          out << j->first << " = " << j->second->String << ";";
+          }
+        else if(j->second->TypeValue == OBJECT_LIST)
+          {
+          out << j->first << " = (";
+          for(unsigned int k = 0; k < j->second->List.size(); k++)
+            {
+            if(j->second->List[k]->TypeValue == STRING)
+              {
+              out << j->second->List[k]->String << ", ";
+              }
+            else
+              {
+              out << "List_" << k << "_TypeValue_IS_NOT_STRING, ";
+              }
+            }
+          out << ");";
+          }
+        else
+          {
+          out << j->first << " = error_unexpected_TypeValue_" <<
+            j->second->TypeValue << ";";
+          }
+
         out << separator;
         }
       cmXCodeObject::Indent(3 *indentFactor, out);
@@ -173,7 +216,7 @@ void cmXCodeObject::PrintList(std::vector<cmXCodeObject*> const& objs,
   out << "};\n";
 }
 
-
+//----------------------------------------------------------------------------
 void cmXCodeObject::CopyAttributes(cmXCodeObject* copy)
 {
   this->ObjectAttributes = copy->ObjectAttributes;
@@ -182,6 +225,7 @@ void cmXCodeObject::CopyAttributes(cmXCodeObject* copy)
   this->Object = copy->Object;
 }
 
+//----------------------------------------------------------------------------
 void cmXCodeObject::SetString(const char* s)
 {
   std::string ss = s;
@@ -190,6 +234,8 @@ void cmXCodeObject::SetString(const char* s)
     this->String = "\"\"";
     return;
     }
+  // escape quotes
+  cmSystemTools::ReplaceString(ss, "\"", "\\\"");
   bool needQuote = false;
   this->String = "";
   if(ss.find_first_of(" <>.+-=@") != ss.npos)
@@ -200,7 +246,7 @@ void cmXCodeObject::SetString(const char* s)
     {
     this->String = "\"";
     }
-  this->String += s;
+  this->String += ss;
   if(needQuote)
     {
     this->String += "\"";

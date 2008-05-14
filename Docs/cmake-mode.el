@@ -3,7 +3,7 @@
 ;  Program:   CMake - Cross-Platform Makefile Generator
 ;  Module:    $RCSfile: cmake-mode.el,v $
 ;
-;  Copyright (c) 2000-$Date: 2006/10/13 14:52:01 $ Kitware, Inc., Insight Consortium.  All rights reserved.
+;  Copyright (c) 2000-$Date: 2008-03-11 14:54:40 $ Kitware, Inc., Insight Consortium.  All rights reserved.
 ;  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
 ;
 ;     This software is distributed WITHOUT ANY WARRANTY; without even
@@ -55,9 +55,9 @@
                                        "\\|" "[ \t\r\n]"
                                        "\\)*"))
 (defconst cmake-regex-block-open
-  "^\\(IF\\|MACRO\\|FOREACH\\|ELSE\\|ELSEIF\\|WHILE\\)$")
+  "^\\(IF\\|MACRO\\|FOREACH\\|ELSE\\|ELSEIF\\|WHILE\\|FUNCTION\\)$")
 (defconst cmake-regex-block-close
-  "^[ \t]*\\(ENDIF\\|ENDFOREACH\\|ENDMACRO\\|ELSE\\|ELSEIF\\|ENDWHILE\\)[ \t]*(")
+  "^[ \t]*\\(ENDIF\\|ENDFOREACH\\|ENDMACRO\\|ELSE\\|ELSEIF\\|ENDWHILE\\|ENDFUNCTION\\)[ \t]*(")
 
 ;------------------------------------------------------------------------------
 
@@ -148,6 +148,26 @@
         )
       )
     )
+  )
+
+;------------------------------------------------------------------------------
+
+;;
+;; Helper functions for buffer
+;;
+(defun unscreamify-cmake-buffer ()
+  "Convert all CMake commands to lowercase in buffer."
+  (interactive)
+  (setq save-point (point))
+  (goto-char (point-min))
+  (while (re-search-forward "^\\([ \t]*\\)\\(\\w+\\)\\([ \t]*(\\)" nil t)
+    (replace-match 
+     (concat 
+      (match-string 1) 
+      (downcase (match-string 2)) 
+      (match-string 3)) 
+     t))
+  (goto-char save-point)
   )
 
 ;------------------------------------------------------------------------------
