@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkInformation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.24.2.6 $
+  Date:      $Date: 2008-07-30 18:54:49 $
+  Version:   $Revision: 1.24.2.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -256,10 +256,10 @@ cmComputeLinkInformation
 
   // Allocate internals.
   this->OrderLinkerSearchPath =
-    new cmOrderDirectories(this->GlobalGenerator, target->GetName(),
+    new cmOrderDirectories(this->GlobalGenerator, target,
                            "linker search path");
   this->OrderRuntimeSearchPath =
-    new cmOrderDirectories(this->GlobalGenerator, target->GetName(),
+    new cmOrderDirectories(this->GlobalGenerator, target,
                            "runtime search path");
   this->OrderDependentRPath = 0;
 
@@ -362,7 +362,7 @@ cmComputeLinkInformation
     {
     this->SharedDependencyMode = SharedDepModeDir;
     this->OrderDependentRPath =
-      new cmOrderDirectories(this->GlobalGenerator, target->GetName(),
+      new cmOrderDirectories(this->GlobalGenerator, target,
                              "dependent library path");
     }
 
@@ -511,7 +511,6 @@ bool cmComputeLinkInformation::Compute()
   // Compute the ordered link line items.
   cmComputeLinkDepends cld(this->Target, this->Config);
   cld.SetOldLinkDirMode(this->OldLinkDirMode);
-  cld.SetSharedRegex(this->SharedRegexString);
   cmComputeLinkDepends::EntryVector const& linkEntries = cld.Compute();
 
   // Add the link line items.
@@ -637,7 +636,7 @@ void cmComputeLinkInformation::AddItem(std::string const& item, cmTarget* tgt)
     else
       {
       // This is a library or option specified by the user.
-      this->AddUserItem(item);
+      this->AddUserItem(item, true);
       }
     }
 }
@@ -1042,6 +1041,20 @@ void cmComputeLinkInformation::AddFullItem(std::string const& item)
     return;
     }
 
+  // Full path libraries should specify a valid library file name.
+  // See documentation of CMP0008.
+  if(this->Target->GetPolicyStatusCMP0008() != cmPolicies::NEW &&
+     (strstr(this->GlobalGenerator->GetName(), "Visual Studio") ||
+      strstr(this->GlobalGenerator->GetName(), "Xcode")))
+    {
+    std::string file = cmSystemTools::GetFilenameName(item);
+    if(!this->ExtractAnyLibraryName.find(file.c_str()))
+      {
+      this->HandleBadFullItem(item, file);
+      return;
+      }
+    }
+
   // This is called to handle a link item that is a full path.
   // If the target is not a static library make sure the link type is
   // shared.  This is because dynamic-mode linking can handle both
@@ -1116,12 +1129,17 @@ bool cmComputeLinkInformation::CheckImplicitDirItem(std::string const& item)
   // directory then just report the file name without the directory
   // portion.  This will allow the system linker to locate the proper
   // library for the architecture at link time.
-  this->AddUserItem(file);
+  this->AddUserItem(file, false);
+
+  // Make sure the link directory ordering will find the library.
+  this->OrderLinkerSearchPath->AddLinkLibrary(item);
+
   return true;
 }
 
 //----------------------------------------------------------------------------
-void cmComputeLinkInformation::AddUserItem(std::string const& item)
+void cmComputeLinkInformation::AddUserItem(std::string const& item,
+                                           bool pathNotKnown)
 {
   // This is called to handle a link item that does not match a CMake
   // target and is not a full path.  We check here if it looks like a
@@ -1211,7 +1229,10 @@ void cmComputeLinkInformation::AddUserItem(std::string const& item)
   else
     {
     // This is a name specified by the user.
-    this->OldUserFlagItems.push_back(item);
+    if(pathNotKnown)
+      {
+      this->OldUserFlagItems.push_back(item);
+      }
 
     // We must ask the linker to search for a library with this name.
     // Restore the target link type since this item does not specify
@@ -1334,10 +1355,71 @@ void cmComputeLinkInformation::AddSharedLibNoSOName(std::string const& item)
   // runtime the dynamic linker will search for the library using the
   // path instead of just the name.
   std::string file = cmSystemTools::GetFilenameName(item);
-  this->AddUserItem(file);
+  this->AddUserItem(file, false);
 
   // Make sure the link directory ordering will find the library.
   this->OrderLinkerSearchPath->AddLinkLibrary(item);
+}
+
+//----------------------------------------------------------------------------
+void cmComputeLinkInformation::HandleBadFullItem(std::string const& item,
+                                                 std::string const& file)
+{
+  // Do not depend on things that do not exist.
+  std::vector<std::string>::iterator i =
+    std::find(this->Depends.begin(), this->Depends.end(), item);
+  if(i != this->Depends.end())
+    {
+    this->Depends.erase(i);
+    }
+
+  // Tell the linker to search for the item and provide the proper
+  // path for it.  Do not contribute to any CMP0003 warning (do not
+  // put in OldLinkDirItems or OldUserFlagItems).
+  this->AddUserItem(file, false);
+  this->OrderLinkerSearchPath->AddLinkLibrary(item);
+
+  // Produce any needed message.
+  switch(this->Target->GetPolicyStatusCMP0008())
+    {
+    case cmPolicies::WARN:
+      {
+      // Print the warning at most once for this item.
+      std::string wid = "CMP0008-WARNING-GIVEN-";
+      wid += item;
+      if(!this->CMakeInstance->GetPropertyAsBool(wid.c_str()))
+        {
+        this->CMakeInstance->SetProperty(wid.c_str(), "1");
+        cmOStringStream w;
+        w << (this->Makefile->GetPolicies()
+              ->GetPolicyWarning(cmPolicies::CMP0008)) << "\n"
+          << "Target \"" << this->Target->GetName() << "\" links to item\n"
+          << "  " << item << "\n"
+          << "which is a full-path but not a valid library file name.";
+        this->CMakeInstance->IssueMessage(cmake::AUTHOR_WARNING, w.str(),
+                                          this->Target->GetBacktrace());
+        }
+      }
+    case cmPolicies::OLD:
+      // OLD behavior does not warn.
+      break;
+    case cmPolicies::NEW:
+      // NEW behavior will not get here.
+      break;
+    case cmPolicies::REQUIRED_IF_USED:
+    case cmPolicies::REQUIRED_ALWAYS:
+      {
+      cmOStringStream e;
+      e << (this->Makefile->GetPolicies()->
+            GetRequiredPolicyError(cmPolicies::CMP0008)) << "\n"
+          << "Target \"" << this->Target->GetName() << "\" links to item\n"
+          << "  " << item << "\n"
+          << "which is a full-path but not a valid library file name.";
+      this->CMakeInstance->IssueMessage(cmake::FATAL_ERROR, e.str(),
+                                        this->Target->GetBacktrace());
+      }
+      break;
+    }
 }
 
 //----------------------------------------------------------------------------

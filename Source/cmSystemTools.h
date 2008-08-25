@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSystemTools.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:53 $
-  Version:   $Revision: 1.150.2.1 $
+  Date:      $Date: 2008-05-29 13:15:32 $
+  Version:   $Revision: 1.150.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -48,7 +48,8 @@ public:
   /**
    * Look for and replace registry values in a string
    */
-  static void ExpandRegistryValues(std::string& source);
+  static void ExpandRegistryValues(std::string& source,
+                                   KeyWOW64 view = KeyWOW64_Default);
 
   /**
    * Platform independent escape spaces, unix uses backslash,
@@ -391,7 +392,8 @@ public:
   static bool ChangeRPath(std::string const& file,
                           std::string const& oldRPath,
                           std::string const& newRPath,
-                          std::string* emsg = 0);
+                          std::string* emsg = 0,
+                          bool* changed = 0);
 
   /** Try to remove the RPATH from an ELF binary.  */
   static bool RemoveRPath(std::string const& file, std::string* emsg = 0);

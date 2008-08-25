@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkInformation.h,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.15.2.2 $
+  Date:      $Date: 2008-07-28 15:31:35 $
+  Version:   $Revision: 1.15.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -139,12 +139,13 @@ private:
   void AddTargetItem(std::string const& item, cmTarget* target);
   void AddFullItem(std::string const& item);
   bool CheckImplicitDirItem(std::string const& item);
-  void AddUserItem(std::string const& item);
+  void AddUserItem(std::string const& item, bool pathNotKnown);
   void AddDirectoryItem(std::string const& item);
   void AddFrameworkItem(std::string const& item);
   void DropDirectoryItem(std::string const& item);
   bool CheckSharedLibNoSOName(std::string const& item);
   void AddSharedLibNoSOName(std::string const& item);
+  void HandleBadFullItem(std::string const& item, std::string const& file);
 
   // Framework info.
   void ComputeFrameworkInfo();

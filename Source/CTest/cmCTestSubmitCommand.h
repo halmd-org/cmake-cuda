@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestSubmitCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-29 17:01:24 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2008-05-15 19:40:00 $
+  Version:   $Revision: 1.5.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -45,7 +45,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_SUBMIT";}
+  virtual const char* GetName() { return "ctest_submit";}
 
   /**
    * Succinct documentation.
@@ -61,7 +61,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_SUBMIT([RETURN_VALUE res])\n"
+      "  ctest_submit([RETURN_VALUE res])\n"
       "Submits the test results for the project.";
     }
 

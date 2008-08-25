@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: CMakeSetupDialog.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:54 $
-  Version:   $Revision: 1.21.2.2 $
+  Date:      $Date: 2008-07-13 21:55:25 $
+  Version:   $Revision: 1.21.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,6 @@ protected slots:
   void initialize();
   void doConfigure();
   void doGenerate();
-  void doSuppressDev();
   void doInstallForCommandLine();
   void doHelp();
   void doAbout();
@@ -62,7 +61,7 @@ protected slots:
   void updateBinaryDirectory(const QString& dir);
   void showProgress(const QString& msg, float percent);
   void setEnabledState(bool);
-  bool promptForGenerator();
+  bool setupFirstConfigure();
   void updateGeneratorLabel(const QString& gen);
   void setExitAfterGenerate(bool);
   void addBinaryPath(const QString&);
@@ -76,6 +75,7 @@ protected slots:
   void addCacheEntry();
   void startSearch();
   void setDebugOutput(bool);
+  void setViewType(int);
 
 protected:
 
@@ -89,7 +89,6 @@ protected:
   QCMakeThread* CMakeThread;
   bool ExitAfterGenerate;
   bool CacheModified;
-  bool SuppressDevWarnings;
   QAction* ReloadCacheAction;
   QAction* DeleteCacheAction;
   QAction* ExitAction;

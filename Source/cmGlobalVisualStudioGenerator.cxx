@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudioGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.11.2.1 $
+  Date:      $Date: 2008-07-31 15:52:24 $
+  Version:   $Revision: 1.11.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -178,14 +178,16 @@ cmGlobalVisualStudioGenerator
             projects += ";";
             projects += *it;
             }
-          cmCallVisualStudioMacro::CallMacro
-            (topLevelSlnName, CMAKE_VSMACROS_RELOAD_MACRONAME, projects);
+          cmCallVisualStudioMacro::CallMacro(topLevelSlnName,
+            CMAKE_VSMACROS_RELOAD_MACRONAME, projects,
+            this->GetCMakeInstance()->GetDebugOutput());
           }
         }
       else if(m == MacroStop)
         {
         cmCallVisualStudioMacro::CallMacro(topLevelSlnName,
-          CMAKE_VSMACROS_STOP_MACRONAME, "");
+          CMAKE_VSMACROS_STOP_MACRONAME, "",
+          this->GetCMakeInstance()->GetDebugOutput());
         }
       }
     }

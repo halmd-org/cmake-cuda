@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallTargetGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:52 $
-  Version:   $Revision: 1.24.2.1 $
+  Date:      $Date: 2008-07-13 21:55:24 $
+  Version:   $Revision: 1.24.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,7 +31,7 @@ public:
     const char* file_permissions = "",
     std::vector<std::string> const& configurations 
     = std::vector<std::string>(),
-    const char* component = "",
+    const char* component = "Unspecified",
     bool optional = false
     );
   virtual ~cmInstallTargetGenerator();

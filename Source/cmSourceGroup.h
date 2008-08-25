@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceGroup.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-15 16:02:07 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2008-05-23 20:09:39 $
+  Version:   $Revision: 1.19.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -22,6 +22,8 @@
 
 class cmSourceFile;
 
+class cmSourceGroupInternals;
+
 /** \class cmSourceGroup
  * \brief Hold a group of sources as specified by a SOURCE_GROUP command.
  *
@@ -36,7 +38,9 @@ class cmSourceGroup
 {
 public:
   cmSourceGroup(const char* name, const char* regex);
-  ~cmSourceGroup() {}
+  cmSourceGroup(cmSourceGroup const& r);
+  ~cmSourceGroup();
+  cmSourceGroup& operator=(cmSourceGroup const&);
   
   /**
    * Set the regular expression for this group.
@@ -97,7 +101,7 @@ public:
   const std::vector<const cmSourceFile*>& GetSourceFiles() const;
   std::vector<const cmSourceFile*>& GetSourceFiles();
   
-  std::vector<cmSourceGroup> GetGroupChildren() const;
+  std::vector<cmSourceGroup> const& GetGroupChildren() const;
 private:
   /**
    * The name of the source group.
@@ -120,7 +124,7 @@ private:
    */
   std::vector<const cmSourceFile*> SourceFiles;
 
-  std::vector<cmSourceGroup> GroupChildren;
+  cmSourceGroupInternals* Internal;
 };
 
 #endif

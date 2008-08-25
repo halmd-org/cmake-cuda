@@ -25,6 +25,7 @@ MACRO(TEST_EXPECT_CONTAINS command expected)
   ENDIF(NOT "${result}" MATCHES "${expected}")
 ENDMACRO(TEST_EXPECT_CONTAINS command expected)
 
+
 # try to compile a file that should compile
 # also check that COPY_FILE works
 TRY_COMPILE(SHOULD_PASS

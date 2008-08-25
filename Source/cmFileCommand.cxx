@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFileCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.103.2.3 $
+  Date:      $Date: 2008-05-29 13:15:28 $
+  Version:   $Revision: 1.103.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -578,7 +578,7 @@ bool cmFileCommand::HandleStringsCommand(std::vector<std::string> const& args)
       {
       // Ignore CR character to make output always have UNIX newlines.
       }
-    else if(c >= 0x20 && c < 0x7F || c == '\t' ||
+    else if(c >= 0x20 && c < 0x7F || c == '\t' || c == '\f' ||
             (c == '\n' && newline_consume))
       {
       // This is an ASCII character that may be part of a string.
@@ -1411,7 +1411,8 @@ cmFileCommand::HandleRPathChangeCommand(std::vector<std::string> const& args)
   cmSystemToolsFileTime* ft = cmSystemTools::FileTimeNew();
   bool have_ft = cmSystemTools::FileTimeGet(file, ft);
   std::string emsg;
-  if(!cmSystemTools::ChangeRPath(file, oldRPath, newRPath, &emsg))
+  bool changed;
+  if(!cmSystemTools::ChangeRPath(file, oldRPath, newRPath, &emsg, &changed))
     {
     cmOStringStream e;
     e << "RPATH_CHANGE could not write new RPATH:\n"
@@ -1422,9 +1423,21 @@ cmFileCommand::HandleRPathChangeCommand(std::vector<std::string> const& args)
     this->SetError(e.str().c_str());
     success = false;
     }
-  if(success && have_ft)
+  if(success)
     {
-    cmSystemTools::FileTimeSet(file, ft);
+    if(changed)
+      {
+      std::string message = "Set runtime path of \"";
+      message += file;
+      message += "\" to \"";
+      message += newRPath;
+      message += "\"";
+      this->Makefile->DisplayStatus(message.c_str(), -1);
+      }
+    if(have_ft)
+      {
+      cmSystemTools::FileTimeSet(file, ft);
+      }
     }
   cmSystemTools::FileTimeDelete(ft);
   return success;

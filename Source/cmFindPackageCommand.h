@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPackageCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-29 01:38:48 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.19.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -82,8 +82,15 @@ private:
   bool ReadListFile(const char* f);
   void StoreVersionFound();
 
-  void AddUserPath(std::string const& p);
   void ComputePrefixes();
+  void AddPrefixesCMakeEnvironment();
+  void AddPrefixesCMakeVariable();
+  void AddPrefixesSystemEnvironment();
+  void AddPrefixesBuilds();
+  void AddPrefixesCMakeSystemVariable();
+  void AddPrefixesUserGuess();
+  void AddPrefixesUserHints();
+  void ComputeFinalPrefixes();
   bool SearchDirectory(std::string const& dir);
   bool CheckDirectory(std::string const& dir);
   bool FindConfigFile(std::string const& dir, std::string& file);
@@ -119,8 +126,6 @@ private:
   bool DebugMode;
   std::vector<std::string> Names;
   std::vector<std::string> Configs;
-  std::vector<std::string> Prefixes;
-  std::vector<std::string> UserPaths;
 };
 
 #endif

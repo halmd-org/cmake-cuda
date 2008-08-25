@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.h,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:40 $
-  Version:   $Revision: 1.109.2.4 $
+  Date:      $Date: 2008-06-25 13:51:32 $
+  Version:   $Revision: 1.109.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -416,6 +416,7 @@ protected:
                                          bool verbose);
   static int VisualStudioLinkNonIncremental(std::vector<std::string>& args,
                                             int type,
+                                            bool hasManifest,
                                             bool verbose);
   static int ParseVisualStudioLinkCommand(std::vector<std::string>& args, 
                                           std::vector<cmStdString>& command, 
@@ -428,7 +429,9 @@ protected:
   
   ///! Find the full path to one of the cmake programs like ctest, cpack, etc.
   std::string FindCMakeProgram(const char* name) const;
-private:
+private: 
+  cmake(const cmake&);  // Not implemented.
+  void operator=(const cmake&);  // Not implemented.
   ProgressCallbackType ProgressCallback;
   void* ProgressCallbackClientData;
   bool Verbose;

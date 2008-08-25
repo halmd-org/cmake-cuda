@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: AddCacheEntry.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-11-17 02:18:48 $
-  Version:   $Revision: 1.3 $
+  Date:      $Date: 2008-05-23 20:09:41 $
+  Version:   $Revision: 1.3.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -21,9 +21,9 @@
 static const int NumTypes = 4;
 static const QString TypeStrings[NumTypes] = 
   { "BOOL", "PATH", "FILEPATH", "STRING" };
-static const QCMakeCacheProperty::PropertyType Types[NumTypes] = 
-  { QCMakeCacheProperty::BOOL, QCMakeCacheProperty::PATH, 
-    QCMakeCacheProperty::FILEPATH, QCMakeCacheProperty::STRING}; 
+static const QCMakeProperty::PropertyType Types[NumTypes] = 
+  { QCMakeProperty::BOOL, QCMakeProperty::PATH, 
+    QCMakeProperty::FILEPATH, QCMakeProperty::STRING}; 
 
 AddCacheEntry::AddCacheEntry(QWidget* p)
   : QWidget(p)
@@ -34,8 +34,8 @@ AddCacheEntry::AddCacheEntry(QWidget* p)
     this->Type->addItem(TypeStrings[i]);
     }
   QWidget* cb = new QCheckBox();
-  QWidget* path = new QCMakeCachePathEditor();
-  QWidget* filepath = new QCMakeCacheFilePathEditor();
+  QWidget* path = new QCMakePathEditor();
+  QWidget* filepath = new QCMakeFilePathEditor();
   QWidget* string = new QLineEdit();
   this->StackedWidget->addWidget(cb);
   this->StackedWidget->addWidget(path);
@@ -73,14 +73,14 @@ QString AddCacheEntry::description() const
   return this->Description->text();
 }
 
-QCMakeCacheProperty::PropertyType AddCacheEntry::type() const
+QCMakeProperty::PropertyType AddCacheEntry::type() const
 {
   int idx = this->Type->currentIndex();
   if(idx >= 0 && idx < NumTypes)
     {
     return Types[idx];
     }
-  return QCMakeCacheProperty::BOOL;
+  return QCMakeProperty::BOOL;
 }
 
 

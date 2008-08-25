@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:40 $
-  Version:   $Revision: 1.375.2.5 $
+  Date:      $Date: 2008-07-31 15:52:24 $
+  Version:   $Revision: 1.375.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -592,12 +592,10 @@ void cmake::SetArgs(const std::vector<std::string>& args)
     else if(arg.find("-Wno-dev",0) == 0)
       {
       // skip for now
-      i++;
       }
     else if(arg.find("-Wdev",0) == 0)
       {
       // skip for now
-      i++;
       }
     else if(arg.find("--graphviz=",0) == 0)
       {
@@ -1424,7 +1422,8 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
           }
         }
 
-      return cmCallVisualStudioMacro::CallMacro(args[2], args[3], macroArgs);
+      return cmCallVisualStudioMacro::CallMacro(args[2], args[3],
+        macroArgs, true);
       }
 #endif
 
@@ -2093,22 +2092,30 @@ int cmake::ActualConfigure()
   // Before saving the cache
   // if the project did not define one of the entries below, add them now
   // so users can edit the values in the cache:
-  // LIBRARY_OUTPUT_PATH
-  // EXECUTABLE_OUTPUT_PATH
-  if(!this->CacheManager->GetCacheValue("LIBRARY_OUTPUT_PATH"))
+
+  // We used to always present LIBRARY_OUTPUT_PATH and
+  // EXECUTABLE_OUTPUT_PATH.  They are now documented as old-style and
+  // should no longer be used.  Therefore we present them only if the
+  // project requires compatibility with CMake 2.4.  We detect this
+  // here by looking for the old CMAKE_BACKWARDS_COMPATABILITY
+  // variable created when CMP0001 is not set to NEW.
+  if(this->GetCacheManager()->GetCacheValue("CMAKE_BACKWARDS_COMPATIBILITY"))
     {
-    this->CacheManager->AddCacheEntry
-      ("LIBRARY_OUTPUT_PATH", "",
-       "Single output directory for building all libraries.",
-       cmCacheManager::PATH);
-    } 
-  if(!this->CacheManager->GetCacheValue("EXECUTABLE_OUTPUT_PATH"))
-    {
-    this->CacheManager->AddCacheEntry
-      ("EXECUTABLE_OUTPUT_PATH", "",
-       "Single output directory for building all executables.",
-       cmCacheManager::PATH);
-    }  
+    if(!this->CacheManager->GetCacheValue("LIBRARY_OUTPUT_PATH"))
+      {
+      this->CacheManager->AddCacheEntry
+        ("LIBRARY_OUTPUT_PATH", "",
+         "Single output directory for building all libraries.",
+         cmCacheManager::PATH);
+      }
+    if(!this->CacheManager->GetCacheValue("EXECUTABLE_OUTPUT_PATH"))
+      {
+      this->CacheManager->AddCacheEntry
+        ("EXECUTABLE_OUTPUT_PATH", "",
+         "Single output directory for building all executables.",
+         cmCacheManager::PATH);
+      }
+    }
   if(!this->CacheManager->GetCacheValue("CMAKE_USE_RELATIVE_PATHS"))
     {
     this->CacheManager->AddCacheEntry
@@ -3377,6 +3384,11 @@ void cmake::DefineProperties(cmake *cm)
     ("IN_TRY_COMPILE", cmProperty::GLOBAL,
      "Read-only property that is true during a try-compile configuration.",
      "True when building a project inside a TRY_COMPILE or TRY_RUN command.");
+  cm->DefineProperty
+    ("ENABLED_LANGUAGES", cmProperty::GLOBAL,
+     "Read-only property that contains the list of currently "
+     "enabled languages",
+     "Set to list of currently enabled lanauges.");
 
   // ================================================================
   // define variables as well
@@ -3507,7 +3519,7 @@ void cmake::ReportUndefinedPropertyAccesses(const char *filename)
           scopeStr = "unknown";
         break;
         }
-      fprintf(progFile,"%s with scope %s\n",ap->first.c_str(),scopeStr);
+      fprintf(progFile, "%s with scope %s\n", ap->first.c_str(), scopeStr);
       }
     }
   fclose(progFile);
@@ -3591,6 +3603,24 @@ const char *cmake::GetProperty(const char* prop, cmProperty::ScopeType scope)
     {
     this->SetProperty("IN_TRY_COMPILE",
                       this->GetIsInTryCompile()? "1":"0");
+    }
+  else if ( propname == "ENABLED_LANGUAGES" )
+    {
+    std::string lang;
+    if(this->GlobalGenerator)
+      {
+      std::vector<std::string> enLangs;
+      this->GlobalGenerator->GetEnabledLanguages(enLangs);
+      const char* sep = "";
+      for(std::vector<std::string>::iterator i = enLangs.begin();
+          i != enLangs.end(); ++i)
+        {
+        lang += sep;
+        sep = ";";
+        lang += *i;
+        }
+      }
+    this->SetProperty("ENABLED_LANGUAGES", lang.c_str());
     }
   return this->Properties.GetPropertyValue(prop, scope, chain);
 }
@@ -3742,7 +3772,7 @@ static bool cmakeCheckStampFile(const char* stampName)
     // Notify the user why CMake is re-running.  It is safe to
     // just print to stdout here because this code is only reachable
     // through an undocumented flag used by the VS generator.
-    std::cout << "CMake is re-running due to explicit user request.\n";
+    std::cout << "CMake is re-running because build system is out-of-date.\n";
     return false;
     }
 
@@ -3762,6 +3792,8 @@ static bool cmakeCheckStampFile(const char* stampName)
     {
     // The stamp dependencies file cannot be read.  Just assume the
     // build system is really out of date.
+    std::cout << "CMake is re-running because " << stampName
+              << " dependency file is missing.\n";
     return false;
     }
 
@@ -3777,6 +3809,8 @@ static bool cmakeCheckStampFile(const char* stampName)
       {
       // The stamp depends file is older than this dependency.  The
       // build system is really out of date.
+      std::cout << "CMake is re-running because " << stampName
+                << " is out-of-date.\n";
       return false;
       }
     }
@@ -3850,7 +3884,7 @@ int cmake::VisualStudioLink(std::vector<std::string>& args, int type)
       i != args.end(); ++i)
     {
     // check for nmake temporary files 
-    if((*i)[0] == '@')
+    if((*i)[0] == '@' && i->find("@CMakeFiles") != 0 )
       {
       std::ifstream fin(i->substr(1).c_str());
       std::string line;
@@ -3865,25 +3899,40 @@ int cmake::VisualStudioLink(std::vector<std::string>& args, int type)
       expandedArgs.push_back(*i);
       }
     }
-  // figure out if this is an incremental link or not and run the correct
-  // link function.
+  bool hasIncremental = false;
+  bool hasManifest = true;
   for(std::vector<std::string>::iterator i = expandedArgs.begin();
       i != expandedArgs.end(); ++i)
     {
     if(cmSystemTools::Strucmp(i->c_str(), "/INCREMENTAL:YES") == 0)
       {
-      if(verbose)
-        {
-        std::cout << "Visual Studio Incremental Link\n";
-        }
-      return cmake::VisualStudioLinkIncremental(expandedArgs, type, verbose);
+      hasIncremental = true;
       }
+    if(cmSystemTools::Strucmp(i->c_str(), "/MANIFEST:NO") == 0)
+      {
+      hasManifest = false;
+      }
+    }
+  if(hasIncremental && hasManifest)
+    {
+    if(verbose)
+      {
+      std::cout << "Visual Studio Incremental Link with embeded manifests\n";
+      }
+    return cmake::VisualStudioLinkIncremental(expandedArgs, type, verbose);
     }
   if(verbose)
     {
-    std::cout << "Visual Studio Non-Incremental Link\n";
+    if(!hasIncremental)
+      {
+      std::cout << "Visual Studio Non-Incremental Link\n";
+      }
+    else
+      {
+      std::cout << "Visual Studio Incremental Link without manifests\n";
+      }
     }
-  return cmake::VisualStudioLinkNonIncremental(expandedArgs, type, verbose);
+  return cmake::VisualStudioLinkNonIncremental(expandedArgs, type, hasManifest, verbose);
 }
 
 int cmake::ParseVisualStudioLinkCommand(std::vector<std::string>& args, 
@@ -4088,6 +4137,7 @@ int cmake::VisualStudioLinkIncremental(std::vector<std::string>& args,
 
 int cmake::VisualStudioLinkNonIncremental(std::vector<std::string>& args,
                                           int type,
+                                          bool hasManifest,
                                           bool verbose)
 {
   std::vector<cmStdString> linkCommand;
@@ -4100,6 +4150,10 @@ int cmake::VisualStudioLinkNonIncremental(std::vector<std::string>& args,
   if(!cmake::RunCommand("LINK", linkCommand, verbose))
     {
     return -1;
+    }
+  if(!hasManifest)
+    {
+    return 0;
     }
   std::vector<cmStdString> mtCommand;
   mtCommand.push_back(cmSystemTools::FindProgram("mt.exe"));

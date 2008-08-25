@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmELF.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:51 $
-  Version:   $Revision: 1.8.2.1 $
+  Date:      $Date: 2008-05-15 19:39:54 $
+  Version:   $Revision: 1.8.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -20,6 +20,7 @@
 #include <cmsys/auto_ptr.hxx>
 
 // Need the native byte order of the running CPU.
+#define cmsys_CPU_UNKNOWN_OKAY // We can decide at runtime if not known.
 #include <cmsys/CPU.h>
 
 // Include the ELF format information system header.
@@ -84,6 +85,8 @@ public:
     this->NeedSwap = (this->ByteOrder == ByteOrderMSB);
 #elif cmsys_CPU_ENDIAN_ID == cmsys_CPU_ENDIAN_ID_BIG
     this->NeedSwap = (this->ByteOrder == ByteOrderLSB);
+#else
+    this->NeedSwap = false; // Final decision is at runtime anyway.
 #endif
 
     // We have not yet loaded the section info.

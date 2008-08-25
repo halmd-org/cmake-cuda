@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDepends.h,v $
   Language:  C++
-  Date:      $Date: 2007-12-28 16:49:59 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2008-05-15 19:39:50 $
+  Version:   $Revision: 1.14.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -34,7 +34,7 @@ class cmDepends
 public:
   /** Instances need to know the build directory name and the relative
       path from the build directory to the target file.  */
-  cmDepends();
+  cmDepends(cmLocalGenerator* lg=0, const char* targetDir="");
   
   /** at what level will the compile be done from */
   void SetCompileDirectory(const char *dir) {this->CompileDirectory = dir;};
@@ -107,6 +107,11 @@ protected:
   size_t MaxPath;
   char* Dependee;
   char* Depender;
+
+  // The include file search path.
+  std::vector<std::string> IncludePath;
+
+  void SetIncludePathFromLanguage(const char* lang);
 
 private:
   cmDepends(cmDepends const&); // Purposely not implemented.

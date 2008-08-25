@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmBootstrapCommands.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-01 20:20:35 $
-  Version:   $Revision: 1.27 $
+  Date:      $Date: 2008-07-13 21:55:23 $
+  Version:   $Revision: 1.27.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -86,6 +86,7 @@
 #include "cmSetSourceFilesPropertiesCommand.cxx"
 #include "cmSetTargetPropertiesCommand.cxx"
 #include "cmSetTestsPropertiesCommand.cxx"
+#include "cmGetTestPropertyCommand.cxx"
 #include "cmSiteNameCommand.cxx"
 #include "cmStringCommand.cxx"
 #include "cmSubdirCommand.cxx"
@@ -154,6 +155,7 @@ void GetBootstrapCommands(std::list<cmCommand*>& commands)
   commands.push_back(new cmSetPropertyCommand);
   commands.push_back(new cmSetSourceFilesPropertiesCommand);
   commands.push_back(new cmSetTargetPropertiesCommand);
+  commands.push_back(new cmGetTestPropertyCommand);
   commands.push_back(new cmSetTestsPropertiesCommand);
   commands.push_back(new cmSiteNameCommand);
   commands.push_back(new cmStringCommand);

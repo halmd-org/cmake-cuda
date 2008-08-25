@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestCoverageCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-29 17:01:24 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-05-15 19:39:58 $
+  Version:   $Revision: 1.4.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_COVERAGE";}
+  virtual const char* GetName() { return "ctest_coverage";}
 
   /**
    * Succinct documentation.
@@ -60,7 +60,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_COVERAGE([BUILD build_dir] [RETURN_VALUE res])\n"
+      "  ctest_coverage([BUILD build_dir] [RETURN_VALUE res])\n"
       "Perform the coverage of the given build directory and stores results "
       "in Coverage.xml. The second argument is a variable that will hold "
       "value.";

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio6Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-23 02:05:39 $
-  Version:   $Revision: 1.141.2.1 $
+  Date:      $Date: 2008-05-23 20:09:36 $
+  Version:   $Revision: 1.141.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -532,7 +532,7 @@ void cmLocalVisualStudio6Generator
       }
     }
 
-  std::vector<cmSourceGroup> children  = sg->GetGroupChildren();
+  std::vector<cmSourceGroup> const& children  = sg->GetGroupChildren();
 
   for(unsigned int i=0;i<children.size();++i)
     {

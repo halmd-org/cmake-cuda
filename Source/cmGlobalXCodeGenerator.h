@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalXCodeGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-14 14:20:57 $
-  Version:   $Revision: 1.52 $
+  Date:      $Date: 2008-07-13 21:55:23 $
+  Version:   $Revision: 1.52.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -102,6 +102,8 @@ private:
                             std::vector<cmXCodeObject*> contentBuildPhases,
                             cmXCodeObject* frameworkBuildPhase,
                             cmTarget& cmtarget);
+
+  std::string ComputeInfoPListLocation(cmTarget& target);
 
   void AddCommandsToBuildPhase(cmXCodeObject* buildphase,
                                cmTarget& target,

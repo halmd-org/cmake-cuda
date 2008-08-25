@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-23 02:05:40 $
-  Version:   $Revision: 1.93.2.3 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.93.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -24,6 +24,7 @@
 #include "cmSourceFile.h"
 #include "cmTarget.h"
 #include "cmake.h"
+#include "cmComputeLinkInformation.h"
 
 #include "cmMakefileExecutableTargetGenerator.h"
 #include "cmMakefileLibraryTargetGenerator.h"
@@ -933,8 +934,10 @@ void cmMakefileTargetGenerator::WriteTargetDependRules()
           this->MultipleOutputPairs.begin();
         pi != this->MultipleOutputPairs.end(); ++pi)
       {
-      *this->InfoFileStream << "  \"" << pi->first << "\" \""
-                            << pi->second << "\"\n";
+      *this->InfoFileStream
+        << "  " << this->LocalGenerator->EscapeForCMake(pi->first.c_str())
+        << " "  << this->LocalGenerator->EscapeForCMake(pi->second.c_str())
+        << "\n";
       }
     *this->InfoFileStream << "  )\n\n";
     }
@@ -1113,15 +1116,15 @@ void cmMakefileTargetGenerator
       ->AppendEcho(commands, comment.c_str(),
                    cmLocalUnixMakefileGenerator3::EchoGenerate);
     }
+  // Below we need to skip over the echo and progress commands.
+  unsigned int skip = static_cast<unsigned int>(commands.size());
+
+  // Now append the actual user-specified commands.
   this->LocalGenerator->AppendCustomCommand(commands, cc);
 
   // Collect the dependencies.
   std::vector<std::string> depends;
   this->LocalGenerator->AppendCustomDepend(depends, cc);
-
-  // Add a dependency on the rule file itself.
-  this->LocalGenerator->AppendRuleDepend(depends,
-                                         this->BuildFileNameFull.c_str());
 
   // Check whether we need to bother checking for a symbolic output.
   bool need_symbolic = this->GlobalGenerator->GetNeedSymbolicMark();
@@ -1141,6 +1144,14 @@ void cmMakefileTargetGenerator
   this->LocalGenerator->WriteMakeRule(*this->BuildFileStream, 0,
                                       o->c_str(), depends, commands,
                                       symbolic);
+
+  // If the rule has changed make sure the output is rebuilt.
+  if(!symbolic)
+    {
+    this->GlobalGenerator->AddRuleHash(cc.GetOutputs(),
+                                       commands.begin()+skip,
+                                       commands.end());
+    }
   }
 
   // Write rules to drive building any outputs beyond the first.
@@ -1458,48 +1469,16 @@ void cmMakefileTargetGenerator
     {
     return;
     }
-  // Compute which library configuration to link.
-  cmTarget::LinkLibraryType linkType = cmTarget::OPTIMIZED;
-  if(cmSystemTools::UpperCase(
-       this->LocalGenerator->ConfigurationName.c_str()) == "DEBUG")
-    {
-    linkType = cmTarget::DEBUG;
-    }
-  // Keep track of dependencies already listed.
-  std::set<cmStdString> emitted;
-
-  // A target should not depend on itself.
-  emitted.insert(this->Target->GetName());
 
   // Loop over all library dependencies.
-  const cmTarget::LinkLibraryVectorType& tlibs =
-    this->Target->GetLinkLibraries();
-  for(cmTarget::LinkLibraryVectorType::const_iterator lib = tlibs.begin();
-      lib != tlibs.end(); ++lib)
+  const char* cfg = this->LocalGenerator->ConfigurationName.c_str();
+  if(cmComputeLinkInformation* cli = this->Target->GetLinkInformation(cfg))
     {
-    // skip the library if it is not general and the link type
-    // does not match the current target
-    if(lib->second != cmTarget::GENERAL &&
-       lib->second != linkType)
+    std::vector<std::string> const& libDeps = cli->GetDepends();
+    for(std::vector<std::string>::const_iterator j = libDeps.begin();
+        j != libDeps.end(); ++j)
       {
-      continue;
-      }
-       
-    // Don't emit the same library twice for this target.
-    if(emitted.insert(lib->first).second)
-      {
-      // Depend on other CMake targets.
-      if(cmTarget* tgt =
-         this->GlobalGenerator->FindTarget(0, lib->first.c_str()))
-        {
-        const char* config = this->LocalGenerator->ConfigurationName.c_str();
-        depends.push_back(tgt->GetFullPath(config, false));
-        }
-      // depend on full path libs as well
-      else if(cmSystemTools::FileIsFullPath(lib->first.c_str()))
-        {
-        depends.push_back(lib->first.c_str());
-        }
+      depends.push_back(*j);
       }
     }
 }

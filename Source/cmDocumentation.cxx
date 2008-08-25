@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-05 16:05:20 $
-  Version:   $Revision: 1.69 $
+  Date:      $Date: 2008-07-22 18:04:24 $
+  Version:   $Revision: 1.69.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1350,7 +1350,9 @@ void cmDocumentation
 ::PrintDocumentationCommand(std::ostream& os,
                             const cmDocumentationEntry &entry)
 {
-  cmDocumentationSection *sec = new cmDocumentationSection("","");
+  // the string "SingleItem" will be used in a few places to detect the case
+  // that only the documentation for a single item is printed
+  cmDocumentationSection *sec = new cmDocumentationSection("SingleItem","");
   sec->Append(entry);
   this->AllSections["temp"] = sec;
   this->ClearSections();

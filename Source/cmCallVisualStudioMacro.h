@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCallVisualStudioMacro.h,v $
   Language:  C++
-  Date:      $Date: 2007-11-16 12:01:58 $
-  Version:   $Revision: 1.1 $
+  Date:      $Date: 2008-07-31 15:52:24 $
+  Version:   $Revision: 1.1.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,7 +33,8 @@ public:
   ///! macro in each Visual Studio instance.
   static int CallMacro(const std::string& slnFile,
                        const std::string& macro,
-                       const std::string& args);
+                       const std::string& args,
+                       const bool logErrorsAsMessages);
 
   ///! Count the number of running instances of Visual Studio with the
   ///! given solution file open. Pass "ALL" for slnFile to count all

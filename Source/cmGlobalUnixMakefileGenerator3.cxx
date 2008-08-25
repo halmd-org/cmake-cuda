@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator3
   Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-24 22:23:26 $
-  Version:   $Revision: 1.126.2.1 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.126.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -90,7 +90,7 @@ void cmGlobalUnixMakefileGenerator3
     const char* cname = this->GetCMakeInstance()->
       GetCacheManager()->GetCacheValue(langComp.c_str());
     std::string changeVars;
-    if(cname && (path != cname))
+    if(cname && (path != cname) && (optional==false))
       {
       const char* cvars = 
         this->GetCMakeInstance()->GetProperty(
@@ -771,7 +771,7 @@ cmGlobalUnixMakefileGenerator3
                               cmLocalGenerator::FULL,
                               cmLocalGenerator::SHELL);
       //
-      std::set<cmStdString> emitted;
+      std::set<cmTarget *> emitted;
       progCmd << " " 
               << this->GetTargetTotalNumberOfActions(t->second,
                                                       emitted);
@@ -848,13 +848,13 @@ cmGlobalUnixMakefileGenerator3
 
 //----------------------------------------------------------------------------
 int cmGlobalUnixMakefileGenerator3
-::GetTargetTotalNumberOfActions(cmTarget & target,
-                                std::set<cmStdString> &emitted)
+::GetTargetTotalNumberOfActions(cmTarget &target,
+                                std::set<cmTarget *> &emitted)
 {
   // do not double count
   int result = 0;
 
-  if(emitted.insert(target.GetName()).second)
+  if(emitted.insert(&target).second)
     {
     cmLocalUnixMakefileGenerator3 *lg = 
       static_cast<cmLocalUnixMakefileGenerator3 *>
@@ -877,7 +877,7 @@ unsigned long cmGlobalUnixMakefileGenerator3
 ::GetNumberOfProgressActionsInAll(cmLocalUnixMakefileGenerator3 *lg)
 {
   unsigned long result = 0;
-  std::set<cmStdString> emitted;
+  std::set<cmTarget *> emitted;
   std::set<cmTarget *>& targets = this->LocalGeneratorToTargetMap[lg];
   for(std::set<cmTarget *>::iterator t = targets.begin();
       t != targets.end(); ++t)
@@ -956,15 +956,15 @@ void cmGlobalUnixMakefileGenerator3::WriteHelpRule
             }
           }
         }
-      std::vector<cmStdString> const& localHelp = lg->GetLocalHelp();
-      for(std::vector<cmStdString>::const_iterator o = localHelp.begin();
-          o != localHelp.end(); ++o)
-        {
-        path = "... ";
-        path += *o;
-        lg->AppendEcho(commands, path.c_str());
-        }
       }
+    }
+  std::vector<cmStdString> const& localHelp = lg->GetLocalHelp();
+  for(std::vector<cmStdString>::const_iterator o = localHelp.begin();
+      o != localHelp.end(); ++o)
+    {
+    path = "... ";
+    path += *o;
+    lg->AppendEcho(commands, path.c_str());
     }
   lg->WriteMakeRule(ruleFileStream, "Help Target",
                     "help",

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:53 $
-  Version:   $Revision: 1.207.2.5 $
+  Date:      $Date: 2008-07-28 15:31:35 $
+  Version:   $Revision: 1.207.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -55,6 +55,7 @@ cmTarget::cmTarget()
   this->Makefile = 0;
   this->PolicyStatusCMP0003 = cmPolicies::WARN;
   this->PolicyStatusCMP0004 = cmPolicies::WARN;
+  this->PolicyStatusCMP0008 = cmPolicies::WARN;
   this->LinkLibrariesAnalyzed = false;
   this->HaveInstallRule = false;
   this->DLLPlatform = false;
@@ -157,6 +158,24 @@ void cmTarget::DefineProperties(cmake *cm)
      "Setting HAS_CXX on a target will force the target to use the "
      "C++ linker (and C++ runtime libraries) for linking even if the "
      "target has no C++ code in it.");
+
+  cm->DefineProperty
+    ("IMPLICIT_DEPENDS_INCLUDE_TRANSFORM", cmProperty::TARGET,
+     "Specify #include line transforms for dependencies in a target.",
+     "This property specifies rules to transform macro-like #include lines "
+     "during implicit dependency scanning of C and C++ source files.  "
+     "The list of rules must be semicolon-separated with each entry of "
+     "the form \"A_MACRO(%)=value-with-%\" (the % must be literal).  "
+     "During dependency scanning occurrences of A_MACRO(...) on #include "
+     "lines will be replaced by the value given with the macro argument "
+     "substituted for '%'.  For example, the entry\n"
+     "  MYDIR(%)=<mydir/%>\n"
+     "will convert lines of the form\n"
+     "  #include MYDIR(myheader.h)\n"
+     "to\n"
+     "  #include <mydir/myheader.h>\n"
+     "allowing the dependency to be followed.\n"
+     "This property applies to sources in the target on which it is set.");
 
   cm->DefineProperty
     ("IMPORT_PREFIX", cmProperty::TARGET,
@@ -529,10 +548,21 @@ void cmTarget::DefineProperties(cmake *cm)
      "When this property is set to true the executable when built "
      "on Mac OS X will be created as an application bundle.  "
      "This makes it a GUI executable that can be launched from "
-     "the Finder.\n"
-     "The bundle Info.plist file is generated automatically.  "
-     "The following target properties may be set to specify "
-     "its content:"
+     "the Finder.  "
+     "See the MACOSX_BUNDLE_INFO_PLIST target property for information "
+     "about creation of the Info.plist file for the application bundle.");
+
+  cm->DefineProperty
+    ("MACOSX_BUNDLE_INFO_PLIST", cmProperty::TARGET,
+     "Specify a custom Info.plist template for a Mac OS X App Bundle.",
+     "An executable target with MACOSX_BUNDLE enabled will be built as an "
+     "application bundle on Mac OS X.  "
+     "By default its Info.plist file is created by configuring a template "
+     "called MacOSXBundleInfo.plist.in located in the CMAKE_MODULE_PATH.  "
+     "This property specifies an alternative template file name which "
+     "may be a full path.\n"
+     "The following target properties may be set to specify content to "
+     "be configured into the file:\n"
      "  MACOSX_BUNDLE_INFO_STRING\n"
      "  MACOSX_BUNDLE_ICON_FILE\n"
      "  MACOSX_BUNDLE_GUI_IDENTIFIER\n"
@@ -541,7 +571,10 @@ void cmTarget::DefineProperties(cmake *cm)
      "  MACOSX_BUNDLE_SHORT_VERSION_STRING\n"
      "  MACOSX_BUNDLE_BUNDLE_VERSION\n"
      "  MACOSX_BUNDLE_COPYRIGHT\n"
-      );
+     "CMake variables of the same name may be set to affect all targets "
+     "in a directory that do not have each specific property set.  "
+     "If a custom Info.plist is specified by this property it may of course "
+     "hard-code all the settings instead of using the target properties.");
 
   cm->DefineProperty
     ("ENABLE_EXPORTS", cmProperty::TARGET,
@@ -736,6 +769,8 @@ void cmTarget::SetMakefile(cmMakefile* mf)
     this->Makefile->GetPolicyStatus(cmPolicies::CMP0003);
   this->PolicyStatusCMP0004 =
     this->Makefile->GetPolicyStatus(cmPolicies::CMP0004);
+  this->PolicyStatusCMP0008 =
+    this->Makefile->GetPolicyStatus(cmPolicies::CMP0008);
 }
 
 //----------------------------------------------------------------------------
@@ -1003,6 +1038,21 @@ void cmTarget::TraceDependencies(const char* vsProjectFile)
   // Use a helper object to trace the dependencies.
   cmTargetTraceDependencies tracer(this, vsProjectFile);
   tracer.Trace();
+}
+
+//----------------------------------------------------------------------------
+bool cmTarget::FindSourceFiles()
+{
+  for(std::vector<cmSourceFile*>::const_iterator
+        si = this->SourceFiles.begin();
+      si != this->SourceFiles.end(); ++si)
+    {
+    if((*si)->GetFullPath().empty())
+      {
+      return false;
+      }
+    }
+  return true;
 }
 
 //----------------------------------------------------------------------------

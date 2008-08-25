@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindProgramCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.42 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.42.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -97,8 +97,7 @@ std::string cmFindProgramCommand::FindProgram(std::vector<std::string> names)
 {
   std::string program = "";
 
-  // First/last order taken care of in cmFindBase when the paths are setup.
-  if(this->SearchAppBundleFirst || this->SearchAppBundleLast)
+  if(this->SearchAppBundleFirst || this->SearchAppBundleOnly)
     {
     program = FindAppBundle(names);
     }
@@ -107,6 +106,10 @@ std::string cmFindProgramCommand::FindProgram(std::vector<std::string> names)
     program = cmSystemTools::FindProgram(names, this->SearchPaths, true);
     }
 
+  if(program.empty() && this->SearchAppBundleLast)
+    {
+    program = this->FindAppBundle(names);
+    }
   return program;
 }
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:51 $
-  Version:   $Revision: 1.62.2.2 $
+  Date:      $Date: 2008-05-29 13:15:30 $
+  Version:   $Revision: 1.62.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -200,6 +200,12 @@ cmInstallTargetGenerator
         }
       else
         {
+        // Operations done at install time on the installed file should
+        // be done on the real file and not any of the symlinks.
+        toInstallPath = this->GetInstallDestination();
+        toInstallPath += "/";
+        toInstallPath += targetNameReal;
+
         files.push_back(from1);
         if(targetNameReal != targetName)
           {

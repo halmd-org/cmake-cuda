@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: AddCacheEntry.h,v $
   Language:  C++
-  Date:      $Date: 2007-11-13 04:59:25 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2008-05-23 20:09:42 $
+  Version:   $Revision: 1.2.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,7 +33,7 @@ public:
   QString name() const;
   QVariant value() const;
   QString description() const;
-  QCMakeCacheProperty::PropertyType type() const;
+  QCMakeProperty::PropertyType type() const;
 };
 
 #endif

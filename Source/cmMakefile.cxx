@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefile.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.463.2.3 $
+  Date:      $Date: 2008-06-30 20:10:35 $
+  Version:   $Revision: 1.463.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -487,13 +487,14 @@ bool cmMakefile::ReadListFile(const char* filename_in,
       {
       this->cmCurrentListFile = filename;
       }
-    // loop over current function blockers and record them
-    std::list<cmFunctionBlocker *>::iterator pos;
-    for (pos = this->FunctionBlockers.begin();
-         pos != this->FunctionBlockers.end(); ++pos)
-      {
-      originalBlockers.insert(*pos);
-      }
+    }
+
+  // loop over current function blockers and record them
+  for (std::list<cmFunctionBlocker *>::iterator pos 
+        = this->FunctionBlockers.begin();
+       pos != this->FunctionBlockers.end(); ++pos)
+    {
+    originalBlockers.insert(*pos);
     }
 
   // Now read the input file
@@ -542,7 +543,7 @@ bool cmMakefile::ReadListFile(const char* filename_in,
     }
   // add this list file to the list of dependencies
   this->ListFiles.push_back( filenametoread);
-  bool endScopeNicely = filename? true: false;
+  bool endScopeNicely = true;
   const size_t numberFunctions = cacheFile.Functions.size();
   for(size_t i =0; i < numberFunctions; ++i)
     {
@@ -561,8 +562,8 @@ bool cmMakefile::ReadListFile(const char* filename_in,
   if (endScopeNicely)
     {
     // loop over all function blockers to see if any block this command
-    std::list<cmFunctionBlocker *>::iterator pos;
-    for (pos = this->FunctionBlockers.begin();
+    for (std::list<cmFunctionBlocker *>::iterator pos 
+         = this->FunctionBlockers.begin();
          pos != this->FunctionBlockers.end(); ++pos)
       {
       // if this blocker was not in the original then send a
@@ -720,6 +721,7 @@ cmMakefile::AddCustomCommandToTarget(const char* target,
     std::vector<std::string> no_output;
     cmCustomCommand cc(no_output, depends, commandLines, comment, workingDir);
     cc.SetEscapeOldStyle(escapeOldStyle);
+    cc.SetEscapeAllowMakeVars(true);
     switch(type)
       {
       case cmTarget::PRE_BUILD:
@@ -833,6 +835,7 @@ cmMakefile::AddCustomCommandToOutput(const std::vector<std::string>& outputs,
       new cmCustomCommand(outputs, depends2, commandLines,
                           comment, workingDir);
     cc->SetEscapeOldStyle(escapeOldStyle);
+    cc->SetEscapeAllowMakeVars(true);
     file->SetCustomCommand(cc);
     }
 }
@@ -1015,12 +1018,21 @@ void cmMakefile::AddDefineFlag(const char* flag)
     return;
     }
 
+  // Update the string used for the old DEFINITIONS property.
+  this->AddDefineFlag(flag, this->DefineFlagsOrig);
+
   // If this is really a definition, update COMPILE_DEFINITIONS.
   if(this->ParseDefineFlag(flag, false))
     {
     return;
     }
 
+  // Add this flag that does not look like a definition.
+  this->AddDefineFlag(flag, this->DefineFlags);
+}
+
+void cmMakefile::AddDefineFlag(const char* flag, std::string& dflags)
+{
   // remove any \n\r
   std::string ret = flag;
   std::string::size_type pos = 0;
@@ -1036,8 +1048,8 @@ void cmMakefile::AddDefineFlag(const char* flag)
     pos++;
     }
 
-  this->DefineFlags += " ";
-  this->DefineFlags += ret;
+  dflags += " ";
+  dflags += ret;
 }
 
 
@@ -1050,22 +1062,33 @@ void cmMakefile::RemoveDefineFlag(const char* flag)
     return;
     }
 
+  // Update the string used for the old DEFINITIONS property.
+  this->RemoveDefineFlag(flag, len, this->DefineFlagsOrig);
+
   // If this is really a definition, update COMPILE_DEFINITIONS.
   if(this->ParseDefineFlag(flag, true))
     {
     return;
     }
 
+  // Remove this flag that does not look like a definition.
+  this->RemoveDefineFlag(flag, len, this->DefineFlags);
+}
+
+void cmMakefile::RemoveDefineFlag(const char* flag,
+                                  std::string::size_type len,
+                                  std::string& dflags)
+{
   // Remove all instances of the flag that are surrounded by
   // whitespace or the beginning/end of the string.
-  for(std::string::size_type lpos = this->DefineFlags.find(flag, 0);
-      lpos != std::string::npos; lpos = this->DefineFlags.find(flag, lpos))
+  for(std::string::size_type lpos = dflags.find(flag, 0);
+      lpos != std::string::npos; lpos = dflags.find(flag, lpos))
     {
     std::string::size_type rpos = lpos + len;
-    if((lpos <= 0 || isspace(this->DefineFlags[lpos-1])) &&
-       (rpos >= this->DefineFlags.size() || isspace(this->DefineFlags[rpos])))
+    if((lpos <= 0 || isspace(dflags[lpos-1])) &&
+       (rpos >= dflags.size() || isspace(dflags[rpos])))
       {
-      this->DefineFlags.erase(lpos, len);
+      dflags.erase(lpos, len);
       }
     else
       {
@@ -1293,6 +1316,12 @@ void cmMakefile::InitializeFromParent()
 
   // define flags
   this->DefineFlags = parent->DefineFlags;
+
+  // Include transform property.  There is no per-config version.
+  {
+  const char* prop = "IMPLICIT_DEPENDS_INCLUDE_TRANSFORM";
+  this->SetProperty(prop, parent->GetProperty(prop));
+  }
 
   // compile definitions property and per-config versions
   {
@@ -2899,8 +2928,10 @@ const char *cmMakefile::GetProperty(const char* prop,
   output = "";
   if (!strcmp("PARENT_DIRECTORY",prop))
     {
-    output = this->LocalGenerator->GetParent()
-      ->GetMakefile()->GetStartDirectory();
+    if(cmLocalGenerator* plg = this->LocalGenerator->GetParent())
+      {
+      output = plg->GetMakefile()->GetStartDirectory();
+      }
     return output.c_str();
     }
   else if (!strcmp("INCLUDE_REGULAR_EXPRESSION",prop) )
@@ -2945,8 +2976,8 @@ const char *cmMakefile::GetProperty(const char* prop,
     return output.c_str();
     }
   else if (!strcmp("DEFINITIONS",prop))
-    {
-    output = this->GetDefineFlags();
+    { 
+    output += this->DefineFlagsOrig;
     return output.c_str();
     }
   else if (!strcmp("INCLUDE_DIRECTORIES",prop) )
@@ -3167,7 +3198,7 @@ void cmMakefile::DefineProperties(cmake *cm)
      "in your CMake scripts. It returns a list of what list files "
      "are currently being processed, in order. So if one listfile "
      "does an INCLUDE command then that is effectively pushing "
-     "the included listfile onto the stack.");
+     "the included listfile onto the stack.", false);
 
   cm->DefineProperty
     ("TEST_INCLUDE_FILE", cmProperty::DIRECTORY,
@@ -3209,6 +3240,26 @@ void cmMakefile::DefineProperties(cmake *cm)
      "in the directory's parent.\n");
 
   cm->DefineProperty
+    ("IMPLICIT_DEPENDS_INCLUDE_TRANSFORM", cmProperty::DIRECTORY,
+     "Specify #include line transforms for dependencies in a directory.",
+     "This property specifies rules to transform macro-like #include lines "
+     "during implicit dependency scanning of C and C++ source files.  "
+     "The list of rules must be semicolon-separated with each entry of "
+     "the form \"A_MACRO(%)=value-with-%\" (the % must be literal).  "
+     "During dependency scanning occurrences of A_MACRO(...) on #include "
+     "lines will be replaced by the value given with the macro argument "
+     "substituted for '%'.  For example, the entry\n"
+     "  MYDIR(%)=<mydir/%>\n"
+     "will convert lines of the form\n"
+     "  #include MYDIR(myheader.h)\n"
+     "to\n"
+     "  #include <mydir/myheader.h>\n"
+     "allowing the dependency to be followed.\n"
+     "This property applies to sources in all targets within a directory.  "
+     "The property value is initialized in each directory by its value "
+     "in the directory's parent.");
+
+  cm->DefineProperty
     ("EXCLUDE_FROM_ALL", cmProperty::DIRECTORY,
      "Exclude the directory from the all target of its parent.",
      "A property on a directory that indicates if its targets are excluded "
@@ -3216,6 +3267,64 @@ void cmMakefile::DefineProperties(cmake *cm)
      "for example typing make will cause the targets to be built. "
      "The same concept applies to the default build of other generators.",
      false);
+
+  cm->DefineProperty
+    ("PARENT_DIRECTORY", cmProperty::DIRECTORY,
+     "Source directory that added current subdirectory.",
+     "This read-only property specifies the source directory that "
+     "added the current source directory as a subdirectory of the build.  "
+     "In the top-level directory the value is the empty-string.", false);
+
+  cm->DefineProperty
+    ("INCLUDE_REGULAR_EXPRESSION", cmProperty::DIRECTORY,
+     "Include file scanning regular expression.",
+     "This read-only property specifies the regular expression used "
+     "during dependency scanning to match include files that should "
+     "be followed.  See the include_regular_expression command.", false);
+
+  cm->DefineProperty
+    ("VARIABLES", cmProperty::DIRECTORY,
+     "List of variables defined in the current directory.",
+     "This read-only property specifies the list of CMake variables "
+     "currently defined.  "
+     "It is intended for debugging purposes.", false);
+
+  cm->DefineProperty
+    ("CACHE_VARIABLES", cmProperty::DIRECTORY,
+     "List of cache variables available in the current directory.",
+     "This read-only property specifies the list of CMake cache "
+     "variables currently defined.  "
+     "It is intended for debugging purposes.", false);
+
+  cm->DefineProperty
+    ("MACROS", cmProperty::DIRECTORY,
+     "List of macro commands available in the current directory.",
+     "This read-only property specifies the list of CMake macros "
+     "currently defined.  "
+     "It is intended for debugging purposes.  "
+     "See the macro command.", false);
+
+  cm->DefineProperty
+    ("DEFINITIONS", cmProperty::DIRECTORY,
+     "For CMake 2.4 compatibility only.  Use COMPILE_DEFINITIONS instead.",
+     "This read-only property specifies the list of flags given so far "
+     "to the add_definitions command.  "
+     "It is intended for debugging purposes.  "
+     "Use the COMPILE_DEFINITIONS instead.", false);
+
+  cm->DefineProperty
+    ("INCLUDE_DIRECTORIES", cmProperty::DIRECTORY,
+     "List of preprocessor include file search directories.",
+     "This read-only property specifies the list of directories given "
+     "so far to the include_directories command.  "
+     "It is intended for debugging purposes.", false);
+
+  cm->DefineProperty
+    ("LINK_DIRECTORIES", cmProperty::DIRECTORY,
+     "List of linker search directories.",
+     "This read-only property specifies the list of directories given "
+     "so far to the link_directories command.  "
+     "It is intended for debugging purposes.", false);
 }
 
 //----------------------------------------------------------------------------

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestRunScriptCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:28:01 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-05-15 19:39:59 $
+  Version:   $Revision: 1.4.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -52,7 +52,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_RUN_SCRIPT";}
+  virtual const char* GetName() { return "ctest_run_script";}
 
   /**
    * Succinct documentation.
@@ -68,7 +68,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_RUN_SCRIPT([NEW_PROCESS] script_file_name script_file_name1 \n"
+      "  ctest_run_script([NEW_PROCESS] script_file_name script_file_name1 \n"
       "              script_file_name2 ...)\n"
       "Runs a script or scripts much like if it was run from ctest -S. "
       "If no argument is provided then the current script is run using "
