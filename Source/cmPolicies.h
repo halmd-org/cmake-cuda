@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmPolicies.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-23 02:05:40 $
-  Version:   $Revision: 1.10.2.3 $
+  Date:      $Date: 2008-07-28 15:31:35 $
+  Version:   $Revision: 1.10.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -48,6 +48,7 @@ public:
     CMP0005, // Definition value escaping
     CMP0006, // BUNDLE install rules needed for MACOSX_BUNDLE targets
     CMP0007, // list command handling of empty elements
+    CMP0008, // Full-path libraries must be a valid library file name
 
     // Always the last entry.  Useful mostly to avoid adding a comma
     // the last policy when adding a new one.

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestTestHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-31 21:33:07 $
-  Version:   $Revision: 1.68 $
+  Date:      $Date: 2008-06-25 13:51:45 $
+  Version:   $Revision: 1.68.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1165,7 +1165,7 @@ std::string cmCTestTestHandler::FindTheExecutable(const char *exe)
                                             failedPaths);
 }
 
-// add additional configuraitons to the search path
+// add additional configurations to the search path
 void cmCTestTestHandler
 ::AddConfigurations(cmCTest *ctest, 
                     std::vector<std::string> &attempted,
@@ -1175,7 +1175,8 @@ void cmCTestTestHandler
 {   
   std::string tempPath;
 
-  if (filepath.size())
+  if (filepath.size() && 
+      filepath[filepath.size()-1] != '/')
     {
     filepath += "/";
     }
@@ -1259,6 +1260,16 @@ std::string cmCTestTestHandler
                                         attemptedConfigs,
                                         filepath,filename);
 
+  // even if a fullpath was specified also try it relative to the current directory
+  if (filepath.size() && filepath[0] == '/')
+    {
+    std::string localfilepath = filepath.substr(1,filepath.size()-1);
+    cmCTestTestHandler::AddConfigurations(ctest, attempted,
+                                          attemptedConfigs,
+                                          localfilepath,filename);
+    }
+    
+  
   // if extraPaths are provided and we were not passed a full path, try them,
   // try any extra paths
   if (filepath.size() == 0)
@@ -1274,8 +1285,8 @@ std::string cmCTestTestHandler
                                             filepathExtra,
                                             filenameExtra);
       }
-    }
-
+    }  
+    
   // store the final location in fullPath
   std::string fullPath;
 
@@ -1543,6 +1554,15 @@ std::string cmCTestTestHandler::GenerateRegressionImages(
     SPACE_REGEX "*(name|type|encoding|compression)=\"([^\"]*)\""
     SPACE_REGEX "*(name|type|encoding|compression)=\"([^\"]*)\""
     SPACE_REGEX "*>([^<]*)</DartMeasurement>");
+  cmsys::RegularExpression cdatastart(
+    "<DartMeasurement"
+    SPACE_REGEX "*(name|type|encoding|compression)=\"([^\"]*)\""
+    SPACE_REGEX "*(name|type|encoding|compression)=\"([^\"]*)\""
+    SPACE_REGEX "*>"
+    SPACE_REGEX "*<!\\[CDATA\\[");
+  cmsys::RegularExpression cdataend(
+    "]]>"
+    SPACE_REGEX "*</DartMeasurement>");
   cmsys::RegularExpression measurementfile(
     "<DartMeasurementFile"
     SPACE_REGEX "*(name|type|encoding|compression)=\"([^\"]*)\""
@@ -1601,6 +1621,21 @@ std::string cmCTestTestHandler::GenerateRegressionImages(
         << std::endl;
       cxml.erase(fourattributes.start(),
         fourattributes.end() - fourattributes.start());
+      }
+    else if ( cdatastart.find(cxml) && cdataend.find(cxml) )
+      {
+      ostr
+        << "\t\t\t<NamedMeasurement"
+        << " " << cdatastart.match(1) << "=\""
+        << cdatastart.match(2) << "\""
+        << " " << cdatastart.match(3) << "=\""
+        << cdatastart.match(4) << "\""
+        << "><Value><![CDATA["
+        << cxml.substr(cdatastart.end(), cdataend.start() - cdatastart.end())
+        << "]]></Value></NamedMeasurement>"
+        << std::endl;
+      cxml.erase(cdatastart.start(),
+        cdataend.end() - cdatastart.start());
       }
     else if ( measurementfile.find(cxml) )
       {

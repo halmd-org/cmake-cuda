@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCustomCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-09-17 14:50:46 $
-  Version:   $Revision: 1.24 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.24.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFileLocation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-18 14:23:54 $
-  Version:   $Revision: 1.3.2.1 $
+  Date:      $Date: 2008-07-30 18:54:49 $
+  Version:   $Revision: 1.3.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -17,6 +17,8 @@
 #include "cmSourceFileLocation.h"
 
 #include "cmMakefile.h"
+#include "cmLocalGenerator.h"
+#include "cmGlobalGenerator.h"
 #include "cmSystemTools.h"
 
 //----------------------------------------------------------------------------
@@ -89,16 +91,52 @@ void cmSourceFileLocation::UpdateExtension(const char* name)
   std::string ext = cmSystemTools::GetFilenameLastExtension(name);
   if(!ext.empty()) { ext = ext.substr(1); }
 
-  // TODO: Let enable-language specify extensions for each language.
-  cmMakefile const* mf = this->Makefile;
+  // The global generator checks extensions of enabled languages.
+  cmGlobalGenerator* gg =
+    this->Makefile->GetLocalGenerator()->GetGlobalGenerator();
+  cmMakefile* mf = this->Makefile;
   const std::vector<std::string>& srcExts = mf->GetSourceExtensions();
   const std::vector<std::string>& hdrExts = mf->GetHeaderExtensions();
-  if(std::find(srcExts.begin(), srcExts.end(), ext) != srcExts.end() ||
+  if(gg->GetLanguageFromExtension(ext.c_str()) ||
+     std::find(srcExts.begin(), srcExts.end(), ext) != srcExts.end() ||
      std::find(hdrExts.begin(), hdrExts.end(), ext) != hdrExts.end())
     {
     // This is a known extension.  Use the given filename with extension.
     this->Name = cmSystemTools::GetFilenameName(name);
     this->AmbiguousExtension = false;
+    }
+  else
+    {
+    // This is not a known extension.  See if the file exists on disk as
+    // named.
+    std::string tryPath;
+    if(this->AmbiguousDirectory)
+      {
+      // Check the source tree only because a file in the build tree should
+      // be specified by full path at least once.  We do not want this
+      // detection to depend on whether the project has already been built.
+      tryPath = this->Makefile->GetCurrentDirectory();
+      tryPath += "/";
+      }
+    if(!this->Directory.empty())
+      {
+      tryPath += this->Directory;
+      tryPath += "/";
+      }
+    tryPath += this->Name;
+    if(cmSystemTools::FileExists(tryPath.c_str(), true))
+      {
+      // We found a source file named by the user on disk.  Trust it's
+      // extension.
+      this->Name = cmSystemTools::GetFilenameName(name);
+      this->AmbiguousExtension = false;
+
+      // If the directory was ambiguous, it isn't anymore.
+      if(this->AmbiguousDirectory)
+        {
+        this->DirectoryUseSource();
+        }
+      }
     }
 }
 

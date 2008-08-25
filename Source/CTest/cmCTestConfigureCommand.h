@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestConfigureCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-29 17:01:24 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2008-05-15 19:39:58 $
+  Version:   $Revision: 1.5.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_CONFIGURE";}
+  virtual const char* GetName() { return "ctest_configure";}
 
   /**
    * Succinct documentation.
@@ -60,7 +60,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_CONFIGURE(BUILD build_dir RETURN_VALUE res)\n"
+      "  ctest_configure(BUILD build_dir RETURN_VALUE res)\n"
       "Configures the given build directory and stores results in "
       "Configure.xml. The second argument is a variable that will hold "
       "return value.";

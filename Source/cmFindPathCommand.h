@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPathCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.18 $
+  Date:      $Date: 2008-06-13 12:55:17 $
+  Version:   $Revision: 1.18.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,12 +64,16 @@ public:
     return "Find the directory containing a file.";
     }
 
-  std::string FindHeaderInFramework( std::string& file,
-                                     std::string& dir);
   virtual const char* GetFullDocumentation();
   cmTypeMacro(cmFindPathCommand, cmFindBase);
   bool IncludeFileInPath;
   bool ExtraDocAdded;
+private:
+  std::string FindHeaderInFramework(std::string const& file,
+                                    std::string const& dir);
+  std::string FindHeader();
+  std::string FindNormalHeader();
+  std::string FindFrameworkHeader();
 };
 
 

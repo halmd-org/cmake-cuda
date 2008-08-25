@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: CMakeSetupDialog.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:53 $
-  Version:   $Revision: 1.40.2.4 $
+  Date:      $Date: 2008-07-13 21:55:25 $
+  Version:   $Revision: 1.40.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -36,6 +36,7 @@
 #include "QCMake.h"
 #include "QCMakeCacheView.h"
 #include "AddCacheEntry.h"
+#include "CMakeFirstConfigure.h"
 
 QCMakeThread::QCMakeThread(QObject* p) 
   : QThread(p), CMakeInstance(NULL)
@@ -60,7 +61,6 @@ void QCMakeThread::run()
 CMakeSetupDialog::CMakeSetupDialog()
   : ExitAfterGenerate(true), CacheModified(false), CurrentState(Interrupting)
 {
-  this->SuppressDevWarnings = false;
   // create the GUI
   QSettings settings;
   settings.beginGroup("Settings/StartPath");
@@ -76,6 +76,13 @@ CMakeSetupDialog::CMakeSetupDialog()
   this->ProgressBar->reset();
   this->RemoveEntry->setEnabled(false);
   this->AddEntry->setEnabled(false);
+
+  bool groupView = settings.value("GroupView", false).toBool();
+  if(groupView)
+  {
+    this->setViewType(2);
+    this->ViewType->setCurrentIndex(2);
+  }
 
   QMenu* FileMenu = this->menuBar()->addMenu(tr("&File"));
   this->ReloadCacheAction = FileMenu->addAction(tr("&Reload Cache"));
@@ -104,15 +111,21 @@ CMakeSetupDialog::CMakeSetupDialog()
                    this, SLOT(doInstallForCommandLine()));
 #endif  
   QMenu* OptionsMenu = this->menuBar()->addMenu(tr("&Options"));
-  QAction* supressDevWarningsAction = OptionsMenu->addAction(tr("&Suppress dev Warnings (-Wno-dev)"));
-  QObject::connect(supressDevWarningsAction, SIGNAL(triggered(bool)), 
-                   this, SLOT(doSuppressDev()));
+  this->SuppressDevWarningsAction = OptionsMenu->addAction(tr("&Suppress dev Warnings (-Wno-dev)"));
+  this->SuppressDevWarningsAction->setCheckable(true);
 
-  supressDevWarningsAction->setCheckable(true);
   QAction* debugAction = OptionsMenu->addAction(tr("&Debug Output"));
   debugAction->setCheckable(true);
   QObject::connect(debugAction, SIGNAL(toggled(bool)), 
                    this, SLOT(setDebugOutput(bool)));
+  
+  OptionsMenu->addSeparator();
+  QAction* expandAction = OptionsMenu->addAction(tr("&Expand Grouped Entries"));
+  QObject::connect(expandAction, SIGNAL(triggered(bool)), 
+                   this->CacheValues, SLOT(expandAll()));
+  QAction* collapseAction = OptionsMenu->addAction(tr("&Collapse Grouped Entries"));
+  QObject::connect(collapseAction, SIGNAL(triggered(bool)), 
+                   this->CacheValues, SLOT(collapseAll()));
 
   QMenu* HelpMenu = this->menuBar()->addMenu(tr("&Help"));
   QAction* a = HelpMenu->addAction(tr("About"));
@@ -153,9 +166,9 @@ void CMakeSetupDialog::initialize()
 {
   // now the cmake worker thread is running, lets make our connections to it
   QObject::connect(this->CMakeThread->cmakeInstance(), 
-      SIGNAL(propertiesChanged(const QCMakeCachePropertyList&)),
+      SIGNAL(propertiesChanged(const QCMakePropertyList&)),
       this->CacheValues->cacheModel(),
-      SLOT(setProperties(const QCMakeCachePropertyList&)));
+      SLOT(setProperties(const QCMakePropertyList&)));
 
   QObject::connect(this->ConfigureButton, SIGNAL(clicked(bool)),
                    this, SLOT(doConfigure()));
@@ -198,8 +211,8 @@ void CMakeSetupDialog::initialize()
                    SIGNAL(outputMessage(QString)),
                    this, SLOT(message(QString)));
 
-  QObject::connect(this->Advanced, SIGNAL(clicked(bool)), 
-                   this->CacheValues, SLOT(setShowAdvanced(bool)));
+  QObject::connect(this->ViewType, SIGNAL(currentIndexChanged(int)), 
+                   this, SLOT(setViewType(int)));
   QObject::connect(this->Search, SIGNAL(textChanged(QString)), 
                    this->CacheValues, SLOT(setSearchFilter(QString)));
   
@@ -220,6 +233,8 @@ void CMakeSetupDialog::initialize()
   QObject::connect(this->AddEntry, SIGNAL(clicked(bool)), 
                    this, SLOT(addCacheEntry()));
 
+  QObject::connect(this->SuppressDevWarningsAction, SIGNAL(triggered(bool)), 
+                   this->CMakeThread->cmakeInstance(), SLOT(setSuppressDevWarnings(bool)));
   
   if(!this->SourceDirectory->text().isEmpty() ||
      !this->BinaryDirectory->lineEdit()->text().isEmpty())
@@ -275,10 +290,10 @@ void CMakeSetupDialog::doConfigure()
     dir.mkpath(".");
     }
 
-  // prompt for generator if it hasn't been set
+  // if no generator, prompt for it and other setup stuff
   if(this->CMakeThread->cmakeInstance()->generator().isEmpty())
     {
-    if(!this->promptForGenerator())
+    if(!this->setupFirstConfigure())
       {
       return;
       }
@@ -292,7 +307,7 @@ void CMakeSetupDialog::doConfigure()
   this->CacheValues->selectionModel()->clear();
   QMetaObject::invokeMethod(this->CMakeThread->cmakeInstance(),
     "setProperties", Qt::QueuedConnection, 
-    Q_ARG(QCMakeCachePropertyList,
+    Q_ARG(QCMakePropertyList,
       this->CacheValues->cacheModel()->properties()));
   QMetaObject::invokeMethod(this->CMakeThread->cmakeInstance(),
     "configure", Qt::QueuedConnection);
@@ -300,7 +315,7 @@ void CMakeSetupDialog::doConfigure()
 
 void CMakeSetupDialog::finishConfigure(int err)
 {
-  if(0 == err && 0 == this->CacheValues->cacheModel()->newCount())
+  if(0 == err && !this->CacheValues->cacheModel()->newPropertyCount())
     {
     this->enterState(ReadyGenerate);
     }
@@ -327,13 +342,6 @@ void CMakeSetupDialog::finishGenerate(int err)
       tr("Error in generation process, project files may be invalid"),
       QMessageBox::Ok);
     }
-}
-
-void CMakeSetupDialog::doSuppressDev()
-{
-  this->SuppressDevWarnings = !this->SuppressDevWarnings;
-  this->CMakeThread->cmakeInstance()->
-    SetSuppressDevWarnings(this->SuppressDevWarnings);
 }
 
 void CMakeSetupDialog::doInstallForCommandLine()
@@ -542,41 +550,89 @@ void CMakeSetupDialog::setEnabledState(bool enabled)
   this->RemoveEntry->setEnabled(false);  // let selection re-enable it
 }
 
-bool CMakeSetupDialog::promptForGenerator()
+bool CMakeSetupDialog::setupFirstConfigure()
 {
-  QSettings settings;
-  settings.beginGroup("Settings/StartPath");
-  QString lastGen = settings.value("LastGenerator").toString();
+  CMakeFirstConfigure dialog;
 
-  QStringList gens = this->CMakeThread->cmakeInstance()->availableGenerators();
-  QDialog dialog;
-  dialog.setWindowTitle(tr("Choose Generator"));
-  QLabel* lab = new QLabel(&dialog);
-  lab->setText(tr("Please select what build system you want CMake to generate files for.\n"
-                    "You should select the tool that you will use to build the project.\n"
-                    "Press OK once you have made your selection."));
-  QComboBox* combo = new QComboBox(&dialog);
-  combo->addItems(gens);
-  int idx = combo->findText(lastGen);
-  if(idx != -1)
-    {
-    combo->setCurrentIndex(idx);
-    }
-  QDialogButtonBox* btns = new QDialogButtonBox(QDialogButtonBox::Ok |
-                                                QDialogButtonBox::Cancel,
-                                                Qt::Horizontal, &dialog);
-  QObject::connect(btns, SIGNAL(accepted()), &dialog, SLOT(accept()));
-  QObject::connect(btns, SIGNAL(rejected()), &dialog, SLOT(reject()));
+  // initialize dialog and restore saved settings
+
+  // add generators
+  dialog.setGenerators(this->CMakeThread->cmakeInstance()->availableGenerators());
+
+  // restore from settings
+  dialog.loadFromSettings();
   
-  QVBoxLayout* l = new QVBoxLayout(&dialog);
-  l->addWidget(lab);
-  l->addWidget(combo);
-  l->addWidget(btns);
   if(dialog.exec() == QDialog::Accepted)
     {
-    lastGen = combo->currentText();
-    settings.setValue("LastGenerator", lastGen);
-    this->CMakeThread->cmakeInstance()->setGenerator(combo->currentText());
+    dialog.saveToSettings();
+    this->CMakeThread->cmakeInstance()->setGenerator(dialog.getGenerator());
+    
+    QCMakeCacheModel* m = this->CacheValues->cacheModel();
+
+    if(dialog.compilerSetup())
+      {
+      QString fortranCompiler = dialog.getFortranCompiler();
+      if(!fortranCompiler.isEmpty())
+        {
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_Fortran_COMPILER", 
+                          "Fortran compiler.", fortranCompiler, false);
+        }
+      QString cxxCompiler = dialog.getCXXCompiler();
+      if(!cxxCompiler.isEmpty())
+        {
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_CXX_COMPILER", 
+                          "CXX compiler.", cxxCompiler, false);
+        }
+      
+      QString cCompiler = dialog.getCCompiler();
+      if(!cCompiler.isEmpty())
+        {
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_C_COMPILER", 
+                          "C compiler.", cCompiler, false);
+        }
+      }
+    else if(dialog.crossCompilerSetup())
+      {
+      QString toolchainFile = dialog.crossCompilerToolChainFile();
+      if(!toolchainFile.isEmpty())
+        {
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_TOOLCHAIN_FILE", 
+                          "Cross Compile ToolChain File", toolchainFile, false);
+        }
+      else
+        {
+        QString fortranCompiler = dialog.getFortranCompiler();
+        if(!fortranCompiler.isEmpty())
+          {
+          m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_Fortran_COMPILER", 
+                            "Fortran compiler.", fortranCompiler, false);
+          }
+
+        QString mode = dialog.getCrossIncludeMode();
+        m->insertProperty(QCMakeProperty::STRING, "CMAKE_FIND_ROOT_PATH_MODE_INCLUDE", 
+                          "CMake Find Include Mode", mode, false);
+        mode = dialog.getCrossLibraryMode();
+        m->insertProperty(QCMakeProperty::STRING, "CMAKE_FIND_ROOT_PATH_MODE_LIBRARY", 
+                          "CMake Find Library Mode", mode, false);
+        mode = dialog.getCrossProgramMode();
+        m->insertProperty(QCMakeProperty::STRING, "CMAKE_FIND_ROOT_PATH_MODE_PROGRAM", 
+                          "CMake Find Program Mode", mode, false);
+        
+        QString rootPath = dialog.getCrossRoot();
+        m->insertProperty(QCMakeProperty::PATH, "CMAKE_FIND_ROOT_PATH", 
+                          "CMake Find Root Path", rootPath, false);
+
+        QString systemName = dialog.getSystemName();
+        m->insertProperty(QCMakeProperty::STRING, "CMAKE_SYSTEM_NAME", 
+                          "CMake System Name", systemName, false);
+        QString cxxCompiler = dialog.getCXXCompiler();
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_CXX_COMPILER", 
+                          "CXX compiler.", cxxCompiler, false);
+        QString cCompiler = dialog.getCCompiler();
+        m->insertProperty(QCMakeProperty::FILEPATH, "CMAKE_C_COMPILER", 
+                          "C compiler.", cCompiler, false);
+        }
+      }
     return true;
     }
 
@@ -767,7 +823,7 @@ void CMakeSetupDialog::removeSelectedCacheEntries()
     }
   foreach(QPersistentModelIndex pi, pidxs)
     {
-    this->CacheValues->model()->removeRow(pi.row());
+    this->CacheValues->model()->removeRow(pi.row(), pi.parent());
     }
 }
 
@@ -856,20 +912,7 @@ void CMakeSetupDialog::addCacheEntry()
   if(QDialog::Accepted == dialog.exec())
     {
     QCMakeCacheModel* m = this->CacheValues->cacheModel();
-    m->insertRows(0, 1, QModelIndex());
-    m->setData(m->index(0, 0), w->type(), QCMakeCacheModel::TypeRole);
-    m->setData(m->index(0, 0), w->name(), Qt::DisplayRole);
-    m->setData(m->index(0, 0), w->description(), QCMakeCacheModel::HelpRole);
-    m->setData(m->index(0, 0), 0, QCMakeCacheModel::AdvancedRole);
-    if(w->type() == QCMakeCacheProperty::BOOL)
-      {
-      m->setData(m->index(0, 1), w->value().toBool() ? 
-          Qt::Checked : Qt::Unchecked, Qt::CheckStateRole);
-      }
-    else
-      {
-      m->setData(m->index(0, 1), w->value(), Qt::DisplayRole);
-      }
+    m->insertProperty(w->type(), w->name(), w->description(), w->value(), false);
     }
 }
 
@@ -883,5 +926,32 @@ void CMakeSetupDialog::setDebugOutput(bool flag)
 {
   QMetaObject::invokeMethod(this->CMakeThread->cmakeInstance(),
     "setDebugOutput", Qt::QueuedConnection, Q_ARG(bool, flag));
+}
+
+void CMakeSetupDialog::setViewType(int v)
+{
+  if(v == 0)  // simple view
+    {
+    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::FlatView);
+    this->CacheValues->setRootIsDecorated(false);
+    this->CacheValues->setShowAdvanced(false);
+    }
+  else if(v == 1)  // advanced view
+    {
+    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::FlatView);
+    this->CacheValues->setRootIsDecorated(false);
+    this->CacheValues->setShowAdvanced(true);
+    }
+  else if(v == 2)  // grouped view
+    {
+    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::GroupView);
+    this->CacheValues->setRootIsDecorated(true);
+    this->CacheValues->setShowAdvanced(true);
+    }
+  
+  QSettings settings;
+  settings.beginGroup("Settings/StartPath");
+  settings.setValue("GroupView", v == 2);
+  
 }
 

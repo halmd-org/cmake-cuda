@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCallVisualStudioMacro.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-02-15 16:49:58 $
-  Version:   $Revision: 1.3 $
+  Date:      $Date: 2008-07-31 15:52:24 $
+  Version:   $Revision: 1.3.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -24,6 +24,11 @@
 #endif
 
 
+// Just for this file:
+//
+static bool LogErrorsAsMessages;
+
+
 #if defined(HAVE_COMDEF_H)
 
 
@@ -31,17 +36,20 @@
 
 
 //----------------------------------------------------------------------------
-///! Use ReportHRESULT to make a cmSystemTools::Error after calling
+///! Use ReportHRESULT to make a cmSystemTools::Message after calling
 ///! a COM method that may have failed.
 #define ReportHRESULT(hr, context) \
   if (FAILED(hr)) \
     { \
-    std::ostringstream oss; \
-    oss.flags(std::ios::hex); \
-    oss << context << " failed HRESULT, hr = 0x" << hr << std::endl; \
-    oss.flags(std::ios::dec); \
-    oss << __FILE__ << "(" << __LINE__ << ")"; \
-    cmSystemTools::Error(oss.str().c_str()); \
+    if (LogErrorsAsMessages) \
+      { \
+      std::ostringstream oss; \
+      oss.flags(std::ios::hex); \
+      oss << context << " failed HRESULT, hr = 0x" << hr << std::endl; \
+      oss.flags(std::ios::dec); \
+      oss << __FILE__ << "(" << __LINE__ << ")"; \
+      cmSystemTools::Message(oss.str().c_str()); \
+      } \
     }
 
 
@@ -404,6 +412,8 @@ int cmCallVisualStudioMacro::GetNumberOfRunningVisualStudioInstances(
 {
   int count = 0;
 
+  LogErrorsAsMessages = false;
+
 #if defined(HAVE_COMDEF_H)
   HRESULT hr = CoInitialize(0);
   ReportHRESULT(hr, "CoInitialize");
@@ -438,9 +448,12 @@ int cmCallVisualStudioMacro::GetNumberOfRunningVisualStudioInstances(
 int cmCallVisualStudioMacro::CallMacro(
   const std::string& slnFile,
   const std::string& macro,
-  const std::string& args)
+  const std::string& args,
+  const bool logErrorsAsMessages)
 {
   int err = 1; // no comdef.h
+
+  LogErrorsAsMessages = logErrorsAsMessages;
 
 #if defined(HAVE_COMDEF_H)
   err = 2; // error initializing
@@ -489,16 +502,19 @@ int cmCallVisualStudioMacro::CallMacro(
   (void)slnFile;
   (void)macro;
   (void)args;
-  cmSystemTools::Error("cmCallVisualStudioMacro::CallMacro is not "
-    "supported on this platform");
+  if (LogErrorsAsMessages)
+    {
+    cmSystemTools::Message("cmCallVisualStudioMacro::CallMacro is not "
+      "supported on this platform");
+    }
 #endif
 
-  if (err)
+  if (err && LogErrorsAsMessages)
     {
     std::ostringstream oss;
     oss << "cmCallVisualStudioMacro::CallMacro failed, err = " << err;
-    cmSystemTools::Error(oss.str().c_str());
+    cmSystemTools::Message(oss.str().c_str());
     }
 
-  return err;
+  return 0;
 }

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestCoverageHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-30 16:17:36 $
-  Version:   $Revision: 1.51 $
+  Date:      $Date: 2008-05-15 19:39:58 $
+  Version:   $Revision: 1.51.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -538,7 +538,7 @@ int cmCTestCoverageHandler::ProcessHandler()
     covSumFile << "\t<File Name=\"" << this->CTest->MakeXMLSafe(fileName)
       << "\" FullPath=\"" << this->CTest->MakeXMLSafe(
         this->CTest->GetShortPathToFile(fullFileName.c_str()))
-      << "\" Covered=\"" << (tested==0?"true":"false") << "\">\n"
+      << "\" Covered=\"" << (tested > 0 ? "true":"false") << "\">\n"
       << "\t\t<LOCTested>" << tested << "</LOCTested>\n"
       << "\t\t<LOCUnTested>" << untested << "</LOCUnTested>\n"
       << "\t\t<PercentCoverage>";
@@ -706,6 +706,8 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
     "   Processing coverage (each . represents one file):" << std::endl);
   cmCTestLog(this->CTest, HANDLER_OUTPUT, "    ");
   int file_count = 0;
+  // make sure output from gcov is in English!
+  cmSystemTools::PutEnv("LC_ALL=POSIX");
   for ( it = files.begin(); it != files.end(); ++ it )
     {
     cmCTestLog(this->CTest, HANDLER_OUTPUT, "." << std::flush);

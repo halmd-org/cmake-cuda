@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmXCodeObject.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-08-14 15:45:14 $
-  Version:   $Revision: 1.24 $
+  Date:      $Date: 2008-05-15 19:39:57 $
+  Version:   $Revision: 1.24.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -68,6 +68,10 @@ cmXCodeObject::cmXCodeObject(PBXType ptype, Type type)
       {
       this->Id += "0";
       }
+    }
+  if(this->Id.size() > 24)
+    {
+    this->Id = this->Id.substr(0,24);
     }
   this->TypeValue = type;
   if(this->TypeValue == OBJECT)

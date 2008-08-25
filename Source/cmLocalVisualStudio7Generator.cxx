@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio7Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.217.2.5 $
+  Date:      $Date: 2008-06-30 20:10:32 $
+  Version:   $Revision: 1.217.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -423,7 +423,7 @@ cmVS7FlagTable cmLocalVisualStudio7GeneratorFlagTable[] =
   {"BufferSecurityCheck", "GS-", "Turn off Buffer security check", "FALSE", 0},
   {"Detect64BitPortabilityProblems", "Wp64", 
    "Detect 64-bit Portability Problems", "TRUE", 0},
-  {"EnableFiberSafeOptimization", "GT", "Enable Fiber-safe Optimizations",
+  {"EnableFiberSafeOptimizations", "GT", "Enable Fiber-safe Optimizations",
    "TRUE", 0},
   {"EnableFunctionLevelLinking", "Gy",
    "EnableFunctionLevelLinking", "TRUE", 0},
@@ -1473,7 +1473,7 @@ void cmLocalVisualStudio7Generator
       }
     }
 
-  std::vector<cmSourceGroup> children  = sg->GetGroupChildren();
+  std::vector<cmSourceGroup> const& children  = sg->GetGroupChildren();
 
   for(unsigned int i=0;i<children.size();++i)
     {
@@ -2173,8 +2173,10 @@ void cmLocalVisualStudio7GeneratorOptions::HandleFlag(const char* flag)
   // This option is not known.  Store it in the output flags.
   this->FlagString += " ";
   this->FlagString +=
-    cmSystemTools::EscapeWindowsShellArgument(flag,
-                                              cmsysSystem_Shell_Flag_VSIDE);
+    cmSystemTools::EscapeWindowsShellArgument(
+      flag,
+      cmsysSystem_Shell_Flag_AllowMakeVariables |
+      cmsysSystem_Shell_Flag_VSIDE);
 }
 
 //----------------------------------------------------------------------------

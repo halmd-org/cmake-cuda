@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestUpdateCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-29 17:01:24 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2008-05-15 19:40:00 $
+  Version:   $Revision: 1.5.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_UPDATE";}
+  virtual const char* GetName() { return "ctest_update";}
 
   /**
    * Succinct documentation.
@@ -60,7 +60,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_UPDATE([SOURCE source] [RETURN_VALUE res])\n"
+      "  ctest_update([SOURCE source] [RETURN_VALUE res])\n"
       "Updates the given source directory and stores results in Update.xml. "
       "The second argument is a variable that will hold the number of files "
       "modified. If there is a problem, the variable will be -1.";

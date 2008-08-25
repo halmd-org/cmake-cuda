@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildAndTestHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-09-17 14:40:57 $
-  Version:   $Revision: 1.20 $
+  Date:      $Date: 2008-06-25 13:51:40 $
+  Version:   $Revision: 1.20.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -143,6 +143,13 @@ void CMakeMessageCallback(const char* m, const char*, bool&, void* s)
   *out += "\n";
 }
 
+void CMakeProgressCallback(const char*msg, float , void * s)
+{
+  std::string* out = (std::string*)s;
+  *out += msg;
+  *out += "\n";
+}
+
 //----------------------------------------------------------------------
 void CMakeStdoutCallback(const char* m, int len, void* s)
 {
@@ -210,6 +217,7 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
 
   // should we cmake?
   cmake cm;
+  cm.SetProgressCallback(CMakeProgressCallback, &cmakeOutString); 
   cm.SetGlobalGenerator(cm.CreateGlobalGenerator(
       this->BuildGenerator.c_str()));
 

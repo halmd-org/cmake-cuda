@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatterDocbook.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-05 17:38:19 $
-  Version:   $Revision: 1.1.2.1 $
+  Date:      $Date: 2008-05-15 19:39:54 $
+  Version:   $Revision: 1.1.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -144,7 +144,7 @@ void cmDocumentationFormatterDocbook
       cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
       os << "\"><emphasis><literal>";
       cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
-      os << "</literal></emphasis></link></listitem>";
+      os << "</literal></emphasis></link></listitem>\n";
       }
     }
   os << "</itemizedlist>\n" ;

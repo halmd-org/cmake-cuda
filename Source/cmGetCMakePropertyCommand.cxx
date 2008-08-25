@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetCMakePropertyCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.8 $
+  Date:      $Date: 2008-07-13 21:55:23 $
+  Version:   $Revision: 1.8.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -48,6 +48,22 @@ bool cmGetCMakePropertyCommand
   else if ( args[1] == "MACROS" )
     {
     this->Makefile->GetListOfMacros(output);
+    }
+  else if ( args[1] == "COMPONENTS" )
+    {
+    const std::set<cmStdString>* components
+      = this->Makefile->GetLocalGenerator()->GetGlobalGenerator()
+        ->GetInstallComponents();
+    std::set<cmStdString>::const_iterator compIt;
+    output = "";
+    for (compIt = components->begin(); compIt != components->end(); ++compIt)
+      {
+      if (compIt != components->begin())
+        {
+        output += ";";
+        }
+      output += *compIt;
+      }
     }
   else
     {

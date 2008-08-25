@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkDepends.h,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.5.2.4 $
+  Date:      $Date: 2008-07-30 18:54:49 $
+  Version:   $Revision: 1.5.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -57,10 +57,6 @@ public:
   void SetOldLinkDirMode(bool b);
   std::set<cmTarget*> const& GetOldWrongConfigItems() const
     { return this->OldWrongConfigItems; }
-
-  /** Set a regular expression that matches strings ending in a shared
-      library extension.  */
-  void SetSharedRegex(std::string const& regex);
 
 private:
 
@@ -141,7 +137,6 @@ private:
   // Preservation of original link line.
   std::vector<int> OriginalEntries;
   void PreserveOriginalEntries();
-  std::string SharedRegexString;
 
   // Compatibility help.
   bool OldLinkDirMode;

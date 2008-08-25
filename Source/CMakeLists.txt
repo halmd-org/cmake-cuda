@@ -347,6 +347,7 @@ TARGET_LINK_LIBRARIES(CTestLib CMakeLib ${CMAKE_CURL_LIBRARIES} ${CMAKE_XMLRPC_L
 # Sources for CPack
 #
 SET(CPACK_SRCS
+  CPack/cmCPackComponentGroup.cxx
   CPack/cmCPackGeneratorFactory.cxx
   CPack/cmCPackGenerator.cxx
   CPack/cmCPackLog.cxx
@@ -374,6 +375,7 @@ ENDIF(UNIX)
 
 IF(APPLE)
   SET(CPACK_SRCS ${CPACK_SRCS}
+    CPack/cmCPackBundleGenerator.cxx
     CPack/cmCPackOSXX11Generator.cxx
     CPack/cmCPackPackageMakerGenerator.cxx
     )

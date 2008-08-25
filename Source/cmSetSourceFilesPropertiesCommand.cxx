@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetSourceFilesPropertiesCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-02-15 16:22:23 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2008-05-15 19:39:57 $
+  Version:   $Revision: 1.19.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,7 +33,8 @@ bool cmSetSourceFilesPropertiesCommand
   std::vector<std::string>::const_iterator j;
   j = args.begin();
   // old style allows for specifier before PROPERTIES keyword
-  while (*j != "ABSTRACT" &&
+  while (j != args.end() &&
+         *j != "ABSTRACT" &&
          *j != "WRAP_EXCLUDE" &&
          *j != "GENERATED" &&
          *j != "COMPILE_FLAGS" &&

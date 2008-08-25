@@ -174,21 +174,18 @@ ENDIF(EXISTS "${wxWidgets_CURRENT_LIST_DIR}/UsewxWidgets.cmake")
 
 #=====================================================================
 #=====================================================================
-IF(WIN32)
-  SET(WIN32_STYLE_FIND 1)
-ENDIF(WIN32)
-IF(MINGW)
-  SET(WIN32_STYLE_FIND 0)
-  SET(UNIX_STYLE_FIND 1)
-ENDIF(MINGW)
-IF(UNIX)
-  SET(UNIX_STYLE_FIND 1)
-ENDIF(UNIX)
+IF(WIN32 AND NOT CYGWIN AND NOT MSYS)
+  SET(wxWidgets_FIND_STYLE "win32")
+ELSE(WIN32 AND NOT CYGWIN AND NOT MSYS)
+  IF(UNIX OR MSYS)
+    SET(wxWidgets_FIND_STYLE "unix")
+  ENDIF(UNIX OR MSYS)
+ENDIF(WIN32 AND NOT CYGWIN AND NOT MSYS)
 
 #=====================================================================
-# WIN32_STYLE_FIND
+# WIN32_FIND_STYLE
 #=====================================================================
-IF(WIN32_STYLE_FIND)
+IF(wxWidgets_FIND_STYLE STREQUAL "win32")
   # Useful common wx libs needed by almost all components.
   SET(wxWidgets_COMMON_LIBRARIES png tiff jpeg zlib regex expat)
 
@@ -283,7 +280,7 @@ IF(WIN32_STYLE_FIND)
     MARK_AS_ADVANCED(WX_mono${_DBG})
 
     # Find wxWidgets multilib libraries.
-    FOREACH(LIB core adv aui html media xrc dbgrid gl qa)
+    FOREACH(LIB core adv aui html media xrc dbgrid gl qa richtext)
       FIND_LIBRARY(WX_${LIB}${_DBG}
         NAMES
         wxmsw${_UNV}29${_UCD}${_DBG}_${LIB}
@@ -324,7 +321,7 @@ IF(WIN32_STYLE_FIND)
     WX_CLEAR_LIB(WX_mono${_DBG})
 
     # Clear wxWidgets multilib libraries.
-    FOREACH(LIB core adv aui html media xrc dbgrid gl qa)
+    FOREACH(LIB core adv aui html media xrc dbgrid gl qa richtext)
       WX_CLEAR_LIB(WX_${LIB}${_DBG})
     ENDFOREACH(LIB)
   ENDMACRO(WX_CLEAR_ALL_LIBS)
@@ -398,6 +395,12 @@ IF(WIN32_STYLE_FIND)
       D:/
       $ENV{ProgramFiles}
     PATH_SUFFIXES 
+      wxWidgets-2.9.4
+      wxWidgets-2.9.3
+      wxWidgets-2.9.2
+      wxWidgets-2.9.1
+      wxWidgets-2.9.0
+      wxWidgets-2.8.8
       wxWidgets-2.8.7
       wxWidgets-2.8.6
       wxWidgets-2.8.5
@@ -412,6 +415,7 @@ IF(WIN32_STYLE_FIND)
       wxWidgest-2.7.1
       wxWidgets-2.7.0
       wxWidgets-2.7.0-1
+      wxWidgets-2.6.4
       wxWidgets-2.6.3
       wxWidgets-2.6.2
       wxWidgets-2.6.1
@@ -435,21 +439,26 @@ IF(WIN32_STYLE_FIND)
     # Select one default tree inside the already determined wx tree.
     # Prefer static/shared order usually consistent with build
     # settings.
+    IF(MINGW)
+      SET(WX_LIB_DIR_PREFIX gcc)
+    ELSE(MINGW)
+      SET(WX_LIB_DIR_PREFIX vc)
+    ENDIF(MINGW)
     IF(BUILD_SHARED_LIBS)
       FIND_PATH(wxWidgets_LIB_DIR
-        NAMES wxpng.lib wxpngd.lib
+        NAMES msw/build.cfg mswd/build.cfg
         PATHS
-        ${WX_ROOT_DIR}/lib/vc_dll   # prefer shared
-        ${WX_ROOT_DIR}/lib/vc_lib
+        ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_dll   # prefer shared
+        ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_lib
         DOC "Path to wxWidgets libraries?"
         NO_DEFAULT_PATH
         )
     ELSE(BUILD_SHARED_LIBS)
       FIND_PATH(wxWidgets_LIB_DIR
-        NAMES wxpng.lib wxpngd.lib
+        NAMES msw/build.cfg mswd/build.cfg
         PATHS
-        ${WX_ROOT_DIR}/lib/vc_lib   # prefer static
-        ${WX_ROOT_DIR}/lib/vc_dll
+        ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_lib   # prefer static
+        ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_dll
         DOC "Path to wxWidgets libraries?"
         NO_DEFAULT_PATH
         )
@@ -543,10 +552,10 @@ IF(WIN32_STYLE_FIND)
   ENDIF(WX_ROOT_DIR)
 
 #=====================================================================
-# UNIX_STYLE_FIND
+# UNIX_FIND_STYLE
 #=====================================================================
-ELSE(WIN32_STYLE_FIND)
-  IF(UNIX_STYLE_FIND)
+ELSE(wxWidgets_FIND_STYLE STREQUAL "win32")
+  IF(wxWidgets_FIND_STYLE STREQUAL "unix")
     #-----------------------------------------------------------------
     # UNIX: Helper MACROS
     #-----------------------------------------------------------------
@@ -572,7 +581,7 @@ ELSE(WIN32_STYLE_FIND)
       ELSE(_wx_result EQUAL 0)
         FOREACH(_upper_opt_name DEBUG STATIC UNICODE UNIVERSAL)
           SET(wxWidgets_DEFAULT_${_upper_opt_name} OFF)
-        ENDFOREACH(_opt_name)
+        ENDFOREACH(_upper_opt_name)
       ENDIF(_wx_result EQUAL 0)
     ENDMACRO(WX_CONFIG_SELECT_GET_DEFAULT)
 
@@ -729,18 +738,18 @@ ELSE(WIN32_STYLE_FIND)
     ENDIF(wxWidgets_CONFIG_EXECUTABLE)
 
 #=====================================================================
-# Neither UNIX_STYLE_FIND, nor WIN32_STYLE_FIND
+# Neither UNIX_FIND_STYLE, nor WIN32_FIND_STYLE
 #=====================================================================
-  ELSE(UNIX_STYLE_FIND)
+  ELSE(wxWidgets_FIND_STYLE STREQUAL "unix")
     IF(NOT wxWidgets_FIND_QUIETLY)
       MESSAGE(STATUS
         "${CMAKE_CURRENT_LIST_FILE}(${CMAKE_CURRENT_LIST_LINE}): \n"
         "  Platform unknown/unsupported. It's neither WIN32 nor UNIX "
-        "style find."
+        "find style."
         )
     ENDIF(NOT wxWidgets_FIND_QUIETLY)
-  ENDIF(UNIX_STYLE_FIND)
-ENDIF(WIN32_STYLE_FIND)
+  ENDIF(wxWidgets_FIND_STYLE STREQUAL "unix")
+ENDIF(wxWidgets_FIND_STYLE STREQUAL "win32")
 
 # Debug output:
 DBG_MSG("wxWidgets_FOUND           : ${wxWidgets_FOUND}")

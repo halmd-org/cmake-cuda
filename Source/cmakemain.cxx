@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmakemain.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-11 20:02:10 $
-  Version:   $Revision: 1.80 $
+  Date:      $Date: 2008-05-15 19:39:57 $
+  Version:   $Revision: 1.80.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -141,6 +141,17 @@ static const char * cmDocumentationOptions[][3] =
   {"--help-custom-modules [file]" , "Print help for all custom modules and "
    "exit.",
    "Full documentation for all custom modules is displayed. "
+   "If a file is specified, the documentation is written into and the output "
+   "format is determined depending on the filename suffix. Supported are man "
+   "page, HTML, DocBook and plain text."},
+  {"--help-policy cmp [file]", 
+   "Print help for a single policy and exit.",
+   "Full documentation specific to the given policy is displayed."
+   "If a file is specified, the documentation is written into and the output "
+   "format is determined depending on the filename suffix. Supported are man "
+   "page, HTML, DocBook and plain text."},
+  {"--help-policies [file]", "Print help for all policies and exit.",
+   "Full documentation for all policies is displayed."
    "If a file is specified, the documentation is written into and the output "
    "format is determined depending on the filename suffix. Supported are man "
    "page, HTML, DocBook and plain text."},

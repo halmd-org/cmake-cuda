@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkDepends.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.12.2.4 $
+  Date:      $Date: 2008-07-30 18:54:49 $
+  Version:   $Revision: 1.12.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -24,7 +24,6 @@
 #include "cmake.h"
 
 #include <cmsys/stl/algorithm>
-#include <cmsys/RegularExpression.hxx>
 
 #include <assert.h>
 
@@ -196,12 +195,6 @@ cmComputeLinkDepends::~cmComputeLinkDepends()
 void cmComputeLinkDepends::SetOldLinkDirMode(bool b)
 {
   this->OldLinkDirMode = b;
-}
-
-//----------------------------------------------------------------------------
-void cmComputeLinkDepends::SetSharedRegex(std::string const& regex)
-{
-  this->SharedRegexString = regex;
 }
 
 //----------------------------------------------------------------------------
@@ -881,9 +874,6 @@ void cmComputeLinkDepends::CheckWrongConfigItem(std::string const& item)
 //----------------------------------------------------------------------------
 void cmComputeLinkDepends::PreserveOriginalEntries()
 {
-  // Regular expression to match shared libraries.
-  cmsys::RegularExpression shared_lib(this->SharedRegexString.c_str());
-
   // Skip the part of the input sequence that already appears in the
   // output.
   std::vector<int>::const_iterator in = this->OriginalEntries.begin();
@@ -892,8 +882,7 @@ void cmComputeLinkDepends::PreserveOriginalEntries()
         out != this->FinalLinkOrder.end())
     {
     cmTarget* tgt = this->EntryList[*in].Target;
-    if((tgt && tgt->GetType() != cmTarget::STATIC_LIBRARY) ||
-       (!tgt && shared_lib.find(this->EntryList[*in].Item)))
+    if(tgt && tgt->GetType() != cmTarget::STATIC_LIBRARY)
       {
       // Skip input items known to not be static libraries.
       ++in;
@@ -916,8 +905,7 @@ void cmComputeLinkDepends::PreserveOriginalEntries()
   while(in != this->OriginalEntries.end())
     {
     cmTarget* tgt = this->EntryList[*in].Target;
-    if((tgt && tgt->GetType() != cmTarget::STATIC_LIBRARY) ||
-       (!tgt && shared_lib.find(this->EntryList[*in].Item)))
+    if(tgt && tgt->GetType() != cmTarget::STATIC_LIBRARY)
       {
       // Skip input items known to not be static libraries.
       ++in;

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFile.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:40 $
-  Version:   $Revision: 1.47.2.2 $
+  Date:      $Date: 2008-05-29 13:15:31 $
+  Version:   $Revision: 1.47.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -55,7 +55,13 @@ const char* cmSourceFile::GetLanguage()
   // Perform computation needed to get the language if necessary.
   if(this->FullPath.empty() && this->Language.empty())
     {
-    if(this->Location.ExtensionIsAmbiguous())
+    // If a known extension is given or a known full path is given
+    // then trust that the current extension is sufficient to
+    // determine the language.  This will fail only if the user
+    // specifies a full path to the source but leaves off the
+    // extension, which is kind of weird.
+    if(this->Location.ExtensionIsAmbiguous() &&
+       this->Location.DirectoryIsAmbiguous())
       {
       // Finalize the file location to get the extension and set the
       // language.
@@ -183,16 +189,6 @@ bool cmSourceFile::FindFullPath()
         return true;
         }
       }
-    }
-
-  // If the user provided a full path, trust it.  If the file is not
-  // there the native tool will complain at build time.
-  if(!this->Location.DirectoryIsAmbiguous())
-    {
-    this->FullPath = this->Location.GetDirectory();
-    this->FullPath += "/";
-    this->FullPath += this->Location.GetName();
-    return true;
     }
 
   cmOStringStream e;

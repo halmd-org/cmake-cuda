@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackGeneratorFactory.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-11-05 21:55:45 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2008-06-25 13:51:39 $
+  Version:   $Revision: 1.2.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,6 +25,7 @@
 #include "cmCPackSTGZGenerator.h"
 #include "cmCPackNSISGenerator.h"
 #ifdef __APPLE__
+#  include "cmCPackBundleGenerator.h"
 #  include "cmCPackPackageMakerGenerator.h"
 #  include "cmCPackOSXX11Generator.h"
 #endif
@@ -66,6 +67,8 @@ cmCPackGeneratorFactory::cmCPackGeneratorFactory()
   this->RegisterGenerator("TZ", "Tar Compress compression",
     cmCPackTarCompressGenerator::CreateGenerator);
 #ifdef __APPLE__
+  this->RegisterGenerator("Bundle", "Mac OSX bundle",
+    cmCPackBundleGenerator::CreateGenerator);
   this->RegisterGenerator("PackageMaker", "Mac OSX Package Maker installer",
     cmCPackPackageMakerGenerator::CreateGenerator);
   this->RegisterGenerator("OSXX11", "Mac OSX X11 bundle",

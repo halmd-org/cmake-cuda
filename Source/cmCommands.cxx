@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommands.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-02-16 18:05:03 $
-  Version:   $Revision: 1.123 $
+  Date:      $Date: 2008-07-13 21:55:23 $
+  Version:   $Revision: 1.123.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -24,7 +24,6 @@
 #include "cmExportCommand.cxx"
 #include "cmExportLibraryDependencies.cxx"
 #include "cmFLTKWrapUICommand.cxx"
-#include "cmGetTestPropertyCommand.cxx"
 #include "cmIncludeExternalMSProjectCommand.cxx"
 #include "cmInstallProgramsCommand.cxx"
 #include "cmLinkLibrariesCommand.cxx"
@@ -66,7 +65,6 @@ void GetPredefinedCommands(std::list<cmCommand*>&
   commands.push_back(new cmExportCommand);
   commands.push_back(new cmExportLibraryDependenciesCommand);
   commands.push_back(new cmFLTKWrapUICommand);
-  commands.push_back(new cmGetTestPropertyCommand);
   commands.push_back(new cmIncludeExternalMSProjectCommand);
   commands.push_back(new cmInstallProgramsCommand);
   commands.push_back(new cmLinkLibrariesCommand);

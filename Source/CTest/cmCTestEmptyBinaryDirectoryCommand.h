@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestEmptyBinaryDirectoryCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:28:01 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-05-15 19:39:59 $
+  Version:   $Revision: 1.4.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -53,7 +53,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_EMPTY_BINARY_DIRECTORY";}
+  virtual const char* GetName() { return "ctest_empty_binary_directory";}
 
   /**
    * Succinct documentation.
@@ -69,7 +69,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_EMPTY_BINARY_DIRECTORY( directory )\n"
+      "  ctest_empty_binary_directory( directory )\n"
       "Removes a binary directory. This command will perform some checks "
       "prior to deleting the directory in an attempt to avoid malicious "
       "or accidental directory deletion.";

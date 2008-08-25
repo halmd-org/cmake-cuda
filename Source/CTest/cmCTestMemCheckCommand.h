@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestMemCheckCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-10 20:03:09 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2008-05-15 19:39:59 $
+  Version:   $Revision: 1.4.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -46,7 +46,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_MEMCHECK";}
+  virtual const char* GetName() { return "ctest_memcheck";}
 
   /**
    * Succinct documentation.
@@ -62,7 +62,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_MEMCHECK([BUILD build_dir] [RETURN_VALUE res])\n"
+      "  ctest_memcheck([BUILD build_dir] [RETURN_VALUE res])\n"
       "Performs a memory checking of tests in the given build directory and "
       "stores results in MemCheck.xml. The second argument is a variable "
       "that will hold value.";

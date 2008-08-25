@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-02-14 21:42:29 $
-  Version:   $Revision: 1.107 $
+  Date:      $Date: 2008-07-17 14:14:25 $
+  Version:   $Revision: 1.107.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -139,6 +139,9 @@ public:
 
   void AddInstallComponent(const char* component);
 
+  const std::set<cmStdString>* GetInstallComponents() const 
+  { return &InstallComponents; }
+
   ///! Add one installed target to the sets of the exports
   void AddTargetToExports(const char* exportSet, cmTarget* target, 
                           cmInstallTargetGenerator* archive,
@@ -245,6 +248,10 @@ public:
   void FileReplacedDuringGenerate(const std::string& filename);
   void GetFilesReplacedDuringGenerate(std::vector<std::string>& filenames);
 
+  void AddRuleHash(const std::vector<std::string>& outputs,
+                   std::vector<std::string>::const_iterator first,
+                   std::vector<std::string>::const_iterator last);
+
 protected:
   // for a project collect all its targets by following depend
   // information, and also collect all the targets
@@ -257,8 +264,11 @@ protected:
                         projectTargets);
   void SetLanguageEnabledFlag(const char* l, cmMakefile* mf);
   void SetLanguageEnabledMaps(const char* l, cmMakefile* mf);
+  void FillExtensionToLanguageMap(const char* l, cmMakefile* mf);
 
   virtual bool CheckALLOW_DUPLICATE_CUSTOM_TARGETS();
+
+  bool CheckTargets();
 
   // Fill the ProjectMap, this must be called after LocalGenerators 
   // has been populated.
@@ -291,6 +301,7 @@ protected:
   bool InstallTargetEnabled;
   // Sets of named target exports
   std::map<cmStdString, std::vector<cmTargetExport*> > ExportSets;
+  void ClearExportSets();
 
   // Manifest of all targets that will be built for each configuration.
   // This is computed just before local generators generate.
@@ -309,6 +320,11 @@ private:
 
   // this is used to improve performance
   std::map<cmStdString,cmTarget *> TotalTargets;
+
+  // Record hashes for rules and outputs.
+  struct RuleHash { char Data[32]; };
+  std::map<cmStdString, RuleHash> RuleHashes;
+  void CheckRuleHashes();
 
   cmExternalMakefileProjectGenerator* ExtraGenerator;
 
