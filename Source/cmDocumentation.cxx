@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-22 18:04:24 $
-  Version:   $Revision: 1.69.2.1 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.69.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -656,7 +656,8 @@ cmDocumentation::Form cmDocumentation::GetFormFromFilename(
 }
 
 //----------------------------------------------------------------------------
-bool cmDocumentation::CheckOptions(int argc, const char* const* argv)
+bool cmDocumentation::CheckOptions(int argc, const char* const* argv,
+                                   const char* exitOpt)
 {
   // Providing zero arguments gives usage information.
   if(argc == 1)
@@ -673,6 +674,10 @@ bool cmDocumentation::CheckOptions(int argc, const char* const* argv)
   bool result = false;
   for(int i=1; i < argc; ++i)
     {
+    if(exitOpt && strcmp(argv[i], exitOpt) == 0)
+      {
+      return result;
+      }
     RequestedHelpItem help;
     // Check if this is a supported help option.
     if((strcmp(argv[i], "-help") == 0) ||

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCursesStringWidget.cxx,v $
   Language:  C++
-  Date:      $Date: 2006-03-16 15:44:55 $
-  Version:   $Revision: 1.13 $
+  Date:      $Date: 2008-09-03 13:43:19 $
+  Version:   $Revision: 1.13.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -170,12 +170,19 @@ bool cmCursesStringWidget::HandleInput(int& key, cmCursesMainForm* fm,
       {
       form_driver(form, REQ_END_FIELD);
       }
-    else if ( key == ctrl('d') || key == 127 || 
-              key == KEY_BACKSPACE || key == KEY_DC )
+    else if ( key == 127 || 
+              key == KEY_BACKSPACE )
       {
       if ( form->curcol > 0 )
         {
         form_driver(form, REQ_DEL_PREV);
+        }
+      }
+    else if ( key == ctrl('d') ||key == KEY_DC )
+      {
+      if ( form->curcol > 0 )
+        {
+        form_driver(form, REQ_DEL_CHAR);
         }
       }
     else

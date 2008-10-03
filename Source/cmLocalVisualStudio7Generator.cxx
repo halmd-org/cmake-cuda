@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio7Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-30 20:10:32 $
-  Version:   $Revision: 1.217.2.8 $
+  Date:      $Date: 2008-09-12 14:56:21 $
+  Version:   $Revision: 1.217.2.11 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -399,6 +399,7 @@ cmVS7FlagTable cmLocalVisualStudio7GeneratorFlagTable[] =
   {"StructMemberAlignment", "Zp2", "struct align 2 byte ",     "2", 0},
   {"StructMemberAlignment", "Zp4", "struct align 4 byte ",     "3", 0},
   {"StructMemberAlignment", "Zp8", "struct align 8 byte ",     "4", 0},
+  {"WarningLevel", "W0", "Warning level", "0", 0},
   {"WarningLevel", "W1", "Warning level", "1", 0},
   {"WarningLevel", "W2", "Warning level", "2", 0},
   {"WarningLevel", "W3", "Warning level", "3", 0},
@@ -459,7 +460,8 @@ cmVS7FlagTable cmLocalVisualStudio7GeneratorLinkFlagTable[] =
   {"IgnoreAllDefaultLibraries", "NODEFAULTLIB", "ignore all default libs",
    "TRUE", 0},
   {"ModuleDefinitionFile", "DEF:", "add an export def file", "",
-   cmVS7FlagTable::UserValue},
+   cmVS7FlagTable::UserValue}, 
+  {"GenerateMapFile", "MAP", "enable generation of map file", "TRUE", 0},
   {0,0,0,0,0}
 };
 
@@ -1787,7 +1789,7 @@ cmLocalVisualStudio7Generator
     }
   if(projectType)
     {
-    fout << "\tProjectType=\"" << projectType << "\">\n";
+    fout << "\tProjectType=\"" << projectType << "\"\n";
     }
   fout<< "\tKeyword=\"" << keyword << "\">\n" 
        << "\tProjectGUID=\"{" << gg->GetGUID(libName) << "}\">\n"

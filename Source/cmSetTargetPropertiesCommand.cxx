@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetTargetPropertiesCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-28 13:38:36 $
-  Version:   $Revision: 1.9 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.9.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -103,6 +103,7 @@ bool cmSetTargetPropertiesCommand
       {
       target->SetProperty(propertyPairs[k].c_str(),
                           propertyPairs[k+1].c_str());
+      target->CheckProperty(propertyPairs[k].c_str(), mf);
       }
     }
   // if file is not already in the makefile, then add it

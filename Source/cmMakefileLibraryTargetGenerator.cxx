@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileLibraryTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-21 00:44:52 $
-  Version:   $Revision: 1.58.2.2 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.58.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -235,8 +235,17 @@ void cmMakefileLibraryTargetGenerator::WriteFrameworkRules(bool relink)
 }
 
 //----------------------------------------------------------------------------
-void cmMakefileLibraryTargetGenerator::CreateFramework()
+void
+cmMakefileLibraryTargetGenerator
+::CreateFramework(std::string const& targetName)
 {
+  // Configure the Info.plist file into the Resources directory.
+  this->MacContentFolders.insert("Resources");
+  std::string plist = this->MacContentDirectory + "Resources/Info.plist";
+  this->LocalGenerator->GenerateFrameworkInfoPList(this->Target,
+                                                   targetName.c_str(),
+                                                   plist.c_str());
+
   // TODO: Use the cmMakefileTargetGenerator::ExtraFiles vector to
   // drive rules to create these files at build time.
   std::string oldName;
@@ -364,6 +373,14 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   std::string linkFlags;
   this->LocalGenerator->AppendFlags(linkFlags, extraFlags);
 
+  // Add OSX version flags, if any.
+  if(this->Target->GetType() == cmTarget::SHARED_LIBRARY ||
+     this->Target->GetType() == cmTarget::MODULE_LIBRARY)
+    {
+    this->AppendOSXVerFlag(linkFlags, linkLanguage, "COMPATIBILITY", true);
+    this->AppendOSXVerFlag(linkFlags, linkLanguage, "CURRENT", false);
+    }
+
   // Construct the name of the library.
   std::string targetName;
   std::string targetNameSO;
@@ -380,7 +397,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   if(this->Target->IsFrameworkOnApple())
     {
     outpath = this->MacContentDirectory;
-    this->CreateFramework();
+    this->CreateFramework(targetName);
     }
   else if(relink)
     {
@@ -604,12 +621,15 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   }
 
   // For static libraries there might be archiving rules.
+  bool haveStaticLibraryRule = false;
   std::vector<std::string> archiveCreateCommands;
   std::vector<std::string> archiveAppendCommands;
   std::vector<std::string> archiveFinishCommands;
   std::string::size_type archiveCommandLimit = std::string::npos;
   if(this->Target->GetType() == cmTarget::STATIC_LIBRARY)
     {
+    haveStaticLibraryRule =
+      this->Makefile->GetDefinition(linkRuleVar)? true:false;
     std::string arCreateVar = "CMAKE_";
     arCreateVar += linkLanguage;
     arCreateVar += "_ARCHIVE_CREATE";
@@ -635,6 +655,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
 
   // Decide whether to use archiving rules.
   bool useArchiveRules =
+    !haveStaticLibraryRule &&
     !archiveCreateCommands.empty() && !archiveAppendCommands.empty();
   if(useArchiveRules)
     {
@@ -904,4 +925,38 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules
   // Clean all the possible library names and symlinks.
   this->CleanFiles.insert(this->CleanFiles.end(),
                           libCleanFiles.begin(),libCleanFiles.end());
+}
+
+//----------------------------------------------------------------------------
+void
+cmMakefileLibraryTargetGenerator
+::AppendOSXVerFlag(std::string& flags, const char* lang,
+                   const char* name, bool so)
+{
+  // Lookup the flag to specify the version.
+  std::string fvar = "CMAKE_";
+  fvar += lang;
+  fvar += "_OSX_";
+  fvar += name;
+  fvar += "_VERSION_FLAG";
+  const char* flag = this->Makefile->GetDefinition(fvar.c_str());
+
+  // Skip if no such flag.
+  if(!flag)
+    {
+    return;
+    }
+
+  // Lookup the target version information.
+  int major;
+  int minor;
+  int patch;
+  this->Target->GetTargetVersion(so, major, minor, patch);
+  if(major > 0 || minor > 0 || patch > 0)
+    {
+    // Append the flag since a non-zero version is specified.
+    cmOStringStream vflag;
+    vflag << flag << major << "." << minor << "." << patch;
+    this->LocalGenerator->AppendFlags(flags, vflag.str().c_str());
+    }
 }

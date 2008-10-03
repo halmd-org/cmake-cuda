@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkInformation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-30 18:54:49 $
-  Version:   $Revision: 1.24.2.9 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.24.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -581,10 +581,7 @@ void cmComputeLinkInformation::AddItem(std::string const& item, cmTarget* tgt)
     return;
     }
 
-  if(tgt && (tgt->GetType() == cmTarget::STATIC_LIBRARY ||
-             tgt->GetType() == cmTarget::SHARED_LIBRARY ||
-             tgt->GetType() == cmTarget::MODULE_LIBRARY ||
-             impexe))
+  if(tgt && tgt->IsLinkable())
     {
     // This is a CMake target.  Ask the target for its real name.
     if(impexe && this->LoaderFlag)
@@ -1555,6 +1552,14 @@ void
 cmComputeLinkInformation::AddLibraryRuntimeInfo(std::string const& fullPath,
                                                 cmTarget* target)
 {
+  // Libraries with unknown type must be handled using just the file
+  // on disk.
+  if(target->GetType() == cmTarget::UNKNOWN_LIBRARY)
+    {
+    this->AddLibraryRuntimeInfo(fullPath);
+    return;
+    }
+
   // Skip targets that are not shared libraries (modules cannot be linked).
   if(target->GetType() != cmTarget::SHARED_LIBRARY)
     {

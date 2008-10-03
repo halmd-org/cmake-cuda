@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFileCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-29 13:15:28 $
-  Version:   $Revision: 1.103.2.5 $
+  Date:      $Date: 2008-09-12 14:56:20 $
+  Version:   $Revision: 1.103.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -668,10 +668,43 @@ bool cmFileCommand::HandleGlobCommand(std::vector<std::string> const& args,
   i++;
   cmsys::Glob g;
   g.SetRecurse(recurse);
+
+  bool explicitFollowSymlinks = false;
+  cmPolicies::PolicyStatus status =
+    this->Makefile->GetPolicyStatus(cmPolicies::CMP0009);
+  if(recurse)
+    {
+    switch(status)
+      {
+      case cmPolicies::NEW:
+        g.RecurseThroughSymlinksOff();
+        break;
+      case cmPolicies::OLD:
+      case cmPolicies::WARN:
+      case cmPolicies::REQUIRED_IF_USED:
+      case cmPolicies::REQUIRED_ALWAYS:
+        g.RecurseThroughSymlinksOn();
+        break;
+      }
+    }
+
   std::string output = "";
   bool first = true;
   for ( ; i != args.end(); ++i )
     {
+    if ( recurse && (*i == "FOLLOW_SYMLINKS") )
+      {
+      explicitFollowSymlinks = true;
+      g.RecurseThroughSymlinksOn();
+      ++i;
+      if ( i == args.end() )
+        {
+        this->SetError(
+          "GLOB_RECURSE requires a glob expression after FOLLOW_SYMLINKS");
+        return false;
+        }
+      }
+
     if ( *i == "RELATIVE" )
       {
       ++i; // skip RELATIVE
@@ -688,6 +721,7 @@ bool cmFileCommand::HandleGlobCommand(std::vector<std::string> const& args,
         return false;
         }
       }
+
     if ( !cmsys::SystemTools::FileIsFullPath(i->c_str()) )
       {
       std::string expr = this->Makefile->GetCurrentDirectory();
@@ -706,6 +740,7 @@ bool cmFileCommand::HandleGlobCommand(std::vector<std::string> const& args,
       {
       g.FindFiles(*i);
       }
+
     std::vector<std::string>::size_type cc;
     std::vector<std::string>& files = g.GetFiles();
     for ( cc = 0; cc < files.size(); cc ++ )
@@ -718,6 +753,37 @@ bool cmFileCommand::HandleGlobCommand(std::vector<std::string> const& args,
       first = false;
       }
     }
+
+  if(recurse && !explicitFollowSymlinks)
+    {
+    switch (status)
+      {
+      case cmPolicies::NEW:
+        // Correct behavior, yay!
+        break;
+      case cmPolicies::OLD:
+        // Probably not really the expected behavior, but the author explicitly
+        // asked for the old behavior... no warning.
+      case cmPolicies::WARN:
+        // Possibly unexpected old behavior *and* we actually traversed
+        // symlinks without being explicitly asked to: warn the author.
+        if(g.GetFollowedSymlinkCount() != 0)
+          {
+          this->Makefile->IssueMessage(cmake::AUTHOR_WARNING,
+            this->Makefile->GetPolicies()->
+              GetPolicyWarning(cmPolicies::CMP0009));
+          }
+        break;
+      case cmPolicies::REQUIRED_IF_USED:
+      case cmPolicies::REQUIRED_ALWAYS:
+        this->SetError("policy CMP0009 error");
+        this->Makefile->IssueMessage(cmake::FATAL_ERROR,
+          this->Makefile->GetPolicies()->
+            GetRequiredPolicyError(cmPolicies::CMP0009));
+        return false;
+      }
+    }
+
   this->Makefile->AddDefinition(variable.c_str(), output.c_str());
   return true;
 }
@@ -1486,7 +1552,8 @@ cmFileCommand::HandleRPathRemoveCommand(std::vector<std::string> const& args)
   cmSystemToolsFileTime* ft = cmSystemTools::FileTimeNew();
   bool have_ft = cmSystemTools::FileTimeGet(file, ft);
   std::string emsg;
-  if(!cmSystemTools::RemoveRPath(file, &emsg))
+  bool removed;
+  if(!cmSystemTools::RemoveRPath(file, &emsg, &removed))
     {
     cmOStringStream e;
     e << "RPATH_REMOVE could not remove RPATH from file:\n"
@@ -1495,9 +1562,19 @@ cmFileCommand::HandleRPathRemoveCommand(std::vector<std::string> const& args)
     this->SetError(e.str().c_str());
     success = false;
     }
-  if(success && have_ft)
+  if(success)
     {
-    cmSystemTools::FileTimeSet(file, ft);
+    if(removed)
+      {
+      std::string message = "Removed runtime path from \"";
+      message += file;
+      message += "\"";
+      this->Makefile->DisplayStatus(message.c_str(), -1);
+      }
+    if(have_ft)
+      {
+      cmSystemTools::FileTimeSet(file, ft);
+      }
     }
   cmSystemTools::FileTimeDelete(ft);
   return success;

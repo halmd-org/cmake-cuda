@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddLibraryCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-02-11 18:35:39 $
-  Version:   $Revision: 1.22 $
+  Date:      $Date: 2008-09-03 13:43:16 $
+  Version:   $Revision: 1.22.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -100,7 +100,7 @@ public:
       "\n"
       "The add_library command can also create IMPORTED library "
       "targets using this signature:\n"
-      "  add_library(<name> <SHARED|STATIC|MODULE> IMPORTED)\n"
+      "  add_library(<name> <SHARED|STATIC|MODULE|UNKNOWN> IMPORTED)\n"
       "An IMPORTED library target references a library file located "
       "outside the project.  "
       "No rules are generated to build it.  "

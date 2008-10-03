@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmWin32ProcessExecution.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-09-27 18:16:20 $
-  Version:   $Revision: 1.32 $
+  Date:      $Date: 2008-09-04 21:10:45 $
+  Version:   $Revision: 1.32.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -715,18 +715,24 @@ bool cmWin32ProcessExecution::CloseHandles()
 {
   if(this->pStdErr != -1 )
     {
+    // this will close this as well: this->hChildStderrRdDup
     _close(this->pStdErr);
     this->pStdErr = -1;
+    this->hChildStderrRdDup = 0;
     }
   if(this->pStdIn != -1 )
     {
+    // this will close this as well: this->hChildStdinWrDup
     _close(this->pStdIn);
     this->pStdIn = -1;
+    this->hChildStdinWrDup = 0;
     }
   if(this->pStdOut != -1 )
     {
+    // this will close this as well: this->hChildStdoutRdDup
     _close(this->pStdOut);
     this->pStdOut = -1;
+    this->hChildStdoutRdDup = 0;
     }
 
   bool ret = true;
@@ -735,21 +741,7 @@ bool cmWin32ProcessExecution::CloseHandles()
     ret = false;
     }
   this->hChildStdinRd = 0;
-  if(this->hChildStdoutRdDup && !CloseHandle(this->hChildStdoutRdDup))
-    {
-    ret = false;
-    }
-  this->hChildStdoutRdDup = 0;
-  if(this->hChildStderrRdDup && !CloseHandle(this->hChildStderrRdDup))
-    {
-    ret = false;
-    }
-  this->hChildStderrRdDup = 0;
-  if(this->hChildStdinWrDup && !CloseHandle(this->hChildStdinWrDup))
-    {
-    ret = false;
-    }
-  this->hChildStdinWrDup = 0;
+  // now close these two
   if (this->hChildStdoutWr && !CloseHandle(this->hChildStdoutWr))
     {
     ret = false;

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmReturnCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 23:34:19 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.2.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -57,7 +57,7 @@ public:
    */
   virtual const char* GetTerseDocumentation() 
     {
-    return "Return from a directory or function.";
+    return "Return from a file, directory or function.";
     }
   
   /**
@@ -67,10 +67,14 @@ public:
     {
     return
       "  return()\n"
-      "Returns from a directory or function. When this command is "
-      "encountered, it caused process of the current function or "
-      "directory to stop and control is return to the caller of the "
-      "function, or the parent directory if any. Note that a macro "
+      "Returns from a file, directory or function. When this command is "
+      "encountered in an included file (via include() or find_package()), "
+      "it causes processing of the current file to stop and control is "
+      "returned to the including file. If it is encountered in a file which "
+      "is not included by another file, e.g. a CMakeLists.txt, control is "
+      "returned to the parent directory if there is one. "
+      "If return is called in a function, control is returned to the caller "
+      "of the function. Note that a macro "
       "is not a function and does not handle return like a function does.";
     }
   

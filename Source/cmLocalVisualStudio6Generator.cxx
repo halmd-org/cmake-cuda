@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio6Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-23 20:09:36 $
-  Version:   $Revision: 1.141.2.2 $
+  Date:      $Date: 2008-09-12 14:56:21 $
+  Version:   $Revision: 1.141.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1314,6 +1314,13 @@ void cmLocalVisualStudio6Generator
     }
 
   std::string line;
+  std::string libnameExports;
+  if(exportSymbol.size())
+    {
+    libnameExports = "/D \"";
+    libnameExports += exportSymbol;
+    libnameExports += "\"";
+    }
   while(cmSystemTools::GetLineFromStream(fin, line))
     {
     const char* mfcFlag = this->Makefile->GetDefinition("CMAKE_MFC_FLAG");
@@ -1322,7 +1329,7 @@ void cmLocalVisualStudio6Generator
       mfcFlag = "0";
       }
     cmSystemTools::ReplaceString(line, "OUTPUT_LIBNAME_EXPORTS",
-                                 exportSymbol.c_str());
+                                 libnameExports.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_MFC_FLAG",
                                  mfcFlag);
     if(target.GetType() == cmTarget::STATIC_LIBRARY )

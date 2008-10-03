@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeTargetDepends.h,v $
   Language:  C++
-  Date:      $Date: 2008-02-07 21:14:05 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.2.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -48,7 +48,8 @@ private:
   void CollectTargets();
   void CollectDepends();
   void CollectTargetDepends(int depender_index);
-  void AddTargetDepend(int depender_index, const char* dependee_name);
+  void AddTargetDepend(int depender_index, const char* dependee_name,
+                       bool linking);
   void ComputeFinalDepends(cmComputeComponentGraph const& ccg);
 
   cmGlobalGenerator* GlobalGenerator;

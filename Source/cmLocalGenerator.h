@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-02-14 20:31:08 $
-  Version:   $Revision: 1.103 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.103.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -275,6 +275,13 @@ public:
    */
   void GenerateAppleInfoPList(cmTarget* target, const char* targetName,
                               const char* fname);
+
+  /**
+   * Generate a Mac OS X framework Info.plist file.
+   */
+  void GenerateFrameworkInfoPList(cmTarget* target,
+                                  const char* targetName,
+                                  const char* fname);
 protected:
   /** Construct a comment for a custom command.  */
   std::string ConstructComment(const cmCustomCommand& cc,
@@ -348,6 +355,7 @@ protected:
   std::vector<cmLocalGenerator*> Children;
   std::map<cmStdString, cmStdString> LanguageToIncludeFlags;
   std::map<cmStdString, cmStdString> UniqueObjectNamesMap;
+  std::string::size_type ObjectPathMax;
   bool WindowsShell;
   bool WindowsVSIDE;
   bool WatcomWMake;

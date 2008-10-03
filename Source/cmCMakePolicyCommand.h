@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCMakePolicyCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-03-18 14:23:54 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.4.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -108,6 +108,11 @@ public:
       "Alternatively one may fix the project to work with the new behavior "
       "and set the policy state to NEW."
       "\n"
+      "  cmake_policy(GET CMP<NNNN> <variable>)\n"
+      "Check whether a given policy is set to OLD or NEW behavior.  "
+      "The output variable value will be \"OLD\" or \"NEW\" if the "
+      "policy is set, and empty otherwise."
+      "\n"
       "  cmake_policy(PUSH)\n"
       "  cmake_policy(POP)\n"
       "Push and pop the current policy setting state on a stack.  "
@@ -123,6 +128,7 @@ public:
   cmTypeMacro(cmCMakePolicyCommand, cmCommand);
 private:
   bool HandleSetMode(std::vector<std::string> const& args);
+  bool HandleGetMode(std::vector<std::string> const& args);
   bool HandleVersionMode(std::vector<std::string> const& args);
 };
 

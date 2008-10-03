@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.35.2.2 $
+  Date:      $Date: 2008-09-12 14:56:20 $
+  Version:   $Revision: 1.35.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -77,7 +77,7 @@ public:
       "       [NO_HEX_CONVERSION])\n"
       "  file(GLOB variable [RELATIVE path] [globbing expressions]...)\n"
       "  file(GLOB_RECURSE variable [RELATIVE path] \n"
-      "       [globbing expressions]...)\n"
+      "       [FOLLOW_SYMLINKS] [globbing expressions]...)\n"
       "  file(REMOVE [file1 ...])\n"
       "  file(REMOVE_RECURSE [file1 ...])\n"
       "  file(MAKE_DIRECTORY [directory1 directory2 ...])\n"
@@ -124,9 +124,11 @@ public:
       "   *.cxx      - match all files with extension cxx\n"
       "   *.vt?      - match all files with extension vta,...,vtz\n"
       "   f[3-5].txt - match files f3.txt, f4.txt, f5.txt\n"
-      "GLOB_RECURSE will generate similar list as the regular GLOB, except "
+      "GLOB_RECURSE will generate a list similar to the regular GLOB, except "
       "it will traverse all the subdirectories of the matched directory and "
-      "match the files.\n"
+      "match the files. Subdirectories that are symlinks are only traversed "
+      "if FOLLOW_SYMLINKS is given or cmake policy CMP0009 is not set to NEW. "
+      "See cmake --help-policy CMP0009 for more information.\n"
       "Examples of recursive globbing include:\n"
       "   /dir/*.py  - match all python files in /dir and subdirectories\n"
       "MAKE_DIRECTORY will create the given directories, also if their parent "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIfCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-03-24 22:23:26 $
-  Version:   $Revision: 1.46.2.1 $
+  Date:      $Date: 2008-09-12 14:56:21 $
+  Version:   $Revision: 1.46.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -142,6 +142,8 @@ public:
       "  if(POLICY policy-id)\n"
       "True if the given name is an existing policy "
       "(of the form CMP<NNNN>).\n"
+      "  if(TARGET target-name)\n"
+      "True if the given name is an existing target, built or imported.\n"
       "  if(EXISTS file-name)\n"
       "  if(EXISTS directory-name)\n"
       "True if the named file or directory exists.  "
@@ -175,6 +177,11 @@ public:
       "  if(string STREQUAL string)\n"
       "True if the given string or variable's value is lexicographically "
       "less (or greater, or equal) than the string on the right.\n"
+      "  if(version1 VERSION_LESS version2)\n"
+      "  if(version1 VERSION_EQUAL version2)\n"
+      "  if(version1 VERSION_GREATER version2)\n"
+      "Component-wise integer version number comparison (version format is "
+      "major[.minor[.patch[.tweak]]]).\n"
       "  if(DEFINED variable)\n"
       "True if the given variable is defined. It does not matter if the "
       "variable is true or false just if it has been set.";

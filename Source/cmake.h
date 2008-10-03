@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.h,v $
   Language:  C++
-  Date:      $Date: 2008-06-25 13:51:32 $
-  Version:   $Revision: 1.109.2.5 $
+  Date:      $Date: 2008-08-06 21:04:20 $
+  Version:   $Revision: 1.109.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -314,6 +314,9 @@ class cmake
   bool GetDebugOutput() { return this->DebugOutput; }
   void SetDebugOutputOn(bool b) { this->DebugOutput = b;}
 
+  // Do we want trace output during the cmake run.
+  bool GetTrace() { return this->Trace;}
+  void SetTrace(bool b) {  this->Trace = b;}
   // Define a property
   void DefineProperty(const char *name, cmProperty::ScopeType scope,
                       const char *ShortDescription,
@@ -438,6 +441,7 @@ private:
   bool InTryCompile;
   bool ScriptMode;
   bool DebugOutput;
+  bool Trace;
   std::string CMakeEditCommand;
   std::string CMakeCommand;
   std::string CXXEnvironment;

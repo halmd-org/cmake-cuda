@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExtraEclipseCDT4Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-08 16:22:48 $
-  Version:   $Revision: 1.13.2.1 $
+  Date:      $Date: 2008-08-06 21:04:19 $
+  Version:   $Revision: 1.13.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf neundorf@kde.org, All rights reserved.
@@ -351,7 +351,7 @@ void cmExtraEclipseCDT4Generator::CreateProjectFile()
         }
       }
     // for EXECUTABLE_OUTPUT_PATH when not in binary dir
-    std::string outputPath = mf->GetDefinition("EXECUTABLE_OUTPUT_PATH");
+    std::string outputPath = mf->GetSafeDefinition("EXECUTABLE_OUTPUT_PATH");
     if (!outputPath.empty() && !cmSystemTools::IsSubDirectory(
                         outputPath.c_str(), this->HomeOutputDirectory.c_str()))
       {
@@ -368,9 +368,9 @@ void cmExtraEclipseCDT4Generator::CreateProjectFile()
         this->OutLinkedResources.push_back(name);
       }
     // for LIBRARY_OUTPUT_PATH when not in binary dir
-    if (outputPath != mf->GetDefinition("LIBRARY_OUTPUT_PATH"))
+    if (outputPath != mf->GetSafeDefinition("LIBRARY_OUTPUT_PATH"))
       {
-      outputPath = mf->GetDefinition("LIBRARY_OUTPUT_PATH");
+      outputPath = mf->GetSafeDefinition("LIBRARY_OUTPUT_PATH");
       if (!outputPath.empty() && !cmSystemTools::IsSubDirectory(
                         outputPath.c_str(), this->HomeOutputDirectory.c_str()))
         {

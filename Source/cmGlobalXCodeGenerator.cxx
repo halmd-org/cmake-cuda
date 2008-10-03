@@ -3,8 +3,8 @@
 Program:   CMake - Cross-Platform Makefile Generator
 Module:    $RCSfile: cmGlobalXCodeGenerator.cxx,v $
 Language:  C++
-Date:      $Date: 2008-07-15 15:35:46 $
-Version:   $Revision: 1.186.2.5 $
+Date:      $Date: 2008-09-12 14:56:21 $
+Version:   $Revision: 1.186.2.8 $
 
 Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
 See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -526,11 +526,13 @@ cmGlobalXCodeGenerator::CreateXCodeSourceFile(cmLocalGenerator* lg,
 
   buildFile->AddAttribute("settings", settings);
   fileRef->AddAttribute("fileEncoding", this->CreateString("4"));
+
   const char* lang = 
     this->CurrentLocalGenerator->GetSourceFileLanguage(*sf);
   std::string sourcecode = "sourcecode";
   std::string ext = sf->GetExtension();
   ext = cmSystemTools::LowerCase(ext);
+
   if(ext == "o")
     {
     sourcecode = "compiled.mach-o.objfile";
@@ -541,41 +543,50 @@ cmGlobalXCodeGenerator::CreateXCodeSourceFile(cmLocalGenerator* lg,
     }
   else if(ext == "m")
     {
-    sourcecode += ".cpp.objc";
+    sourcecode += ".c.objc";
     }
   else if(ext == "plist")
     {
     sourcecode += ".text.plist";
     }
-  else if(!lang)
+  else if(ext == "h" || ext == "hxx" || ext == "hpp")
     {
-    sourcecode += ext;
-    sourcecode += ".";
-    sourcecode += ext;
+    const char* linkLanguage = cmtarget.GetLinkerLanguage(this);
+    if(linkLanguage && (std::string(linkLanguage) == "CXX"))
+      {
+      sourcecode += ".cpp.h";
+      }
+    else
+      {
+      sourcecode += ".c.h";
+      }
     }
-  else if(strcmp(lang, "C") == 0)
-    {
-    sourcecode += ".c.c";
-    }
-  else if(strcmp(lang, "CXX") == 0)
+  else if(lang && strcmp(lang, "CXX") == 0)
     {
     sourcecode += ".cpp.cpp";
     }
-  else
+  else if(lang && strcmp(lang, "C") == 0)
     {
-    sourcecode += ext;
-    sourcecode += ".";
-    sourcecode += ext;
+    sourcecode += ".c.c";
     }
+  //else
+  //  {
+  //  // Already specialized above or we leave sourcecode == "sourcecode"
+  //  // which is probably the most correct choice. Extensionless headers,
+  //  // for example... Or file types unknown to Xcode that do not map to a
+  //  // valid lastKnownFileType value.
+  //  }
+
   fileRef->AddAttribute("lastKnownFileType", 
                         this->CreateString(sourcecode.c_str()));
-  std::string path = 
+
+  std::string path =
     this->ConvertToRelativeForXCode(sf->GetFullPath().c_str());
   std::string dir;
   std::string file;
   cmSystemTools::SplitProgramPath(sf->GetFullPath().c_str(),
                                   dir, file);
-  
+
   fileRef->AddAttribute("name", this->CreateString(file.c_str()));
   fileRef->AddAttribute("path", this->CreateString(path.c_str()));
   if(this->XcodeVersion == 15)
@@ -590,6 +601,7 @@ cmGlobalXCodeGenerator::CreateXCodeSourceFile(cmLocalGenerator* lg,
     {
     fileRef->AddAttribute("sourceTree", this->CreateString("<absolute>"));
     }
+
   return buildFile;
 }
 
@@ -689,11 +701,13 @@ cmGlobalXCodeGenerator::CreateXCodeTargets(cmLocalGenerator* gen,
       cmTarget::SourceFileFlags tsFlags =
         cmtarget.GetTargetSourceFileFlags(*i);
 
-      if(strcmp(filetype->GetString(), "\"compiled.mach-o.objfile\"") == 0)
+      if(strcmp(filetype->GetString(), "compiled.mach-o.objfile") == 0)
         {
         externalObjFiles.push_back(xsf);
         }
-      else if((*i)->GetPropertyAsBool("HEADER_FILE_ONLY"))
+      else if((*i)->GetPropertyAsBool("HEADER_FILE_ONLY") ||
+        (tsFlags.Type == cmTarget::SourceFileTypePrivateHeader) ||
+        (tsFlags.Type == cmTarget::SourceFileTypePublicHeader))
         {
         headerFiles.push_back(xsf);
         }
@@ -1003,7 +1017,7 @@ std::string cmGlobalXCodeGenerator::ExtractFlag(const char* flag,
 {
   std::string retFlag;
   std::string::size_type pos = flags.find(flag);
-  if(pos != flags.npos && (pos ==0 || flags[pos]==' '))
+  if(pos != flags.npos && (pos ==0 || flags[pos-1]==' '))
     {
     while(pos < flags.size() && flags[pos] != ' ')
       {
@@ -1436,6 +1450,18 @@ void cmGlobalXCodeGenerator::CreateBuildSettings(cmTarget& target,
       std::string version = target.GetFrameworkVersion();
       buildSettings->AddAttribute("FRAMEWORK_VERSION",
                                   this->CreateString(version.c_str()));
+
+      std::string plist = this->ComputeInfoPListLocation(target);
+      // Xcode will create the final version of Info.plist at build time,
+      // so let it replace the framework name.  This avoids creating
+      // a per-configuration Info.plist file.
+      this->CurrentLocalGenerator
+        ->GenerateFrameworkInfoPList(&target, "$(EXECUTABLE_NAME)",
+                                     plist.c_str());
+      std::string path =
+        this->ConvertToRelativeForXCode(plist.c_str());
+      buildSettings->AddAttribute("INFOPLIST_FILE",
+                                  this->CreateString(path.c_str()));
       }
     else
       {
@@ -1455,10 +1481,6 @@ void cmGlobalXCodeGenerator::CreateBuildSettings(cmTarget& target,
 
     buildSettings->AddAttribute("LIBRARY_STYLE",
                                 this->CreateString("DYNAMIC"));
-    buildSettings->AddAttribute("DYLIB_COMPATIBILITY_VERSION",
-                                this->CreateString("1"));
-    buildSettings->AddAttribute("DYLIB_CURRENT_VERSION",
-                                this->CreateString("1"));
     break;
     }
     case cmTarget::EXECUTABLE:
@@ -1676,6 +1698,38 @@ void cmGlobalXCodeGenerator::CreateBuildSettings(cmTarget& target,
                               this->CreateString(
                                 "-Wmost -Wno-four-char-constants"
                                 " -Wno-unknown-pragmas"));
+
+  // Runtime version information.
+  if(target.GetType() == cmTarget::SHARED_LIBRARY)
+    {
+    int major;
+    int minor;
+    int patch;
+
+    // VERSION -> current_version
+    target.GetTargetVersion(false, major, minor, patch);
+    if(major == 0 && minor == 0 && patch == 0)
+      {
+      // Xcode always wants at least 1.0.0
+      major = 1;
+      }
+    cmOStringStream v;
+    v << major << "." << minor << "." << patch;
+    buildSettings->AddAttribute("DYLIB_CURRENT_VERSION",
+                                this->CreateString(v.str().c_str()));
+
+    // SOVERSION -> compatibility_version
+    target.GetTargetVersion(true, major, minor, patch);
+    if(major == 0 && minor == 0 && patch == 0)
+      {
+      // Xcode always wants at least 1.0.0
+      major = 1;
+      }
+    cmOStringStream vso;
+    vso << major << "." << minor << "." << patch;
+    buildSettings->AddAttribute("DYLIB_COMPATIBILITY_VERSION",
+                                this->CreateString(vso.str().c_str()));
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -1929,22 +1983,8 @@ void cmGlobalXCodeGenerator::AppendOrAddBuildSetting(cmXCodeObject* settings,
     else
       {
       std::string oldValue = attr->GetString();
-
-      // unescape escaped quotes internal to the string:
-      cmSystemTools::ReplaceString(oldValue, "\\\"", "\"");
-
-      // remove surrounding quotes, if any:
-      std::string::size_type len = oldValue.length();
-      if(oldValue[0] == '\"' && oldValue[len-1] == '\"')
-        {
-        oldValue = oldValue.substr(1, len-2);
-        }
-
       oldValue += " ";
       oldValue += value;
-
-      // SetString automatically escapes internal quotes and then surrounds
-      // the result with quotes if necessary...
       attr->SetString(oldValue.c_str());
       }
     }
