@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-31 15:52:24 $
-  Version:   $Revision: 1.227.2.6 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.227.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -764,7 +764,12 @@ void cmGlobalGenerator::Configure()
 
   if ( !this->CMakeInstance->GetScriptMode() )
     {
-    this->CMakeInstance->UpdateProgress("Configuring done", -1);
+    const char* msg = "Configuring done";
+    if(cmSystemTools::GetErrorOccuredFlag())
+      {
+      msg = "Configuring incomplete, errors occurred!";
+      }
+    this->CMakeInstance->UpdateProgress(msg, -1);
     }
 }
 
@@ -860,7 +865,10 @@ void cmGlobalGenerator::Generate()
   // Compute the inter-target dependencies.
   {
   cmComputeTargetDepends ctd(this);
-  ctd.Compute();
+  if(!ctd.Compute())
+    {
+    return;
+    }
   std::vector<cmTarget*> const& targets = ctd.GetTargets();
   for(std::vector<cmTarget*>::const_iterator ti = targets.begin();
       ti != targets.end(); ++ti)

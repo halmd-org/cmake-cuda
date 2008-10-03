@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestCoverageHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-15 19:39:58 $
-  Version:   $Revision: 1.51.2.1 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.51.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -640,6 +640,18 @@ void cmCTestCoverageHandler::PopulateCustomVectors(cmMakefile *mf)
 }
 
 //----------------------------------------------------------------------
+// Fix for issue #4971 where the case of the drive letter component of
+// the filenames might be different when analyzing gcov output.
+//
+// Compare file names: fnc(fn1) == fnc(fn2) // fnc == file name compare
+//
+#ifdef _WIN32
+#define fnc(s) cmSystemTools::LowerCase(s)
+#else
+#define fnc(s) s
+#endif
+
+//----------------------------------------------------------------------
 int cmCTestCoverageHandler::HandleGCovCoverage(
   cmCTestCoverageHandlerContainer* cont)
 {
@@ -673,6 +685,7 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
 
   cmsys::Glob gl;
   gl.RecurseOn();
+  gl.RecurseThroughSymlinksOff();
   std::string daGlob = cont->BinaryDir + "/*.da";
   gl.FindFiles(daGlob);
   std::vector<std::string> files = gl.GetFiles();
@@ -969,9 +982,11 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
       if ( !sourceFile.empty() && actualSourceFile.empty() )
         {
         gcovFile = "";
+
         // Is it in the source dir?
         if ( sourceFile.size() > cont->SourceDir.size() &&
-          sourceFile.substr(0, cont->SourceDir.size()) == cont->SourceDir &&
+          (fnc(sourceFile.substr(0, cont->SourceDir.size())) ==
+            fnc(cont->SourceDir)) &&
           sourceFile[cont->SourceDir.size()] == '/' )
           {
           cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "   produced s: "
@@ -981,9 +996,11 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
           actualSourceFile
             = cmSystemTools::CollapseFullPath(sourceFile.c_str());
           }
+
         // Binary dir?
         if ( sourceFile.size() > cont->BinaryDir.size() &&
-          sourceFile.substr(0, cont->BinaryDir.size()) == cont->BinaryDir &&
+          (fnc(sourceFile.substr(0, cont->BinaryDir.size())) ==
+            fnc(cont->BinaryDir)) &&
           sourceFile[cont->BinaryDir.size()] == '/' )
           {
           cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "   produced b: "
@@ -993,21 +1010,25 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
           actualSourceFile
             = cmSystemTools::CollapseFullPath(sourceFile.c_str());
           }
+
         if ( actualSourceFile.empty() )
           {
           if ( missingFiles.find(actualSourceFile) == missingFiles.end() )
             {
             cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
               "Something went wrong" << std::endl);
-            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "File: ["
+            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+              "Cannot find file: ["
               << sourceFile.c_str() << "]" << std::endl);
-            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "s: ["
-              << sourceFile.substr(0, cont->SourceDir.size()) << "]"
+            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+              " in source dir: ["
+              << cont->SourceDir.c_str() << "]"
               << std::endl);
-            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "b: ["
-              << sourceFile.substr(0, cont->BinaryDir.size()) << "]"
+            cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+              " or binary dir: ["
+              << cont->BinaryDir.size() << "]"
               << std::endl);
-            *cont->OFS << "  Something went wrong. Cannot find: "
+            *cont->OFS << "  Something went wrong. Cannot find file: "
               << sourceFile.c_str()
               << " in source dir: " << cont->SourceDir.c_str()
               << " or binary dir: " << cont->BinaryDir.c_str() << std::endl;
@@ -1034,6 +1055,7 @@ int cmCTestCoverageHandler::HandleTracePyCoverage(
 {
   cmsys::Glob gl;
   gl.RecurseOn();
+  gl.RecurseThroughSymlinksOff();
   std::string daGlob = cont->BinaryDir + "/*.cover";
   gl.FindFiles(daGlob);
   std::vector<std::string> files = gl.GetFiles();

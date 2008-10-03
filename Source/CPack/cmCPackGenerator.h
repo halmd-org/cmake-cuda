@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-06-25 13:51:39 $
-  Version:   $Revision: 1.2.2.1 $
+  Date:      $Date: 2008-09-24 14:07:50 $
+  Version:   $Revision: 1.2.2.3 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -73,7 +73,7 @@ public:
   /**
    * Initialize generator
    */
-  int Initialize(const char* name, cmMakefile* mf, const char* argv0);
+  int Initialize(const char* name, cmMakefile* mf);
 
   /**
    * Construct generator
@@ -88,7 +88,7 @@ public:
   bool IsSet(const char* name) const;
 
   //! Set all the variables
-  int FindRunningCMake(const char* arg0);
+  int SetCMakeRoot();
 
   //! Set the logger
   void SetLogger(cmCPackLog* log) { this->Logger = log; }

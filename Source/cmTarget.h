@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.h,v $
   Language:  C++
-  Date:      $Date: 2008-07-28 15:31:35 $
-  Version:   $Revision: 1.109.2.5 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.109.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -80,7 +80,8 @@ public:
   cmTarget();
   enum TargetType { EXECUTABLE, STATIC_LIBRARY,
                     SHARED_LIBRARY, MODULE_LIBRARY, UTILITY, GLOBAL_TARGET,
-                    INSTALL_FILES, INSTALL_PROGRAMS, INSTALL_DIRECTORY};
+                    INSTALL_FILES, INSTALL_PROGRAMS, INSTALL_DIRECTORY,
+                    UNKNOWN_LIBRARY};
   static const char* TargetTypeNames[];
   enum CustomCommandType { PRE_BUILD, PRE_LINK, POST_BUILD };
 
@@ -244,6 +245,7 @@ public:
   const char *GetProperty(const char *prop);
   const char *GetProperty(const char *prop, cmProperty::ScopeType scope);
   bool GetPropertyAsBool(const char *prop);
+  void CheckProperty(const char* prop, cmMakefile* context);
 
   bool IsImported() const {return this->IsImportedTarget;}
 
@@ -268,6 +270,11 @@ public:
       the VERSION property.  Version 0 is returned if the property is
       not set or cannot be parsed.  */
   void GetTargetVersion(int& major, int& minor);
+
+  /** Get the target major, minor, and patch version numbers
+      interpreted from the VERSION or SOVERSION property.  Version 0
+      is returned if the property is not set or cannot be parsed.  */
+  void GetTargetVersion(bool soversion, int& major, int& minor, int& patch);
 
   /**
    * Trace through the source files in this target and add al source files
@@ -387,6 +394,9 @@ public:
   /** Return whether this target is an executable with symbol exports
       enabled.  */
   bool IsExecutableWithExports();
+
+  /** Return whether this target may be used to link another target.  */
+  bool IsLinkable();
 
   /** Return whether this target is a shared library Framework on
       Apple.  */

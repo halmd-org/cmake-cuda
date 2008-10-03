@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFileLocation.h,v $
   Language:  C++
-  Date:      $Date: 2007-06-18 15:59:23 $
-  Version:   $Revision: 1.2 $
+  Date:      $Date: 2008-08-06 21:04:19 $
+  Version:   $Revision: 1.2.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -93,6 +93,8 @@ private:
   bool AmbiguousExtension;
   std::string Directory;
   std::string Name;
+
+  bool MatchesAmbiguousExtension(cmSourceFileLocation const& loc) const;
 
   // Update the location with additional knowledge.
   void Update(cmSourceFileLocation const& loc);

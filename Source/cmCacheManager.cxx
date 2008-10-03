@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCacheManager.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-29 22:30:48 $
-  Version:   $Revision: 1.100 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.100.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -713,10 +713,6 @@ void cmCacheManager::RemoveCacheEntry(const char* key)
   if(i != this->Cache.end())
     {
     this->Cache.erase(i);
-    }
-  else
-    {
-    std::cerr << "Failed to remove entry:" << key << std::endl;
     }
 }
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetPropertyCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-02 13:16:03 $
-  Version:   $Revision: 1.6.2.1 $
+  Date:      $Date: 2008-09-04 21:10:44 $
+  Version:   $Revision: 1.6.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -86,7 +86,7 @@ public:
         "of the property to get.  "
         "If the property is not set an empty value is returned.  "
         "If the SET option is given the variable is set to a boolean "
-        "value indicating whether the property has been set."
+        "value indicating whether the property has been set.  "
         "If the DEFINED option is given the variable is set to a boolean "
         "value indicating whether the property has been defined "
         "such as with define_property. "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExtraCodeBlocksGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-11-25 12:45:18 $
-  Version:   $Revision: 1.18 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.18.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf neundorf@kde.org, All rights reserved.
@@ -93,14 +93,12 @@ void cmExtraCodeBlocksGenerator::Generate()
 }
 
 
-/* create the project file, if it already exists, merge it with the
-existing one, otherwise create a new one */
+/* create the project file */
 void cmExtraCodeBlocksGenerator::CreateProjectFile(
                                      const std::vector<cmLocalGenerator*>& lgs)
 {
   const cmMakefile* mf=lgs[0]->GetMakefile();
   std::string outputDir=mf->GetStartOutputDirectory();
-  std::string projectDir=mf->GetHomeDirectory();
   std::string projectName=mf->GetProjectName();
 
   std::string filename=outputDir+"/";
@@ -108,16 +106,7 @@ void cmExtraCodeBlocksGenerator::CreateProjectFile(
   std::string sessionFilename=outputDir+"/";
   sessionFilename+=projectName+".layout";
 
-/*  if (cmSystemTools::FileExists(filename.c_str()))
-    {
-    this->MergeProjectFiles(outputDir, projectDir, filename,
-                            cmakeFilePattern, sessionFilename);
-    }
-  else */
-    {
-    this->CreateNewProjectFile(lgs, filename);
-    }
-
+  this->CreateNewProjectFile(lgs, filename);
 }
 
 

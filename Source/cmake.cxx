@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-31 15:52:24 $
-  Version:   $Revision: 1.375.2.10 $
+  Date:      $Date: 2008-09-04 21:10:45 $
+  Version:   $Revision: 1.375.2.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -140,6 +140,7 @@ void cmNeedBackwardsCompatibility(const std::string& variable,
 
 cmake::cmake()
 {
+  this->Trace = false;
   this->SuppressDevWarnings = false;
   this->DoSuppressDevWarnings = false;
   this->DebugOutput = false;
@@ -618,6 +619,11 @@ void cmake::SetArgs(const std::vector<std::string>& args)
       std::cout << "Running with debug output on.\n";
       this->SetDebugOutputOn(true);
       }
+    else if(arg.find("--trace",0) == 0)
+      {
+      std::cout << "Running with trace output on.\n";
+      this->SetTrace(true);
+      }
     else if(arg.find("-G",0) == 0)
       {
       std::string value = arg.substr(2);
@@ -851,7 +857,7 @@ int cmake::AddCMakePaths()
     }
   std::string cpackCommand = cmSystemTools::GetFilenamePath(cMakeSelf) +
     "/cpack" + cmSystemTools::GetFilenameExtension(cMakeSelf);
-  if(cmSystemTools::FileExists(ctestCommand.c_str()))
+  if(cmSystemTools::FileExists(cpackCommand.c_str()))
     {
     this->CacheManager->AddCacheEntry
       ("CMAKE_CPACK_COMMAND", cpackCommand.c_str(),
@@ -1181,7 +1187,7 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
         << " s. (clock)"
         << "\n";
       return 0;
-    }
+      }
 
     // Command to calculate the md5sum of a file
     else if (args[1] == "md5sum" && args.size() >= 3)
@@ -1865,7 +1871,10 @@ int cmake::HandleDeleteCacheVariables(const char* var)
   cmSystemTools::ExpandListArgument(std::string(var), argsSplit);
   // erase the property to avoid infinite recursion
   this->SetProperty("__CMAKE_DELETE_CACHE_CHANGE_VARS_", "");
-
+  if(this->GetIsInTryCompile())
+    {
+    return 0;
+    }
   cmCacheManager::CacheIterator ci = this->CacheManager->NewIterator();
   std::vector<SaveCacheEntry> saved;
   cmOStringStream warning;
@@ -3540,10 +3549,6 @@ void cmake::SetProperty(const char* prop, const char* value)
   if (!prop)
     {
     return;
-    }
-  if (!value)
-    {
-    value = "NOTFOUND";
     }
 
   this->Properties.SetProperty(prop, value, cmProperty::GLOBAL);

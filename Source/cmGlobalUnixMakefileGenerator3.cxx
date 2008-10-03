@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator3
   Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.126.2.3 $
+  Date:      $Date: 2008-08-06 21:04:19 $
+  Version:   $Revision: 1.126.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -59,8 +59,11 @@ void cmGlobalUnixMakefileGenerator3
     
     if(!mf->GetDefinition(langComp.c_str()))
       {
-      cmSystemTools::Error(langComp.c_str(), 
-                           " not set, after EnableLanguage");
+      if(!optional)
+        {
+        cmSystemTools::Error(langComp.c_str(), 
+                             " not set, after EnableLanguage");
+        }
       continue;
       }
     const char* name = mf->GetRequiredDefinition(langComp.c_str()); 

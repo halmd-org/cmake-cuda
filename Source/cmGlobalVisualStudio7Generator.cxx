@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio7Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.99.2.1 $
+  Date:      $Date: 2008-09-03 13:43:17 $
+  Version:   $Revision: 1.99.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -743,6 +743,7 @@ static cmVS7FlagTable cmVS7ExtraFlagTable[] =
    cmVS7FlagTable::UserValueIgnored | cmVS7FlagTable::Continue},
   {"PrecompiledHeaderThrough", "Yu", "Precompiled Header Name", "",
    cmVS7FlagTable::UserValueRequired},
+  {"WholeProgramOptimization", "LTCG", "WholeProgramOptimization", "TRUE", 0},
 
   // Exception handling mode.  If no entries match, it will be FALSE.
   {"ExceptionHandling", "GX", "enable c++ exceptions", "TRUE", 0},

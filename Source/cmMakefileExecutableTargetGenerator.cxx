@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileExecutableTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-08 16:22:50 $
-  Version:   $Revision: 1.46.2.1 $
+  Date:      $Date: 2008-09-03 13:43:18 $
+  Version:   $Revision: 1.46.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -504,6 +504,7 @@ cmMakefileExecutableTargetGenerator::CreateAppBundle(std::string& targetName,
   outpath += "MacOS";
   cmSystemTools::MakeDirectory(outpath.c_str());
   outpath += "/";
+  this->Makefile->AddCMakeDependFile(outpath.c_str());
 
   // Configure the Info.plist file.  Note that it needs the executable name
   // to be set.
@@ -511,4 +512,5 @@ cmMakefileExecutableTargetGenerator::CreateAppBundle(std::string& targetName,
   this->LocalGenerator->GenerateAppleInfoPList(this->Target,
                                                targetName.c_str(),
                                                plist.c_str());
+  this->Makefile->AddCMakeDependFile(plist.c_str());
 }

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPackageCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.19.2.1 $
+  Date:      $Date: 2008-09-12 14:56:21 $
+  Version:   $Revision: 1.19.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -73,6 +73,7 @@ public:
 private:
   void AppendSuccessInformation();
   void AppendToProperty(const char* propertyName);
+  void SetModuleVariables(const std::string& components);
   bool FindModule(bool& found);
   bool HandlePackageMode();
   void FindConfig();
@@ -110,6 +111,7 @@ private:
   unsigned int VersionMajor;
   unsigned int VersionMinor;
   unsigned int VersionPatch;
+  unsigned int VersionTweak;
   unsigned int VersionCount;
   bool VersionExact;
   cmStdString FileFound;
@@ -117,6 +119,7 @@ private:
   unsigned int VersionFoundMajor;
   unsigned int VersionFoundMinor;
   unsigned int VersionFoundPatch;
+  unsigned int VersionFoundTweak;
   unsigned int VersionFoundCount;
   bool Quiet;
   bool Required;
@@ -124,6 +127,7 @@ private:
   bool NoModule;
   bool NoBuilds;
   bool DebugMode;
+  bool UseLib64Paths;
   std::vector<std::string> Names;
   std::vector<std::string> Configs;
 };
