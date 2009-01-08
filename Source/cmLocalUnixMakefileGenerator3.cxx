@@ -512,6 +512,8 @@ void cmLocalUnixMakefileGenerator3::WriteDirectoryInformationFile()
   infoFileStream
     << "SET(CMAKE_CXX_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
   infoFileStream
+    << "SET(CMAKE_CUDA_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
+  infoFileStream
     << "SET(CMAKE_Fortran_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
 
   // Store the include regular expressions for this directory.
@@ -535,6 +537,11 @@ void cmLocalUnixMakefileGenerator3::WriteDirectoryInformationFile()
     << "SET(CMAKE_CXX_INCLUDE_REGEX_SCAN ${CMAKE_C_INCLUDE_REGEX_SCAN})\n";
   infoFileStream
     << "SET(CMAKE_CXX_INCLUDE_REGEX_COMPLAIN "
+    "${CMAKE_C_INCLUDE_REGEX_COMPLAIN})\n";
+  infoFileStream
+    << "SET(CMAKE_CUDA_INCLUDE_REGEX_SCAN ${CMAKE_C_INCLUDE_REGEX_SCAN})\n";
+  infoFileStream
+    << "SET(CMAKE_CUDA_INCLUDE_REGEX_COMPLAIN "
     "${CMAKE_C_INCLUDE_REGEX_COMPLAIN})\n";
 }
 
