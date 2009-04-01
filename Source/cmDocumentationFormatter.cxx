@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatter.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-22 18:04:24 $
-  Version:   $Revision: 1.1.2.2 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.1.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -118,7 +118,8 @@ cmDocumentationFormatter::ComputeSectionLinkPrefix(std::string const& name)
     {
     return "module";
     }
-  else if(name.find("Name") != name.npos)
+  else if(name.find("Name") != name.npos ||
+          name.find("Introduction") != name.npos)
     {
     return "name";
     }

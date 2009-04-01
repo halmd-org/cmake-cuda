@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-13 17:52:49 $
-  Version:   $Revision: 1.33 $
+  Date:      $Date: 2009-01-13 18:03:53 $
+  Version:   $Revision: 1.33.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -171,7 +171,7 @@ bool cmSetCommand
     this->Makefile->AddCacheDefinition(variable,
                                    value.c_str(),
                                    docstring,
-                                   type);
+                                   type, force);
     }
   else
     {

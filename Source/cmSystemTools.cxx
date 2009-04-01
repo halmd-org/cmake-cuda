@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSystemTools.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.368.2.6 $
+  Date:      $Date: 2009-02-10 22:28:08 $
+  Version:   $Revision: 1.368.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -932,6 +932,7 @@ bool RunCommandViaPopen(const char* command,
       cmSystemTools::Stdout(buffer);
       }
     output += buffer;
+    buffer[0] = 0;
     fgets(buffer, BUFFER_SIZE, cpipe);
     }
 
@@ -971,10 +972,12 @@ bool RunCommandViaPopen(const char* command,
         error << "SIGFPE";
         break;
 #endif
+#ifndef __HAIKU__
 #ifdef SIGBUS
       case SIGBUS:
         error << "SIGBUS";
         break;
+#endif
 #endif
 #ifdef SIGSEGV
       case SIGSEGV:
@@ -1698,7 +1701,7 @@ int cmSystemToolsGZStructOpen(void* call_data, const char *pathname,
     }
 
 // no fchmod on BeOS 5...do pathname instead.
-#if defined(__BEOS__) && !defined(__ZETA__) 
+#if defined(__BEOS__) && !defined(__ZETA__) && !defined(__HAIKU__)
   if ((oflags & O_CREAT) && chmod(pathname, mode))
     {
     return -1;
@@ -2189,6 +2192,14 @@ bool cmSystemTools::FileTimeSet(const char* fname, cmSystemToolsFileTime* t)
 static std::string cmSystemToolsExecutableDirectory;
 void cmSystemTools::FindExecutableDirectory(const char* argv0)
 {
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  (void)argv0; // ignore this on windows
+  char modulepath[_MAX_PATH];
+  ::GetModuleFileName(NULL, modulepath, sizeof(modulepath));
+  cmSystemToolsExecutableDirectory =
+    cmSystemTools::GetFilenamePath(modulepath);
+  return;
+#else
   std::string errorMsg;
   std::string exe;
   if(cmSystemTools::FindProgramPath(argv0, exe, errorMsg))
@@ -2202,6 +2213,7 @@ void cmSystemTools::FindExecutableDirectory(const char* argv0)
     {
     // ???
     }
+#endif
 }
 
 //----------------------------------------------------------------------------

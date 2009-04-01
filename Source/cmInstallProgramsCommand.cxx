@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallProgramsCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:24 $
-  Version:   $Revision: 1.22.2.1 $
+  Date:      $Date: 2009-02-04 22:04:49 $
+  Version:   $Revision: 1.22.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -86,6 +86,10 @@ void cmInstallProgramsCommand::FinalPass()
   // the prefix.  We skip the leading slash given by the user.
   std::string destination = this->Destination.substr(1);
   cmSystemTools::ConvertToUnixSlashes(destination);
+  if(destination.empty())
+    {
+    destination = ".";
+    }
 
   // Use a file install generator.
   const char* no_permissions = "";

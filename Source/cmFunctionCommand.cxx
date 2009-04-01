@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFunctionCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-07 13:40:36 $
-  Version:   $Revision: 1.6 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.6.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -36,6 +36,7 @@ public:
     // we must copy when we clone
     newC->Args = this->Args;
     newC->Functions = this->Functions;
+    newC->Policies = this->Policies;
     return newC;
   }
 
@@ -81,6 +82,7 @@ public:
 
   std::vector<std::string> Args;
   std::vector<cmListFileFunction> Functions;
+  cmPolicies::PolicyMap Policies;
 };
 
 
@@ -104,7 +106,13 @@ bool cmFunctionHelperCommand::InvokeInitialPass
     }
 
   // we push a scope on the makefile
-  this->Makefile->PushScope();
+  cmMakefile::LexicalPushPop lexScope(this->Makefile);
+  cmMakefile::ScopePushPop varScope(this->Makefile);
+  static_cast<void>(varScope);
+
+  // Push a weak policy scope which restores the policies recorded at
+  // function creation.
+  cmMakefile::PolicyPushPop polScope(this->Makefile, true, this->Policies);
 
   // set the value of argc
   cmOStringStream strStream;
@@ -162,18 +170,18 @@ bool cmFunctionHelperCommand::InvokeInitialPass
       {
       // The error message should have already included the call stack
       // so we do not need to report an error here.
+      lexScope.Quiet();
+      polScope.Quiet();
       inStatus.SetNestedError(true);
       return false;
       }
     if (status.GetReturnInvoked())
       {
-      this->Makefile->PopScope();
       return true;
       }
     }
 
   // pop scope on the makefile
-  this->Makefile->PopScope();
   return true;
 }
 
@@ -205,6 +213,7 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
       cmFunctionHelperCommand *f = new cmFunctionHelperCommand();
       f->Args = this->Args;
       f->Functions = this->Functions;
+      mf.RecordPolicies(f->Policies);
       
       // Set the FilePath on the arguments to match the function since it is
       // not stored and the original values may be freed
@@ -223,7 +232,7 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
       mf.AddCommand(f);
 
       // remove the function blocker now that the function is defined
-      mf.RemoveFunctionBlocker(lff);
+      mf.RemoveFunctionBlocker(this, lff);
       return true;
       }
     else
@@ -257,17 +266,6 @@ ShouldRemove(const cmListFileFunction& lff, cmMakefile &mf)
     }
 
   return false;
-}
-
-void cmFunctionFunctionBlocker::
-ScopeEnded(cmMakefile &mf)
-{
-  // functions should end with an EndFunction
-  cmSystemTools::Error(
-    "The end of a CMakeLists file was reached with a FUNCTION statement that "
-    "was not closed properly. Within the directory: ",
-    mf.GetCurrentDirectory(), " with function ",
-    this->Args[0].c_str());
 }
 
 bool cmFunctionCommand

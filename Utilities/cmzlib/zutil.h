@@ -8,7 +8,7 @@
    subject to change. Applications should only use zlib.h.
  */
 
-/* @(#) $Id: zutil.h,v 1.2 2007-09-11 15:22:29 david.cole Exp $ */
+/* @(#) $Id: zutil.h,v 1.2.2.1 2008-11-04 20:16:46 hoffman Exp $ */
 
 #ifndef ZUTIL_H
 #define ZUTIL_H
@@ -147,7 +147,13 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  define OS_CODE  0x0f
 #endif
 
-#if defined(_BEOS_) || defined(RISCOS)
+/* Haiku defines both __HAIKU__ and __BEOS__ (for now) */
+/* many BeOS workarounds are no longer needed in Haiku */
+#if defined(__HAIKU__) && defined(__BEOS__)
+#undef __BEOS__
+#endif
+
+#if defined(_BEOS_) || defined(RISCOS) 
 #  define fdopen(fd,mode) NULL /* No fdopen() */
 #endif
 

@@ -400,6 +400,7 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
       wxWidgets-2.9.2
       wxWidgets-2.9.1
       wxWidgets-2.9.0
+      wxWidgets-2.8.9
       wxWidgets-2.8.8
       wxWidgets-2.8.7
       wxWidgets-2.8.6
@@ -446,7 +447,15 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
     ENDIF(MINGW)
     IF(BUILD_SHARED_LIBS)
       FIND_PATH(wxWidgets_LIB_DIR
-        NAMES msw/build.cfg mswd/build.cfg
+        NAMES
+          msw/wx/setup.h
+          mswd/wx/setup.h
+          mswu/wx/setup.h
+          mswud/wx/setup.h
+          mswuniv/wx/setup.h
+          mswunivd/wx/setup.h
+          mswunivu/wx/setup.h
+          mswunivud/wx/setup.h
         PATHS
         ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_dll   # prefer shared
         ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_lib
@@ -455,7 +464,15 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
         )
     ELSE(BUILD_SHARED_LIBS)
       FIND_PATH(wxWidgets_LIB_DIR
-        NAMES msw/build.cfg mswd/build.cfg
+        NAMES
+          msw/wx/setup.h
+          mswd/wx/setup.h
+          mswu/wx/setup.h
+          mswud/wx/setup.h
+          mswuniv/wx/setup.h
+          mswunivd/wx/setup.h
+          mswunivu/wx/setup.h
+          mswunivud/wx/setup.h
         PATHS
         ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_lib   # prefer static
         ${WX_ROOT_DIR}/lib/${WX_LIB_DIR_PREFIX}_dll
@@ -472,8 +489,6 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
     ENDIF(NOT WX_LIB_DIR STREQUAL wxWidgets_LIB_DIR)
 
     IF(WX_LIB_DIR)
-      SET(wxWidgets_FOUND TRUE)
-
       # If building shared libs, define WXUSINGDLL to use dllimport.
       IF(WX_LIB_DIR MATCHES ".*[dD][lL][lL].*")
         SET(wxWidgets_DEFINITIONS "-DWXUSINGDLL")
@@ -492,6 +507,8 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
       DBG_MSG_V("WX_CONFIGURATION_LIST=${WX_CONFIGURATION_LIST}")
 
       IF(WX_CONFIGURATION)
+        SET(wxWidgets_FOUND TRUE)
+
         # If the selected configuration wasn't found force the default
         # one. Otherwise, use it but still force a refresh for
         # updating the doc string with the current list of available

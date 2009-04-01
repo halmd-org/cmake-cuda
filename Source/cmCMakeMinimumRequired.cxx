@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCMakeMinimumRequired.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-24 22:23:26 $
-  Version:   $Revision: 1.17.2.1 $
+  Date:      $Date: 2009-01-13 18:03:49 $
+  Version:   $Revision: 1.17.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -47,10 +47,7 @@ bool cmCMakeMinimumRequired
       }
     else
       {
-      cmOStringStream e;
-      e << "called with unknown argument \"" << args[i].c_str() << "\".";
-      this->SetError(e.str().c_str());
-      return false;
+      this->UnknownArguments.push_back(args[i]);
       }
     }
   if(doing_version)
@@ -62,7 +59,7 @@ bool cmCMakeMinimumRequired
   // Make sure there was a version to check.
   if(version_string.empty())
     {
-    return true;
+    return this->EnforceUnknownArguments();
     }
 
   // Save the required version string.
@@ -107,6 +104,12 @@ bool cmCMakeMinimumRequired
     return true;
     }
 
+  // The version is not from the future, so enforce unknown arguments.
+  if(!this->EnforceUnknownArguments())
+    {
+    return false;
+    }
+
   if (required_major < 2 || required_major == 2 && required_minor < 4)
   {
     this->Makefile->SetPolicyVersion("2.4");
@@ -119,3 +122,16 @@ bool cmCMakeMinimumRequired
   return true;
 }
 
+//----------------------------------------------------------------------------
+bool cmCMakeMinimumRequired::EnforceUnknownArguments()
+{
+  if(!this->UnknownArguments.empty())
+    {
+    cmOStringStream e;
+    e << "called with unknown argument \""
+      << this->UnknownArguments[0] << "\".";
+    this->SetError(e.str().c_str());
+    return false;
+    }
+  return true;
+}

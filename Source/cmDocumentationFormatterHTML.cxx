@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatterHTML.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-22 18:04:24 $
-  Version:   $Revision: 1.11.2.2 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.11.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -202,10 +202,13 @@ void cmDocumentationFormatterHTML::PrintParagraph(std::ostream& os,
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentationFormatterHTML::PrintHeader(const char* /*name*/, 
+void cmDocumentationFormatterHTML::PrintHeader(const char* docname,
+                                               const char* appname,
                                                std::ostream& os)
 {
-  os << "<html><body>\n";
+  os << "<html><head><title>";
+  os << docname << " - " << appname;
+  os << "</title></head><body>\n";
 }
 
 //----------------------------------------------------------------------------

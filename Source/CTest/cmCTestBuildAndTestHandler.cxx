@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildAndTestHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-04 21:10:45 $
-  Version:   $Revision: 1.20.2.2 $
+  Date:      $Date: 2009-01-13 18:03:54 $
+  Version:   $Revision: 1.20.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -359,10 +359,10 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
     out << "Run test in directory: " << this->BuildRunDir << "\n";
     cmSystemTools::ChangeDirectory(this->BuildRunDir.c_str());
     }
-  out << "Running test executable: " << fullPath << " ";
+  out << "Running test command: \"" << fullPath << "\"";
   for(k=0; k < this->TestCommandArgs.size(); ++k)
     {
-    out << this->TestCommandArgs[k] << " ";
+    out << " \"" << this->TestCommandArgs[k] << "\"";
     }
   out << "\n";
 
@@ -386,7 +386,7 @@ int cmCTestBuildAndTestHandler::RunCMakeAndTest(std::string* outstring)
 
   if(runTestRes != cmsysProcess_State_Exited || retval != 0)
     {
-    out << "Failed to run test command: " << testCommand[0] << "\n";
+    out << "Test command failed: " << testCommand[0] << "\n";
     retval = 1;
     }
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestTestCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2006-03-15 16:02:08 $
-  Version:   $Revision: 1.10 $
+  Date:      $Date: 2008-12-02 12:07:40 $
+  Version:   $Revision: 1.10.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -24,6 +24,8 @@ cmCTestTestCommand::cmCTestTestCommand()
   this->Arguments[ctt_START] = "START";
   this->Arguments[ctt_END] = "END";
   this->Arguments[ctt_STRIDE] = "STRIDE";
+  this->Arguments[ctt_EXCLUDE] = "EXCLUDE";
+  this->Arguments[ctt_INCLUDE] = "INCLUDE";
   this->Arguments[ctt_LAST] = 0;
   this->Last = ctt_LAST;
 }
@@ -67,6 +69,14 @@ cmCTestGenericHandler* cmCTestTestCommand::InitializeHandler()
       }
     handler->SetOption("TestsToRunInformation",
       testsToRunString.str().c_str());
+    }
+  if(this->Values[ctt_EXCLUDE])
+    {
+    handler->SetOption("ExcludeRegularExpression", this->Values[ctt_EXCLUDE]);
+    }
+  if(this->Values[ctt_INCLUDE])
+    {
+    handler->SetOption("IncludeRegularExpression", this->Values[ctt_INCLUDE]);
     }
   return handler;
 }

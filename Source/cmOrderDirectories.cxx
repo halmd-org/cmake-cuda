@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmOrderDirectories.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-30 18:54:49 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2008-12-31 15:14:30 $
+  Version:   $Revision: 1.4.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -113,25 +113,22 @@ protected:
 bool cmOrderDirectoriesConstraint::FileMayConflict(std::string const& dir,
                                                    std::string const& name)
 {
-  // Check if the file will be built by cmake.
-  std::set<cmStdString> const& files =
-    (this->GlobalGenerator->GetDirectoryContent(dir, false));
-  if(std::set<cmStdString>::const_iterator(files.find(name)) != files.end())
-    {
-    return true;
-    }
-
-  // Check if the file exists on disk and is not a symlink back to the
-  // original file.
+  // Check if the file exists on disk.
   std::string file = dir;
   file += "/";
   file += name;
-  if(cmSystemTools::FileExists(file.c_str(), true) &&
-     !cmSystemTools::SameFile(this->FullPath.c_str(), file.c_str()))
+  if(cmSystemTools::FileExists(file.c_str(), true))
     {
-    return true;
+    // The file conflicts only if it is not the same as the original
+    // file due to a symlink or hardlink.
+    return !cmSystemTools::SameFile(this->FullPath.c_str(), file.c_str());
     }
-  return false;
+
+  // Check if the file will be built by cmake.
+  std::set<cmStdString> const& files =
+    (this->GlobalGenerator->GetDirectoryContent(dir, false));
+  std::set<cmStdString>::const_iterator fi = files.find(name);
+  return fi != files.end();
 }
 
 //----------------------------------------------------------------------------

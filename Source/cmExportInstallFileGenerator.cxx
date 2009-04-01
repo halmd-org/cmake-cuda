@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExportInstallFileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-02-06 19:20:35 $
-  Version:   $Revision: 1.8 $
+  Date:      $Date: 2009-01-13 18:03:51 $
+  Version:   $Revision: 1.8.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,6 +25,15 @@ cmExportInstallFileGenerator
 ::cmExportInstallFileGenerator(cmInstallExportGenerator* iegen):
   InstallExportGenerator(iegen)
 {
+}
+
+//----------------------------------------------------------------------------
+std::string cmExportInstallFileGenerator::GetConfigImportFileGlob()
+{
+  std::string glob = this->FileBase;
+  glob += "-*";
+  glob += this->FileExt;
+  return glob;
 }
 
 //----------------------------------------------------------------------------
@@ -55,7 +64,7 @@ bool cmExportInstallFileGenerator::GenerateMainFile(std::ostream& os)
   os << "# Load information for each installed configuration.\n"
      << "GET_FILENAME_COMPONENT(_DIR \"${CMAKE_CURRENT_LIST_FILE}\" PATH)\n"
      << "FILE(GLOB CONFIG_FILES \"${_DIR}/"
-     << this->FileBase << "-*" << this->FileExt << "\")\n"
+     << this->GetConfigImportFileGlob() << "\")\n"
      << "FOREACH(f ${CONFIG_FILES})\n"
      << "  INCLUDE(${f})\n"
      << "ENDFOREACH(f)\n"

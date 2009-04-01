@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-24 14:07:50 $
-  Version:   $Revision: 1.2.2.3 $
+  Date:      $Date: 2008-10-24 15:18:55 $
+  Version:   $Revision: 1.2.2.4 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -127,9 +127,12 @@ protected:
     bool setDestDir, const char* tempInstallDirectory);
 
   virtual bool SupportsComponentInstallation() const;
-  virtual cmCPackInstallationType* GetInstallationType(const char *projectName, const char* name);
-  virtual cmCPackComponent* GetComponent(const char *projectName, const char* name);
-  virtual cmCPackComponentGroup* GetComponentGroup(const char *projectName, const char* name);
+  virtual cmCPackInstallationType* GetInstallationType(const char *projectName,
+                                                       const char* name);
+  virtual cmCPackComponent* GetComponent(const char *projectName,
+                                         const char* name);
+  virtual cmCPackComponentGroup* GetComponentGroup(const char *projectName,
+                                                   const char* name);
 
   bool GeneratorVerbose;
   std::string Name;

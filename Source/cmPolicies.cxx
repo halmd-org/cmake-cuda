@@ -323,6 +323,38 @@ cmPolicies::cmPolicies()
     "by default, but only if FOLLOW_SYMLINKS is given as an additional "
     "argument to the FILE command.",
     2,6,2, cmPolicies::WARN);
+
+  this->DefinePolicy(
+    CMP0010, "CMP0010",
+    "Bad variable reference syntax is an error.",
+    "In CMake 2.6.2 and below, incorrect variable reference syntax such as "
+    "a missing close-brace (\"${FOO\") was reported but did not stop "
+    "processing of CMake code.  "
+    "This policy determines whether a bad variable reference is an error.  "
+    "The OLD behavior for this policy is to warn about the error, leave "
+    "the string untouched, and continue. "
+    "The NEW behavior for this policy is to report an error.",
+    2,6,3, cmPolicies::WARN);
+
+  this->DefinePolicy(
+    CMP0011, "CMP0011",
+    "Included scripts do automatic cmake_policy PUSH and POP.",
+    "In CMake 2.6.2 and below, CMake Policy settings in scripts loaded by "
+    "the include() and find_package() commands would affect the includer.  "
+    "Explicit invocations of cmake_policy(PUSH) and cmake_policy(POP) were "
+    "required to isolate policy changes and protect the includer.  "
+    "While some scripts intend to affect the policies of their includer, "
+    "most do not.  "
+    "In CMake 2.6.3 and above, include() and find_package() by default PUSH "
+    "and POP an entry on the policy stack around an included script, "
+    "but provide a NO_POLICY_SCOPE option to disable it.  "
+    "This policy determines whether or not to imply NO_POLICY_SCOPE for "
+    "compatibility.  "
+    "The OLD behavior for this policy is to imply NO_POLICY_SCOPE for "
+    "include() and find_package() commands.  "
+    "The NEW behavior for this policy is to allow the commands to do their "
+    "default cmake_policy PUSH and POP.",
+    2,6,3, cmPolicies::WARN);
 }
 
 cmPolicies::~cmPolicies()

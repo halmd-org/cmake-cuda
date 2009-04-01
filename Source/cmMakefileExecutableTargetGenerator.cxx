@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileExecutableTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.46.2.2 $
+  Date:      $Date: 2009-02-06 21:15:16 $
+  Version:   $Revision: 1.46.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -353,36 +353,9 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
 
   // Construct object file lists that may be needed to expand the
   // rule.
-  std::string variableName;
-  std::string variableNameExternal;
-  this->WriteObjectsVariable(variableName, variableNameExternal);
   std::string buildObjs;
-  if(useResponseFile)
-    {
-    std::string objects;
-    this->WriteObjectsString(objects);
-    std::string objects_rsp =
-      this->CreateResponseFile("objects.rsp", objects, depends);
-    buildObjs = "@";
-    buildObjs += this->Convert(objects_rsp.c_str(),
-                               cmLocalGenerator::NONE,
-                               cmLocalGenerator::SHELL);
-    }
-  else if(useLinkScript)
-    {
-    this->WriteObjectsString(buildObjs);
-    }
-  else
-    {
-    buildObjs = "$(";
-    buildObjs += variableName;
-    buildObjs += ") $(";
-    buildObjs += variableNameExternal;
-    buildObjs += ")";
-    }
-  std::string cleanObjs = "$(";
-  cleanObjs += variableName;
-  cleanObjs += ")";
+  this->CreateObjectLists(useLinkScript, false, useResponseFile,
+                          buildObjs, depends);
 
   cmLocalGenerator::RuleVariables vars;
   vars.Language = linkLanguage;
@@ -440,7 +413,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
   this->LocalGenerator->CreateCDCommand
     (commands1,
      this->Makefile->GetStartOutputDirectory(),
-     this->Makefile->GetHomeOutputDirectory());
+     cmLocalGenerator::HOME_OUTPUT);
   commands.insert(commands.end(), commands1.begin(), commands1.end());
   commands1.clear();
 
@@ -454,7 +427,7 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
     commands1.push_back(symlink);
     this->LocalGenerator->CreateCDCommand(commands1,
                                   this->Makefile->GetStartOutputDirectory(),
-                                  this->Makefile->GetHomeOutputDirectory());
+                                  cmLocalGenerator::HOME_OUTPUT);
     commands.insert(commands.end(), commands1.begin(), commands1.end());
     commands1.clear();
     }
@@ -503,8 +476,8 @@ cmMakefileExecutableTargetGenerator::CreateAppBundle(std::string& targetName,
   outpath = this->MacContentDirectory;
   outpath += "MacOS";
   cmSystemTools::MakeDirectory(outpath.c_str());
+  this->Makefile->AddCMakeOutputFile(outpath.c_str());
   outpath += "/";
-  this->Makefile->AddCMakeDependFile(outpath.c_str());
 
   // Configure the Info.plist file.  Note that it needs the executable name
   // to be set.
@@ -512,5 +485,5 @@ cmMakefileExecutableTargetGenerator::CreateAppBundle(std::string& targetName,
   this->LocalGenerator->GenerateAppleInfoPList(this->Target,
                                                targetName.c_str(),
                                                plist.c_str());
-  this->Makefile->AddCMakeDependFile(plist.c_str());
+  this->Makefile->AddCMakeOutputFile(plist.c_str());
 }

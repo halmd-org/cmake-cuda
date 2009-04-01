@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommandArgumentParserHelper.h,v $
   Language:  C++
-  Date:      $Date: 2007-06-06 20:20:02 $
-  Version:   $Revision: 1.11 $
+  Date:      $Date: 2009-01-01 17:49:41 $
+  Version:   $Revision: 1.11.4.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -95,6 +95,7 @@ private:
   char* AddString(const char* str);
 
   void CleanupParser();
+  void SetError(std::string const& msg);
 
   std::vector<char*> Variables;
   const cmMakefile* Makefile;

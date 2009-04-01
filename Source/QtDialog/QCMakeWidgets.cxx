@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: QCMakeWidgets.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-23 20:09:44 $
-  Version:   $Revision: 1.1.2.2 $
+  Date:      $Date: 2008-12-31 15:14:30 $
+  Version:   $Revision: 1.1.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -104,15 +104,32 @@ void QCMakePathEditor::chooseFile()
     }
 }
 
+// use same QDirModel for all completers
+static QDirModel* fileDirModel()
+{
+  static QDirModel* m = NULL;
+  if(!m)
+    {
+    m = new QDirModel();
+    }
+  return m;
+}
+static QDirModel* pathDirModel()
+{
+  static QDirModel* m = NULL;
+  if(!m)
+    {
+    m = new QDirModel();
+    m->setFilter(QDir::AllDirs | QDir::Drives | QDir::NoDotAndDotDot);
+    }
+  return m;
+}
+
 QCMakeFileCompleter::QCMakeFileCompleter(QObject* o, bool dirs)
   : QCompleter(o)
 {
-  QDirModel* model = new QDirModel(this);
-  if(dirs)
-    {
-    model->setFilter(QDir::AllDirs | QDir::Drives | QDir::NoDotAndDotDot);
-    }
-  this->setModel(model);
+  QDirModel* m = dirs ? pathDirModel() : fileDirModel();
+  this->setModel(m);
 }
 
 QString QCMakeFileCompleter::pathFromIndex(const QModelIndex& idx) const

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExportFileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.11.2.3 $
+  Date:      $Date: 2009-01-13 18:03:51 $
+  Version:   $Revision: 1.11.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -177,11 +177,7 @@ cmExportFileGenerator
                           cmTarget* target, ImportPropertyMap& properties)
 {
   // Compute which library configuration to link.
-  cmTarget::LinkLibraryType linkType = cmTarget::OPTIMIZED;
-  if(config && cmSystemTools::UpperCase(config) == "DEBUG")
-    {
-    linkType = cmTarget::DEBUG;
-    }
+  cmTarget::LinkLibraryType linkType = target->ComputeLinkType(config);
 
   // Construct the list of libs linked for this configuration.
   std::vector<std::string> actual_libs;

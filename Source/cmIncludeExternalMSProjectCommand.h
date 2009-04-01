@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeExternalMSProjectCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.8 $
+  Date:      $Date: 2008-12-02 12:07:37 $
+  Version:   $Revision: 1.8.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -66,7 +66,10 @@ public:
       "  include_external_msproject(projectname location\n"
       "                             dep1 dep2 ...)\n"
       "Includes an external Microsoft project in the generated workspace "
-      "file.  Currently does nothing on UNIX.";
+      "file.  Currently does nothing on UNIX. This will create a "
+      "target named INCLUDE_EXTERNAL_MSPROJECT_[projectname].  This can "
+      "be used in the add_dependencies command to make things depend "
+      "on the external project.";
     }
   
   cmTypeMacro(cmIncludeExternalMSProjectCommand, cmCommand);

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmOutputRequiredFilesCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.16 $
+  Date:      $Date: 2008-10-24 15:18:54 $
+  Version:   $Revision: 1.16.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -199,6 +199,13 @@ bool cmOutputRequiredFilesCommand
     {
     // write them out
     FILE *fout = fopen(this->OutputFile.c_str(),"w");
+    if(!fout)
+      {
+      std::string err = "Can not open output file: ";
+      err += this->OutputFile;
+      this->SetError(err.c_str());
+      return false;
+      }
     std::set<cmDependInformation const*> visited;
     this->ListDependencies(info,fout, &visited);
     fclose(fout);

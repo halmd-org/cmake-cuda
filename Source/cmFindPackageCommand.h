@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPackageCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-12 14:56:21 $
-  Version:   $Revision: 1.19.2.3 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.19.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -75,12 +75,15 @@ private:
   void AppendToProperty(const char* propertyName);
   void SetModuleVariables(const std::string& components);
   bool FindModule(bool& found);
+  void AddFindDefinition(const char* var, const char* val);
+  void RestoreFindDefinitions();
   bool HandlePackageMode();
   void FindConfig();
   bool FindPrefixedConfig();
   bool FindFrameworkConfig();
   bool FindAppBundleConfig();
-  bool ReadListFile(const char* f);
+  enum PolicyScopeRule { NoPolicyScope, DoPolicyScope };
+  bool ReadListFile(const char* f, PolicyScopeRule psr);
   void StoreVersionFound();
 
   void ComputePrefixes();
@@ -95,7 +98,6 @@ private:
   bool SearchDirectory(std::string const& dir);
   bool CheckDirectory(std::string const& dir);
   bool FindConfigFile(std::string const& dir, std::string& file);
-  bool FindConfigFileToLoad(std::string const& dir, std::string& file);
   bool CheckVersion(std::string const& config_file);
   bool CheckVersionFile(std::string const& version_file);
   bool SearchPrefix(std::string const& prefix);
@@ -103,6 +105,9 @@ private:
   bool SearchAppBundlePrefix(std::string const& prefix_in);
 
   friend class cmFindPackageFileList;
+
+  struct OriginalDef { bool exists; std::string value; };
+  std::map<cmStdString, OriginalDef> OriginalDefs;
 
   std::string CommandDocumentation;
   cmStdString Name;
@@ -128,6 +133,7 @@ private:
   bool NoBuilds;
   bool DebugMode;
   bool UseLib64Paths;
+  bool PolicyScope;
   std::vector<std::string> Names;
   std::vector<std::string> Configs;
 };

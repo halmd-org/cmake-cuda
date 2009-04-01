@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalXCodeGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:23 $
-  Version:   $Revision: 1.52.2.1 $
+  Date:      $Date: 2008-10-24 15:18:48 $
+  Version:   $Revision: 1.52.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -152,6 +152,8 @@ private:
   virtual void  WriteXCodePBXProj(std::ostream& fout,
                                   cmLocalGenerator* root,
                                   std::vector<cmLocalGenerator*>& generators);
+  cmXCodeObject* CreateXCodeFileReference(cmSourceFile* sf,
+                                          cmTarget& cmtarget);
   cmXCodeObject* CreateXCodeSourceFile(cmLocalGenerator* gen, 
                                        cmSourceFile* sf,
                                        cmTarget& cmtarget);

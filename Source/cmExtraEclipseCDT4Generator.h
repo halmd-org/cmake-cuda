@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExtraEclipseCDT4Generator.h,v $
   Language:  C++
-  Date:      $Date: 2008-02-19 21:27:03 $
-  Version:   $Revision: 1.4 $
+  Date:      $Date: 2009-01-13 18:03:52 $
+  Version:   $Revision: 1.4.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf, neundorf@kde.org. All rights reserved.
@@ -84,8 +84,11 @@ private:
                                          const std::string& type,
                                          const std::string& path);
 
+  static std::string EscapeForXML(const std::string& value);
+
   // Helper functions
-  static void AppendStorageScanners(cmGeneratedFileStream& fout);
+  static void AppendStorageScanners(cmGeneratedFileStream& fout, 
+                                    const cmMakefile& makefile);
   static void AppendTarget         (cmGeneratedFileStream& fout,
                                     const std::string&     target,
                                     const std::string&     make);
@@ -104,10 +107,15 @@ private:
                                     const std::string&     name,
                                     const std::string&     path);
 
+  bool AppendOutLinkedResource(cmGeneratedFileStream& fout,
+                               const std::string&     defname,
+                               const std::string&     altdefname);
+
   std::vector<std::string> SrcLinkedResources;
   std::vector<std::string> OutLinkedResources;
   std::string HomeDirectory;
   std::string HomeOutputDirectory;
+  std::set<std::string> TargetsToIgnore;
   bool IsOutOfSourceBuild;
   bool GenerateSourceProject;
 

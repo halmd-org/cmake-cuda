@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmListFileCache.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.41.2.3 $
+  Date:      $Date: 2008-10-24 15:18:48 $
+  Version:   $Revision: 1.41.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -242,11 +242,26 @@ bool cmListFileCacheParseFunction(cmListFileLexer* lexer,
 
   // Arguments.
   unsigned long lastLine = cmListFileLexer_GetCurrentLine(lexer);
+  unsigned long parenDepth = 0;
   while((token = cmListFileLexer_Scan(lexer)))
     {
-    if(token->type == cmListFileLexer_Token_ParenRight)
+    if(token->type == cmListFileLexer_Token_ParenLeft)
       {
-      return true;
+      parenDepth++;
+      cmListFileArgument a("(",
+                           false, filename, token->line);
+      function.Arguments.push_back(a);
+      }
+    else if(token->type == cmListFileLexer_Token_ParenRight)
+      {
+      if (parenDepth == 0)
+        {
+        return true;
+        }
+      parenDepth--;
+      cmListFileArgument a(")",
+                           false, filename, token->line);
+      function.Arguments.push_back(a);        
       }
     else if(token->type == cmListFileLexer_Token_Identifier ||
             token->type == cmListFileLexer_Token_ArgumentUnquoted)

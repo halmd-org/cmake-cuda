@@ -69,9 +69,17 @@ function(gp_file_type original_file file type_var)
   endif("${file}" MATCHES "^@(executable|loader)_path")
 
   if(NOT is_embedded)
-    if("${file}" MATCHES "^(/System/Library/|/usr/lib/)")
-      set(is_system 1)
-    endif("${file}" MATCHES "^(/System/Library/|/usr/lib/)")
+    if(UNIX)
+      if("${file}" MATCHES "^(/lib/|/lib32/|/lib64/)")
+        set(is_system 1)
+      endif("${file}" MATCHES "^(/lib/|/lib32/|/lib64/)")
+    endif(UNIX)
+
+    if(APPLE)
+      if("${file}" MATCHES "^(/System/Library/|/usr/lib/)")
+        set(is_system 1)
+      endif("${file}" MATCHES "^(/System/Library/|/usr/lib/)")
+    endif(APPLE)
 
     if(WIN32)
       string(TOLOWER "$ENV{SystemRoot}" sysroot)
@@ -406,7 +414,7 @@ function(get_prerequisites target prerequisites_var exclude_system recurse exepa
 
   if("${gp_tool}" STREQUAL "ldd")
     set(gp_cmd_args "")
-    set(gp_regex "^\t([\t ]+)[\t ].*${eol_char}$")
+    set(gp_regex "^[\t ]*[^\t ]+ => ([^\t ]+).*${eol_char}$")
     set(gp_regex_cmp_count 1)
     set(gp_tool_known 1)
   endif("${gp_tool}" STREQUAL "ldd")
@@ -560,8 +568,10 @@ function(get_prerequisites target prerequisites_var exclude_system recurse exepa
   endif("${candidate}" MATCHES "${gp_regex}")
   endforeach(candidate)
 
-  list(SORT ${prerequisites_var})
-
+  list(LENGTH ${prerequisites_var} prerequisites_var_length)
+  if(prerequisites_var_length GREATER 0)
+    list(SORT ${prerequisites_var})
+  endif(prerequisites_var_length GREATER 0)
   if(${recurse})
     set(more_inputs ${unseen_prereqs})
     foreach(input ${more_inputs})

@@ -3,7 +3,7 @@
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
-/* @(#) $Id: zconf.h,v 1.3 2007-09-11 15:22:29 david.cole Exp $ */
+/* @(#) $Id: zconf.h,v 1.3.2.1 2008-11-04 20:16:46 hoffman Exp $ */
 
 #ifndef ZCONF_H
 #define ZCONF_H
@@ -237,7 +237,7 @@
 #  endif
 #endif
 
-#if defined (__BEOS__)
+#if defined (__BEOS__) && !defined (__HAIKU__)
 #  ifdef ZLIB_DLL
 #    ifdef ZLIB_INTERNAL
 #      define ZEXPORT   __declspec(dllexport)

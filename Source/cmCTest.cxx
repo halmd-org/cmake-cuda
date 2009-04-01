@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTest.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-02-03 13:57:41 $
-  Version:   $Revision: 1.334 $
+  Date:      $Date: 2009-01-01 17:49:40 $
+  Version:   $Revision: 1.334.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -49,9 +49,14 @@
 
 #include <memory> // auto_ptr
 
-#if defined(__BEOS__)
+#if defined(__BEOS__) && !defined(__HAIKU__)
 #include <be/kernel/OS.h>   /* disable_debugger() API. */
 #endif
+
+#if defined(__HAIKU__)
+#include <os/kernel/OS.h>   /* disable_debugger() API. */
+#endif
+
 
 #define DEBUGOUT std::cout << __LINE__ << " "; std::cout
 #define DEBUGERR std::cerr << __LINE__ << " "; std::cerr
@@ -607,7 +612,7 @@ void cmCTest::BlockTestErrorDiagnostics()
   cmSystemTools::PutEnv("DASHBOARD_TEST_FROM_CTEST=" CMake_VERSION);
 #if defined(_WIN32)
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
-#elif defined(__BEOS__)
+#elif defined(__BEOS__) || defined(__HAIKU__)
   disable_debugger(1);
 #endif
 }
@@ -1134,14 +1139,14 @@ int cmCTest::RunTest(std::vector<const char*> argv,
         args.push_back(argv[i]);
         }
       }
-    if ( *log )
+    if ( log )
       {
       *log << "* Run internal CTest" << std::endl;
       }
     std::string oldpath = cmSystemTools::GetCurrentWorkingDirectory();
 
     *retVal = inst.Run(args, output);
-    if ( *log )
+    if ( log )
       {
       *log << output->c_str();
       }

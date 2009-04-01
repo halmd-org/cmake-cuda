@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackNSISGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:24 $
-  Version:   $Revision: 1.31.2.2 $
+  Date:      $Date: 2009-02-04 16:44:18 $
+  Version:   $Revision: 1.31.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -111,7 +111,8 @@ int cmCPackNSISGenerator::CompressFiles(const char* outFileName,
       std::string::size_type slash = fileN.find('/');
       if (slash != std::string::npos)
         {
-        // If this is a component installation, determine which component it is.
+        // If this is a component installation, determine which component it
+        // is.
         componentName = fileN.substr(0, slash);
 
         // Strip off the component part of the path.
@@ -284,12 +285,17 @@ int cmCPackNSISGenerator::CompressFiles(const char* outFileName,
         }
       }
 
-    this->SetOptionIfNotSet("CPACK_NSIS_INSTALLATION_TYPES", installTypesCode.c_str());
-    this->SetOptionIfNotSet("CPACK_NSIS_PAGE_COMPONENTS", "!insertmacro MUI_PAGE_COMPONENTS");
+    this->SetOptionIfNotSet("CPACK_NSIS_INSTALLATION_TYPES",
+                            installTypesCode.c_str());
+    this->SetOptionIfNotSet("CPACK_NSIS_PAGE_COMPONENTS",
+                            "!insertmacro MUI_PAGE_COMPONENTS");
     this->SetOptionIfNotSet("CPACK_NSIS_FULL_INSTALL", "");
-    this->SetOptionIfNotSet("CPACK_NSIS_COMPONENT_SECTIONS", componentCode.c_str());
-    this->SetOptionIfNotSet("CPACK_NSIS_COMPONENT_SECTION_LIST", sectionList.c_str());
-    this->SetOptionIfNotSet("CPACK_NSIS_SECTION_SELECTED_VARS", selectedVarsList.c_str());
+    this->SetOptionIfNotSet("CPACK_NSIS_COMPONENT_SECTIONS",
+                            componentCode.c_str());
+    this->SetOptionIfNotSet("CPACK_NSIS_COMPONENT_SECTION_LIST",
+                            sectionList.c_str());
+    this->SetOptionIfNotSet("CPACK_NSIS_SECTION_SELECTED_VARS", 
+                            selectedVarsList.c_str());
     this->SetOption("CPACK_NSIS_DEFINES", defines.c_str());
     }
 
@@ -342,13 +348,17 @@ int cmCPackNSISGenerator::InitializeInternal()
       "HKEY_LOCAL_MACHINE\\SOFTWARE\\NSIS", nsisPath,
       cmsys::SystemTools::KeyWOW64_32) )
     {
-    cmCPackLogger
-      (cmCPackLog::LOG_ERROR, 
-       "Cannot find NSIS registry value. This is usually caused by NSIS "
-       "not being installed. Please install NSIS from "
-       "http://nsis.sourceforge.net"
-       << std::endl);
-    return 0;
+    if ( !cmsys::SystemTools::ReadRegistryValue(
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\NSIS", nsisPath) )
+      {
+      cmCPackLogger
+        (cmCPackLog::LOG_ERROR,
+         "Cannot find NSIS registry value. This is usually caused by NSIS "
+         "not being installed. Please install NSIS from "
+         "http://nsis.sourceforge.net"
+         << std::endl);
+      return 0;
+      }
     }
   path.push_back(nsisPath);
 #endif
@@ -590,7 +600,8 @@ bool cmCPackNSISGenerator::SupportsComponentInstallation() const
 //----------------------------------------------------------------------
 std::string 
 cmCPackNSISGenerator::
-CreateComponentDescription(cmCPackComponent *component, cmOStringStream& macrosOut)
+CreateComponentDescription(cmCPackComponent *component, 
+                           cmOStringStream& macrosOut)
 {
   // Basic description of the component
   std::string componentCode = "Section ";
@@ -640,7 +651,8 @@ CreateComponentDescription(cmCPackComponent *component, cmOStringStream& macrosO
       }
 
     // Create the directory for the upload area
-    const char* userUploadDirectory = this->GetOption("CPACK_UPLOAD_DIRECTORY");
+    const char* userUploadDirectory = 
+      this->GetOption("CPACK_UPLOAD_DIRECTORY");
     std::string uploadDirectory;
     if (userUploadDirectory && *userUploadDirectory)
       {
@@ -770,7 +782,8 @@ CreateComponentDescription(cmCPackComponent *component, cmOStringStream& macrosO
     }
   else
     {
-    componentCode += "  File /r \"${INST_DIR}\\" + component->Name + "\\*.*\"\n";
+    componentCode += "  File /r \"${INST_DIR}\\" +
+      component->Name + "\\*.*\"\n";
     }
   componentCode += "  noinstall_" + component->Name + ":\n";
   componentCode += "SectionEnd\n";
@@ -780,20 +793,25 @@ CreateComponentDescription(cmCPackComponent *component, cmOStringStream& macrosO
   macrosOut << "  IntCmp $" << component->Name << "_was_installed 0 noremove_"
             << component->Name << "\n";
   std::vector<std::string>::iterator pathIt;
-  for (pathIt = component->Files.begin(); 
-       pathIt != component->Files.end(); 
-       ++pathIt) 
+  std::string path;
+  for (pathIt = component->Files.begin();
+       pathIt != component->Files.end();
+       ++pathIt)
     {
-    macrosOut << "  Delete \"$INSTDIR\\" 
-              << cmSystemTools::ConvertToWindowsOutputPath(pathIt->c_str())
+    path = *pathIt;
+    cmSystemTools::ReplaceString(path, "/", "\\");
+    macrosOut << "  Delete \"$INSTDIR\\"
+              << path.c_str()
               << "\"\n";
     }
-  for (pathIt = component->Directories.begin(); 
-       pathIt != component->Directories.end(); 
-       ++pathIt) 
+  for (pathIt = component->Directories.begin();
+       pathIt != component->Directories.end();
+       ++pathIt)
     {
-    macrosOut << "  RMDir \"$INSTDIR\\" 
-              << cmSystemTools::ConvertToWindowsOutputPath(pathIt->c_str())
+    path = *pathIt;
+    cmSystemTools::ReplaceString(path, "/", "\\");
+    macrosOut << "  RMDir \"$INSTDIR\\"
+              << path.c_str()
               << "\"\n";
     }
   macrosOut << "  noremove_" << component->Name << ":\n";
@@ -837,7 +855,8 @@ std::string cmCPackNSISGenerator::CreateSelectionDependenciesDescription
     out << "  SectionGetFlags ${" << (*dependIt)->Name << "} $0\n";
     out << "  IntOp $0 $0 | ${SF_SELECTED}\n";
     out << "  SectionSetFlags ${" << (*dependIt)->Name << "} $0\n";
-    out << "  IntOp $" << (*dependIt)->Name << "_selected 0 + ${SF_SELECTED}\n";
+    out << "  IntOp $" << (*dependIt)->Name
+        << "_selected 0 + ${SF_SELECTED}\n";
     // Recurse
     out << CreateSelectionDependenciesDescription(*dependIt, visited).c_str();
     }
@@ -872,7 +891,8 @@ std::string cmCPackNSISGenerator::CreateDeselectionDependenciesDescription
     out << "  IntOp $" << (*dependIt)->Name << "_selected 0 + 0\n";
     
     // Recurse
-    out << CreateDeselectionDependenciesDescription(*dependIt, visited).c_str();
+    out <<
+      CreateDeselectionDependenciesDescription(*dependIt, visited).c_str();
     }
 
   return out.str();

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefile.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.230.2.4 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.230.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -31,6 +31,7 @@
 #include "cmSourceGroup.h"
 #endif
 
+#include <cmsys/auto_ptr.hxx>
 #include <cmsys/RegularExpression.hxx>
 
 class cmFunctionBlocker;
@@ -43,6 +44,7 @@ class cmTest;
 class cmVariableWatch;
 class cmake;
 class cmMakefileCall;
+class cmCMakePolicyCommand;
 
 /** \class cmMakefile
  * \brief Process the input CMakeLists.txt file.
@@ -82,16 +84,33 @@ public:
    */
   bool ReadListFile(const char* listfile, 
                     const char* external= 0, 
-                    std::string* fullPath= 0); 
+                    std::string* fullPath= 0,
+                    bool noPolicyScope = true);
 
   /**
    * Add a function blocker to this makefile
    */
-  void AddFunctionBlocker(cmFunctionBlocker *fb)
-    { this->FunctionBlockers.push_back(fb);}
-  void RemoveFunctionBlocker(cmFunctionBlocker *fb)
-    { this->FunctionBlockers.remove(fb);}
-  void RemoveFunctionBlocker(const cmListFileFunction& lff);
+  void AddFunctionBlocker(cmFunctionBlocker* fb);
+
+  /**
+   * Remove the function blocker whose scope ends with the given command.
+   * This returns ownership of the function blocker object.
+   */
+  cmsys::auto_ptr<cmFunctionBlocker>
+  RemoveFunctionBlocker(cmFunctionBlocker* fb, const cmListFileFunction& lff);
+
+  /** Push/pop a lexical (function blocker) barrier automatically.  */
+  class LexicalPushPop
+  {
+  public:
+    LexicalPushPop(cmMakefile* mf);
+    ~LexicalPushPop();
+    void Quiet() { this->ReportError = false; }
+  private:
+    cmMakefile* Makefile;
+    bool ReportError;
+  };
+  friend class LexicalPushPop;
 
   /**
    * Try running cmake and building a file. This is used for dynalically
@@ -200,12 +219,12 @@ public:
                          const char* arg2=0,
                          const char* arg3=0,
                          const char* arg4=0);
-  void AddUtilityCommand(const char* utilityName, bool excludeFromAll,
-                         const char* workingDirectory,
-                         const std::vector<std::string>& depends,
-                         const cmCustomCommandLines& commandLines,
-                         bool escapeOldStyle = true,
-                         const char* comment = 0);
+  cmTarget* AddUtilityCommand(const char* utilityName, bool excludeFromAll,
+                              const char* workingDirectory,
+                              const std::vector<std::string>& depends,
+                              const cmCustomCommandLines& commandLines,
+                              bool escapeOldStyle = true,
+                              const char* comment = 0);
 
   /**
    * Add a link library to the build.
@@ -264,7 +283,8 @@ public:
   ///! Add a definition to this makefile and the global cmake cache.
   void AddCacheDefinition(const char* name, const char* value, 
                           const char* doc,
-                          cmCacheManager::CacheEntryType type);
+                          cmCacheManager::CacheEntryType type,
+                          bool force = false);
 
   /**
    * Add bool variable definition to the build. 
@@ -278,6 +298,8 @@ public:
    * for cache entries, and will only affect the current makefile.
    */
   void RemoveDefinition(const char* name);
+  ///! Remove a definition from the cache.
+  void RemoveCacheDefinition(const char* name);
   
   /**
    * Specify the name of the project for this build.
@@ -321,10 +343,24 @@ public:
   bool SetPolicy(cmPolicies::PolicyID id, cmPolicies::PolicyStatus status);
   bool SetPolicy(const char *id, cmPolicies::PolicyStatus status);
   cmPolicies::PolicyStatus GetPolicyStatus(cmPolicies::PolicyID id);
-  bool PushPolicy();
-  bool PopPolicy(bool reportError = true);
   bool SetPolicyVersion(const char *version);
+  void RecordPolicies(cmPolicies::PolicyMap& pm);
   //@}
+
+  /** Helper class to push and pop policies automatically.  */
+  class PolicyPushPop
+  {
+  public:
+    PolicyPushPop(cmMakefile* m,
+                  bool weak = false,
+                  cmPolicies::PolicyMap const& pm = cmPolicies::PolicyMap());
+    ~PolicyPushPop();
+    void Quiet() { this->ReportError = false; }
+  private:
+    cmMakefile* Makefile;
+    bool ReportError;
+  };
+  friend class PolicyPushPop;
 
   /**
     * Get the Policies Instance
@@ -700,7 +736,7 @@ public:
    * Expand the given list file arguments into the full set after
    * variable replacement and list expansion.
    */
-  void ExpandArguments(std::vector<cmListFileArgument> const& inArgs,
+  bool ExpandArguments(std::vector<cmListFileArgument> const& inArgs,
                        std::vector<std::string>& outArgs);
   /**
    * Get the instance
@@ -777,6 +813,16 @@ public:
   void PushScope();
   void PopScope();
   void RaiseScope(const char *var, const char *value);
+
+  /** Helper class to push and pop scopes automatically.  */
+  class ScopePushPop
+  {
+  public:
+    ScopePushPop(cmMakefile* m): Makefile(m) { this->Makefile->PushScope(); }
+    ~ScopePushPop() { this->Makefile->PopScope(); }
+  private:
+    cmMakefile* Makefile;
+  };
 
   void IssueMessage(cmake::MessageType t,
                     std::string const& text) const;
@@ -858,7 +904,11 @@ private:
                          const std::vector<std::string>& v) const;
 
   void AddDefaultDefinitions();
-  std::list<cmFunctionBlocker *> FunctionBlockers;
+  typedef std::vector<cmFunctionBlocker*> FunctionBlockersType;
+  FunctionBlockersType FunctionBlockers;
+  std::vector<FunctionBlockersType::size_type> FunctionBlockerBarriers;
+  void PushFunctionBlockerBarrier();
+  void PopFunctionBlockerBarrier(bool reportError = true);
 
   typedef std::map<cmStdString, cmData*> DataMapType;
   DataMapType DataMap;
@@ -895,18 +945,55 @@ private:
   cmTarget* FindBasicTarget(const char* name);
   std::vector<cmTarget*> ImportedTargetsOwned;
   std::map<cmStdString, cmTarget*> ImportedTargets;
-  
+
+  // Internal policy stack management.
+  void PushPolicy(bool weak = false,
+                  cmPolicies::PolicyMap const& pm = cmPolicies::PolicyMap());
+  void PopPolicy();
+  void PushPolicyBarrier();
+  void PopPolicyBarrier(bool reportError = true);
+  friend class cmCMakePolicyCommand;
+  class IncludeScope;
+  friend class IncludeScope;
+
   // stack of policy settings
-  typedef std::map<cmPolicies::PolicyID,
-                   cmPolicies::PolicyStatus> PolicyMap;
-  std::vector<PolicyMap> PolicyStack;
+  struct PolicyStackEntry: public cmPolicies::PolicyMap
+  {
+    typedef cmPolicies::PolicyMap derived;
+    PolicyStackEntry(bool w = false): derived(), Weak(w) {}
+    PolicyStackEntry(derived const& d, bool w = false): derived(d), Weak(w) {}
+    PolicyStackEntry(PolicyStackEntry const& r): derived(r), Weak(r.Weak) {}
+    bool Weak;
+  };
+  typedef std::vector<PolicyStackEntry> PolicyStackType;
+  PolicyStackType PolicyStack;
+  std::vector<PolicyStackType::size_type> PolicyBarriers;
   cmPolicies::PolicyStatus GetPolicyStatusInternal(cmPolicies::PolicyID id);
 
   bool CheckCMP0000;
 
   // Enforce rules about CMakeLists.txt files.
-  void EnforceDirectoryLevelRules(bool endScopeNicely);
+  void EnforceDirectoryLevelRules();
 };
 
+//----------------------------------------------------------------------------
+// Helper class to make sure the call stack is valid.
+class cmMakefileCall
+{
+public:
+  cmMakefileCall(cmMakefile* mf,
+                 cmListFileContext const& lfc,
+                 cmExecutionStatus& status): Makefile(mf)
+    {
+    cmMakefile::CallStackEntry entry = {&lfc, &status};
+    this->Makefile->CallStack.push_back(entry);
+    }
+  ~cmMakefileCall()
+    {
+    this->Makefile->CallStack.pop_back();
+    }
+private:
+  cmMakefile* Makefile;
+};
 
 #endif

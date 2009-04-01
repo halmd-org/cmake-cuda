@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#if defined(__BEOS__)
+#if defined(__BEOS__) || defined (__HAIKU__)
 #include <unistd.h>   /* prevents a conflict with a #define later on... */
 #endif
 
@@ -646,8 +646,8 @@ static yyconst flex_int16_t yy_chk[479] =
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsJavaLexer.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-09-24 15:16:13 $
-  Version:   $Revision: 1.12 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.12.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.

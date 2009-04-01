@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCoreTryCompile.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-26 18:08:25 $
-  Version:   $Revision: 1.7.2.2 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.7.2.3 $
 
   Copyright (c) 2007 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -310,7 +310,11 @@ int cmCoreTryCompile::TryCompileCode(std::vector<std::string> const& argv)
       if(!cmSystemTools::CopyFileAlways(this->OutputFile.c_str(), 
                                         copyFile.c_str()))
         {
-        cmSystemTools::Error("Could not COPY_FILE");
+        cmOStringStream emsg;
+        emsg << "Could not COPY_FILE.\n"
+          << "  OutputFile: '" << this->OutputFile.c_str() << "'\n"
+          << "    copyFile: '" << copyFile.c_str() << "'\n";
+        cmSystemTools::Error(emsg.str().c_str());
         return -1;
         }
       }

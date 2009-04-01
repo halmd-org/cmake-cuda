@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindCommon.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.1.2.1 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.1.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -375,7 +375,6 @@ void cmFindCommon::AddEnvPath(const char* variable)
   // Get a path from the environment.
   std::vector<std::string> tmp;
   cmSystemTools::GetPath(tmp, variable);
-
   // Relative paths are interpreted with respect to the current
   // working directory.
   this->AddPathsInternal(tmp, EnvPath);

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.269.2.7 $
+  Date:      $Date: 2009-02-04 22:04:49 $
+  Version:   $Revision: 1.269.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -136,6 +136,7 @@ void cmLocalGenerator::Configure()
       this->Makefile->IssueMessage(cmake::AUTHOR_WARNING, w.str());
       }
     }
+  this->ObjectMaxPathViolations.clear();
   }
 
   this->Configured = true;
@@ -645,10 +646,10 @@ void cmLocalGenerator::AddBuildTargetRule(const char* llang, cmTarget& target)
        !sf->GetPropertyAsBool("HEADER_FILE_ONLY") &&
        !sf->GetPropertyAsBool("EXTERNAL_OBJECT"))
       {
-      std::string::size_type dir_len = 0;
-      dir_len += strlen(this->Makefile->GetCurrentOutputDirectory());
-      dir_len += 1;
-      std::string obj = this->GetObjectFileNameWithoutTarget(*sf, dir_len);
+      std::string dir_max;
+      dir_max += this->Makefile->GetCurrentOutputDirectory();
+      dir_max += "/";
+      std::string obj = this->GetObjectFileNameWithoutTarget(*sf, dir_max);
       if(!obj.empty())
         {
         std::string ofname = this->Makefile->GetCurrentOutputDirectory();
@@ -1074,22 +1075,54 @@ cmLocalGenerator::ExpandRuleVariables(std::string& s,
   s = expandedInput;
 }
 
-
-std::string 
-cmLocalGenerator::ConvertToOutputForExisting(const char* p)
+//----------------------------------------------------------------------------
+std::string
+cmLocalGenerator::ConvertToOutputForExistingCommon(const char* remote,
+                                                   std::string const& result)
 {
-  std::string ret = p;
-  if(this->WindowsShell && ret.find(' ') != ret.npos 
-     && cmSystemTools::FileExists(p))
+  // If this is a windows shell, the result has a space, and the path
+  // already exists, we can use a short-path to reference it without a
+  // space.
+  if(this->WindowsShell && result.find(' ') != result.npos &&
+     cmSystemTools::FileExists(remote))
     {
-    if(cmSystemTools::GetShortPath(p, ret))
+    std::string tmp;
+    if(cmSystemTools::GetShortPath(remote, tmp))
       {
-      return  this->Convert(ret.c_str(), NONE, SHELL, true);
+      return this->Convert(tmp.c_str(), NONE, SHELL, true);
       }
     }
-  return this->Convert(p, START_OUTPUT, SHELL, true);
+
+  // Otherwise, leave it unchanged.
+  return result;
 }
 
+//----------------------------------------------------------------------------
+std::string
+cmLocalGenerator::ConvertToOutputForExisting(const char* remote,
+                                             RelativeRoot local)
+{
+  // Perform standard conversion.
+  std::string result = this->Convert(remote, local, SHELL, true);
+
+  // Consider short-path.
+  return this->ConvertToOutputForExistingCommon(remote, result);
+}
+
+//----------------------------------------------------------------------------
+std::string
+cmLocalGenerator::ConvertToOutputForExisting(RelativeRoot remote,
+                                             const char* local)
+{
+  // Perform standard conversion.
+  std::string result = this->Convert(remote, local, SHELL, true);
+
+  // Consider short-path.
+  const char* remotePath = this->GetRelativeRootPath(remote);
+  return this->ConvertToOutputForExistingCommon(remotePath, result);
+}
+
+//----------------------------------------------------------------------------
 const char* cmLocalGenerator::GetIncludeFlags(const char* lang)
 {
   if(!lang)
@@ -1155,9 +1188,11 @@ const char* cmLocalGenerator::GetIncludeFlags(const char* lang)
       frameworkDir = cmSystemTools::CollapseFullPath(frameworkDir.c_str());
       if(emitted.insert(frameworkDir).second)
         {
-        includeFlags 
-          << "-F" 
-          << this->ConvertToOutputForExisting(frameworkDir.c_str()) << " ";
+        includeFlags
+          << "-F" << this->Convert(frameworkDir.c_str(),
+                                   cmLocalGenerator::START_OUTPUT,
+                                   cmLocalGenerator::SHELL, true)
+          << " ";
         }
       continue;
       }
@@ -1983,7 +2018,21 @@ cmLocalGenerator::ConvertToOptionallyRelativeOutputPath(const char* remote)
 }
 
 //----------------------------------------------------------------------------
-std::string cmLocalGenerator::Convert(const char* source, 
+const char* cmLocalGenerator::GetRelativeRootPath(RelativeRoot relroot)
+{
+  switch (relroot)
+    {
+    case HOME:         return this->Makefile->GetHomeDirectory();
+    case START:        return this->Makefile->GetStartDirectory();
+    case HOME_OUTPUT:  return this->Makefile->GetHomeOutputDirectory();
+    case START_OUTPUT: return this->Makefile->GetStartOutputDirectory();
+    default: break;
+    }
+  return 0;
+}
+
+//----------------------------------------------------------------------------
+std::string cmLocalGenerator::Convert(const char* source,
                                       RelativeRoot relative,
                                       OutputFormat output,
                                       bool optional)
@@ -2031,7 +2080,15 @@ std::string cmLocalGenerator::Convert(const char* source,
         break;
       }
     }
-  // Now convert it to an output path.
+  return this->ConvertToOutputFormat(result.c_str(), output);
+}
+
+//----------------------------------------------------------------------------
+std::string cmLocalGenerator::ConvertToOutputFormat(const char* source,
+                                                    OutputFormat output)
+{
+  std::string result = source;
+  // Convert it to an output path.
   if (output == MAKEFILE)
     {
     result = cmSystemTools::ConvertToOutputPath(result.c_str());
@@ -2061,6 +2118,40 @@ std::string cmLocalGenerator::Convert(const char* source,
     result = this->EscapeForShell(result.c_str(), true, false);
     }
   return result;
+}
+
+//----------------------------------------------------------------------------
+std::string cmLocalGenerator::Convert(RelativeRoot remote,
+                                      const char* local,
+                                      OutputFormat output,
+                                      bool optional)
+{
+  const char* remotePath = this->GetRelativeRootPath(remote);
+  if(local && (!optional || this->UseRelativePaths))
+    {
+    std::vector<std::string> components;
+    std::string result;
+    switch(remote)
+      {
+      case HOME:
+      case HOME_OUTPUT:
+      case START:
+      case START_OUTPUT:
+        cmSystemTools::SplitPath(local, components);
+        result = this->ConvertToRelativePath(components, remotePath);
+        break;
+      case FULL:
+        result = remotePath;
+        break;
+      case NONE:
+        break;
+      }
+    return this->ConvertToOutputFormat(result.c_str(), output);
+    }
+  else
+    {
+    return this->ConvertToOutputFormat(remotePath, output);
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -2269,6 +2360,10 @@ cmLocalGenerator
       // We also skip over the leading slash given by the user.
       std::string destination = l->second.GetInstallPath().substr(1);
       cmSystemTools::ConvertToUnixSlashes(destination);
+      if(destination.empty())
+        {
+        destination = ".";
+        }
 
       // Generate the proper install generator for this target type.
       switch(l->second.GetType())
@@ -2385,7 +2480,7 @@ bool cmLocalGeneratorCheckObjectName(std::string& objName,
 std::string&
 cmLocalGenerator
 ::CreateSafeUniqueObjectFileName(const char* sin,
-                                 std::string::size_type dir_len)
+                                 std::string const& dir_max)
 {
   // Look for an existing mapped name for this object file.
   std::map<cmStdString,cmStdString>::iterator it =
@@ -2446,9 +2541,28 @@ cmLocalGenerator
       }
 
 #if defined(CM_LG_ENCODE_OBJECT_NAMES)
-    cmLocalGeneratorCheckObjectName(ssin, dir_len, this->ObjectPathMax);
+    if(!cmLocalGeneratorCheckObjectName(ssin, dir_max.size(),
+                                        this->ObjectPathMax))
+      {
+      // Warn if this is the first time the path has been seen.
+      if(this->ObjectMaxPathViolations.insert(dir_max).second)
+        {
+        cmOStringStream m;
+        m << "The object file directory\n"
+          << "  " << dir_max << "\n"
+          << "has " << dir_max.size() << " characters.  "
+          << "The maximum full path to an object file is "
+          << this->ObjectPathMax << " characters "
+          << "(see CMAKE_OBJECT_PATH_MAX).  "
+          << "Object file\n"
+          << "  " << ssin << "\n"
+          << "cannot be safely placed under this directory.  "
+          << "The build may not work correctly.";
+        this->Makefile->IssueMessage(cmake::WARNING, m.str());
+        }
+      }
 #else
-    (void)dir_len;
+    (void)dir_max;
 #endif
 
     // Insert the newly mapped object file name.
@@ -2464,7 +2578,7 @@ cmLocalGenerator
 std::string
 cmLocalGenerator
 ::GetObjectFileNameWithoutTarget(const cmSourceFile& source,
-                                 std::string::size_type dir_len,
+                                 std::string const& dir_max,
                                  bool* hasSourceExtension)
 {
   // Construct the object file name using the full path to the source
@@ -2552,7 +2666,7 @@ cmLocalGenerator
     }
 
   // Convert to a safe name.
-  return this->CreateSafeUniqueObjectFileName(objectName.c_str(), dir_len);
+  return this->CreateSafeUniqueObjectFileName(objectName.c_str(), dir_max);
 }
 
 //----------------------------------------------------------------------------

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFileCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-12 14:56:20 $
-  Version:   $Revision: 1.35.2.4 $
+  Date:      $Date: 2009-01-13 18:03:52 $
+  Version:   $Revision: 1.35.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -145,7 +145,7 @@ public:
       "TO_NATIVE_PATH works just like TO_CMAKE_PATH, but will convert from "
       " a cmake style path into the native path style \\ for windows and / "
       "for UNIX.\n"
-      "DOWNLOAD will download the givin URL to the given file. "
+      "DOWNLOAD will download the given URL to the given file. "
       "If LOG var is specified a log of the download will be put in var. "
       "If STATUS var is specified the status of the operation will"
       " be put in var. The status is returned in a list of length 2. "
@@ -172,6 +172,7 @@ protected:
   bool HandleRPathChangeCommand(std::vector<std::string> const& args);
   bool HandleRPathCheckCommand(std::vector<std::string> const& args);
   bool HandleRPathRemoveCommand(std::vector<std::string> const& args);
+  bool HandleDifferentCommand(std::vector<std::string> const& args);
 
   // file(INSTALL ...) related functions
   bool HandleInstallCommand(std::vector<std::string> const& args);

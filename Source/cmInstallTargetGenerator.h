@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallTargetGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:24 $
-  Version:   $Revision: 1.24.2.2 $
+  Date:      $Date: 2009-01-13 18:03:52 $
+  Version:   $Revision: 1.24.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,16 +64,12 @@ public:
   bool IsImportLibrary() const { return this->ImportLibrary; }
 
 protected:
-  typedef cmInstallGeneratorIndent Indent;
   virtual void GenerateScript(std::ostream& os);
+  virtual void GenerateScriptConfigs(std::ostream& os, Indent const& indent);
+  virtual void GenerateScriptActions(std::ostream& os, Indent const& indent);
   void GenerateScriptForConfig(std::ostream& os,
-                               const char* fromDir,
                                const char* config,
                                Indent const& indent);
-  void GenerateScriptForConfigDir(std::ostream& os,
-                                  const char* fromDirConfig,
-                                  const char* config,
-                                  Indent const& indent);
   void AddInstallNamePatchRule(std::ostream& os, Indent const& indent,
                                const char* config,
                                const std::string& toDestDirPath);
@@ -96,6 +92,7 @@ protected:
   std::string FilePermissions;
   bool Optional;
   NamelinkModeType NamelinkMode;
+  std::string FromDir;
 };
 
 #endif

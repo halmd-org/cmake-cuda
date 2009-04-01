@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkDepends.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.5.2.6 $
+  Date:      $Date: 2009-01-13 18:03:51 $
+  Version:   $Revision: 1.5.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -72,6 +72,7 @@ private:
 
   // Configuration information.
   const char* Config;
+  cmTarget::LinkLibraryType LinkType;
 
   // Output information.
   EntryVector FinalLinkEntries;

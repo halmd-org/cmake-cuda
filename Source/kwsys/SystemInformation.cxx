@@ -3,8 +3,8 @@
   Program:   BatchMake
   Module:    $RCSfile: SystemInformation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:18 $
-  Version:   $Revision: 1.22.2.4 $
+  Date:      $Date: 2008-12-31 15:14:33 $
+  Version:   $Revision: 1.22.2.6 $
   Copyright (c) 2005 Insight Consortium. All rights reserved.
   See ITKCopyright.txt or http://www.itk.org/HTML/Copyright.htm for details.
 
@@ -13,6 +13,10 @@
      the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
      PURPOSE.  See the above copyright notices for more information.
 =========================================================================*/
+#ifdef _WIN32
+# include <winsock.h> // WSADATA, include before sys/types.h
+#endif
+
 #include "kwsysPrivate.h"
 #include KWSYS_HEADER(FundamentalType.h)
 #include KWSYS_HEADER(stl/string)
@@ -2147,14 +2151,14 @@ int SystemInformationImplementation::RetreiveInformationFromCpuInfoFile()
   FILE *fd = fopen("/proc/cpuinfo", "r" );
   if ( !fd ) 
     {
-    kwsys_ios::cout << "Problem opening /proc/cpuinfo" << kwsys_stl::endl;
+    kwsys_ios::cout << "Problem opening /proc/cpuinfo" << kwsys_ios::endl;
     return 0;
     }
   
   size_t fileSize = 0;
   while(!feof(fd))
     {
-    buffer += fgetc(fd);
+    buffer += static_cast<unsigned char>(fgetc(fd));
     fileSize++;
     }
   fclose( fd );
@@ -2279,7 +2283,7 @@ int SystemInformationImplementation::QueryMemory()
   int errorFlag = uname(&unameInfo);
   if( errorFlag!=0 )
     {
-    kwsys_ios::cout << "Problem calling uname(): " << strerror(errno) << kwsys_stl::endl;
+    kwsys_ios::cout << "Problem calling uname(): " << strerror(errno) << kwsys_ios::endl;
     return 0;
     }
  
@@ -2303,7 +2307,7 @@ int SystemInformationImplementation::QueryMemory()
   FILE *fd = fopen("/proc/meminfo", "r" );
   if ( !fd ) 
     {
-    kwsys_ios::cout << "Problem opening /proc/meminfo" << kwsys_stl::endl;
+    kwsys_ios::cout << "Problem opening /proc/meminfo" << kwsys_ios::endl;
     return 0;
     }
   
@@ -2496,7 +2500,7 @@ unsigned char SystemInformationImplementation::LogicalCPUPerPhysicalCPU(void)
 #if USE_ASM_INSTRUCTIONS
   if (!this->IsHyperThreadingSupported()) 
     {
-    return (unsigned char) 1;  // HT not supported
+    return static_cast<unsigned char>(1);  // HT not supported
     }
   __asm
     {
@@ -2505,7 +2509,7 @@ unsigned char SystemInformationImplementation::LogicalCPUPerPhysicalCPU(void)
     mov Regebx, ebx
     }
 #endif
-  return (unsigned char) ((Regebx & NUM_LOGICAL_BITS) >> 16);
+  return static_cast<unsigned char> ((Regebx & NUM_LOGICAL_BITS) >> 16);
 }
 
 /** Works only for windows */
@@ -2561,7 +2565,7 @@ unsigned char SystemInformationImplementation::GetAPICId()
 #if USE_ASM_INSTRUCTIONS
   if (!this->IsHyperThreadingSupported()) 
     {
-    return (unsigned char) -1;  // HT not supported
+    return static_cast<unsigned char>(-1);  // HT not supported
     } // Logical processor = 1
   __asm
     {
@@ -2570,7 +2574,7 @@ unsigned char SystemInformationImplementation::GetAPICId()
     mov Regebx, ebx
     }
 #endif
-  return (unsigned char) ((Regebx & INITIAL_APIC_ID_BITS) >> 24);
+  return static_cast<unsigned char>((Regebx & INITIAL_APIC_ID_BITS) >> 24);
 }
 
 /** Count the number of CPUs. Works only on windows. */
@@ -2723,7 +2727,7 @@ bool SystemInformationImplementation::ParseSysCtl()
     this->NumberOfLogicalCPU /= this->NumberOfPhysicalCPU;
     }
 
-  this->CPUSpeedInMHz = atoi(this->ExtractValueFromSysCtl("hw.cpufrequency:").c_str()); 
+  this->CPUSpeedInMHz = static_cast<float>(atoi(this->ExtractValueFromSysCtl("hw.cpufrequency:").c_str())); 
   this->CPUSpeedInMHz /= 1000000;
 
   // Chip family
@@ -2810,7 +2814,7 @@ kwsys_stl::string SystemInformationImplementation::RunProcess(kwsys_stl::vector<
       {
       // Should not get here.
       kwsys_ios::cerr << "Unexpected ending state after running " << args[0]
-                << kwsys_stl::endl;
+                << kwsys_ios::endl;
       } break;
     }
   kwsysProcess_Delete(gp);
@@ -2893,7 +2897,7 @@ kwsys_stl::string SystemInformationImplementation::ParseValueFromKStat(const cha
 bool SystemInformationImplementation::QuerySolarisInfo()
 {
   // Parse values
-  this->NumberOfPhysicalCPU = atoi(this->ParseValueFromKStat("-n systethis->misc -s ncpus").c_str());
+  this->NumberOfPhysicalCPU = atoi(this->ParseValueFromKStat("-n syste_misc -s ncpus").c_str());
   this->NumberOfLogicalCPU = this->NumberOfPhysicalCPU;
   
   if(this->NumberOfPhysicalCPU!=0)
@@ -2901,7 +2905,7 @@ bool SystemInformationImplementation::QuerySolarisInfo()
     this->NumberOfLogicalCPU /= this->NumberOfPhysicalCPU;
     }
 
-  this->CPUSpeedInMHz = atoi(this->ParseValueFromKStat("-s clock_MHz").c_str());
+  this->CPUSpeedInMHz = static_cast<float>(atoi(this->ParseValueFromKStat("-s clock_MHz").c_str()));
 
   // Chip family
   this->ChipID.Family = 0; 
@@ -2980,15 +2984,22 @@ bool SystemInformationImplementation::QueryOSInformation()
         {
         if (osvi.wProductType == VER_NT_WORKSTATION) 
           {
+          if (osvi.dwMajorVersion == 6) 
+            {
+            this->OSRelease = "Vista";
+            }
 // VER_SUITE_PERSONAL may not be defined
 #ifdef VER_SUITE_PERSONAL
-          if (osvi.wSuiteMask & VER_SUITE_PERSONAL)
+          else
             {
-            this->OSRelease += " Personal";
-            }
-          else 
-            {
-            this->OSRelease += " Professional";
+            if (osvi.wSuiteMask & VER_SUITE_PERSONAL)
+              {
+              this->OSRelease += " Personal";
+              }
+            else 
+              {
+              this->OSRelease += " Professional";
+              }
             }
 #endif
           } 
@@ -3015,7 +3026,7 @@ bool SystemInformationImplementation::QueryOSInformation()
             }
           }
 
-        sprintf (operatingSystem, "%s(Build %ld)", osvi.szCSDVersion, osvi.dwBuildNumber & 0xFFFF);
+        sprintf (operatingSystem, "%s (Build %ld)", osvi.szCSDVersion, osvi.dwBuildNumber & 0xFFFF);
         this->OSVersion = operatingSystem; 
         }
       else 
@@ -3095,7 +3106,7 @@ bool SystemInformationImplementation::QueryOSInformation()
       else 
         { 
         // Windows 2000 and everything else.
-        sprintf (operatingSystem,"%s(Build %ld)", osvi.szCSDVersion, osvi.dwBuildNumber & 0xFFFF);
+        sprintf (operatingSystem,"%s (Build %ld)", osvi.szCSDVersion, osvi.dwBuildNumber & 0xFFFF);
         this->OSVersion = operatingSystem;
         }
       break;

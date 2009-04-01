@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkInformation.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.24.2.10 $
+  Date:      $Date: 2008-10-24 15:18:45 $
+  Version:   $Revision: 1.24.2.11 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -594,7 +594,7 @@ void cmComputeLinkInformation::AddItem(std::string const& item, cmTarget* tgt)
       std::string exe = tgt->GetFullPath(config, this->UseImportLibrary,
                                          true);
       linkItem += exe;
-      this->Items.push_back(Item(linkItem, true));
+      this->Items.push_back(Item(linkItem, true, tgt));
       this->Depends.push_back(exe);
       }
     else
@@ -1020,7 +1020,7 @@ void cmComputeLinkInformation::AddTargetItem(std::string const& item,
     }
 
   // Now add the full path to the library.
-  this->Items.push_back(Item(item, true));
+  this->Items.push_back(Item(item, true, target));
 }
 
 //----------------------------------------------------------------------------

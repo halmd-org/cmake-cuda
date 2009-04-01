@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCMakePolicyCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:16 $
-  Version:   $Revision: 1.2.2.2 $
+  Date:      $Date: 2009-02-04 16:44:16 $
+  Version:   $Revision: 1.2.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -43,7 +43,8 @@ bool cmCMakePolicyCommand
       this->SetError("PUSH may not be given additional arguments.");
       return false;
       }
-    return this->Makefile->PushPolicy();
+    this->Makefile->PushPolicy();
+    return true;
     }
   else if(args[0] == "POP")
     {
@@ -52,15 +53,8 @@ bool cmCMakePolicyCommand
       this->SetError("POP may not be given additional arguments.");
       return false;
       }
-    if(this->Makefile->PopPolicy(false))
-      {
-      return true;
-      }
-    else
-      {
-      this->SetError("POP without matching PUSH");
-      return false;
-      }
+    this->Makefile->PopPolicy();
+    return true;
     }
   else if(args[0] == "VERSION")
     {

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalNMakeMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-13 21:36:20 $
-  Version:   $Revision: 1.26 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.26.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -34,6 +34,19 @@ void cmGlobalNMakeMakefileGenerator
   // pick a default 
   mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
   mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
+  if(!(cmSystemTools::GetEnv("INCLUDE") && 
+       cmSystemTools::GetEnv("LIB") &&
+       cmSystemTools::GetEnv("LIBPATH"))
+    )
+    {
+    std::string message = "To use the NMake generator, cmake must be run "
+      "from a shell that can use the compiler cl from the command line. "
+      "This environment does not contain INCLUDE, LIB, or LIBPATH, and "
+      "these must be set for the cl compiler to work. ";
+    mf->IssueMessage(cmake::WARNING,
+                     message);
+    }
+  
   this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
 }
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-04 21:10:45 $
-  Version:   $Revision: 1.375.2.13 $
+  Date:      $Date: 2009-02-06 21:15:16 $
+  Version:   $Revision: 1.375.2.17 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1173,8 +1173,8 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
 
       time(&time_start);
       clock_start = clock();
-
-      cmSystemTools::RunSingleCommand(command.c_str());
+      int ret =0;
+      cmSystemTools::RunSingleCommand(command.c_str(), 0, &ret);
 
       clock_finish = clock();
       time(&time_finish);
@@ -1186,7 +1186,7 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
         << static_cast<double>(clock_finish - clock_start) / clocks_per_sec
         << " s. (clock)"
         << "\n";
-      return 0;
+      return ret;
       }
 
     // Command to calculate the md5sum of a file
@@ -2654,6 +2654,28 @@ int cmake::CheckBuildSystem()
       }
     }
 
+  // If any byproduct of makefile generation is missing we must re-run.
+  std::vector<std::string> products;
+  if(const char* productStr = mf->GetDefinition("CMAKE_MAKEFILE_PRODUCTS"))
+    {
+    cmSystemTools::ExpandListArgument(productStr, products);
+    }
+  for(std::vector<std::string>::const_iterator pi = products.begin();
+      pi != products.end(); ++pi)
+    {
+    if(!(cmSystemTools::FileExists(pi->c_str()) ||
+         cmSystemTools::FileIsSymlink(pi->c_str())))
+      {
+      if(verbose)
+        {
+        cmOStringStream msg;
+        msg << "Re-run cmake, missing byproduct: " << *pi << "\n";
+        cmSystemTools::Stdout(msg.str().c_str());
+        }
+      return 1;
+      }
+    }
+
   // Get the set of dependencies and outputs.
   std::vector<std::string> depends;
   std::vector<std::string> outputs;
@@ -3364,6 +3386,19 @@ void cmake::DefineProperties(cmake *cm)
     "Used to detect compiler changes, Do not set.");
 
   cm->DefineProperty(
+    "DEBUG_CONFIGURATIONS", cmProperty::GLOBAL,
+    "Specify which configurations are for debugging.",
+    "The value must be a semi-colon separated list of configuration names.  "
+    "Currently this property is used only by the target_link_libraries "
+    "command (see its documentation for details).  "
+    "Additional uses may be defined in the future.  "
+    "\n"
+    "This property must be set at the top level of the project and before "
+    "the first target_link_libraries command invocation.  "
+    "If any entry in the list does not match a valid configuration for "
+    "the project the behavior is undefined.");
+
+  cm->DefineProperty(
     "GLOBAL_DEPENDS_DEBUG_MODE", cmProperty::GLOBAL,
     "Enable global target dependency graph debug mode.",
     "CMake automatically analyzes the global inter-target dependency graph "
@@ -3551,6 +3586,12 @@ void cmake::SetProperty(const char* prop, const char* value)
     return;
     }
 
+  // Special hook to invalidate cached value.
+  if(strcmp(prop, "DEBUG_CONFIGURATIONS") == 0)
+    {
+    this->DebugConfigs.clear();
+    }
+
   this->Properties.SetProperty(prop, value, cmProperty::GLOBAL);
 }
 
@@ -3560,6 +3601,13 @@ void cmake::AppendProperty(const char* prop, const char* value)
     {
     return;
     }
+
+  // Special hook to invalidate cached value.
+  if(strcmp(prop, "DEBUG_CONFIGURATIONS") == 0)
+    {
+    this->DebugConfigs.clear();
+    }
+
   this->Properties.AppendProperty(prop, value, cmProperty::GLOBAL);
 }
 
@@ -3937,7 +3985,8 @@ int cmake::VisualStudioLink(std::vector<std::string>& args, int type)
       std::cout << "Visual Studio Incremental Link without manifests\n";
       }
     }
-  return cmake::VisualStudioLinkNonIncremental(expandedArgs, type, hasManifest, verbose);
+  return cmake::VisualStudioLinkNonIncremental(expandedArgs,
+                                               type, hasManifest, verbose);
 }
 
 int cmake::ParseVisualStudioLinkCommand(std::vector<std::string>& args, 
@@ -4269,4 +4318,29 @@ void cmake::IssueMessage(cmake::MessageType t, std::string const& text,
     {
     cmSystemTools::Message(msg.str().c_str(), "Warning");
     }
+}
+
+//----------------------------------------------------------------------------
+std::vector<std::string> const& cmake::GetDebugConfigs()
+{
+  // Compute on-demand.
+  if(this->DebugConfigs.empty())
+    {
+    if(const char* config_list = this->GetProperty("DEBUG_CONFIGURATIONS"))
+      {
+      // Expand the specified list and convert to upper-case.
+      cmSystemTools::ExpandListArgument(config_list, this->DebugConfigs);
+      for(std::vector<std::string>::iterator i = this->DebugConfigs.begin();
+          i != this->DebugConfigs.end(); ++i)
+        {
+        *i = cmSystemTools::UpperCase(*i);
+        }
+      }
+    // If no configurations were specified, use a default list.
+    if(this->DebugConfigs.empty())
+      {
+      this->DebugConfigs.push_back("DEBUG");
+      }
+    }
+  return this->DebugConfigs;
 }

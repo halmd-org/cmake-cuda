@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExtraCodeBlocksGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.18.2.1 $
+  Date:      $Date: 2009-01-13 18:03:52 $
+  Version:   $Revision: 1.18.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf neundorf@kde.org, All rights reserved.
@@ -416,6 +416,13 @@ std::string cmExtraCodeBlocksGenerator::BuildMakeCommand(
     command += " /NOLOGO /f &quot;";
     command += makefile;
     command += "&quot; ";
+    command += target;
+    }
+  else if (strcmp(this->GlobalGenerator->GetName(), "MinGW Makefiles")==0)
+    {
+    command += " -f ";
+    command += makefile;
+    command += " ";
     command += target;
     }
   else

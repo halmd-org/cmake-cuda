@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.207.2.10 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.207.2.13 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -135,10 +135,19 @@ void cmTarget::DefineProperties(cmake *cm)
 
   cm->DefineProperty
     ("DEBUG_POSTFIX", cmProperty::TARGET,
-     "A postfix that will be applied to this target when build debug.",
-     "A property on a target that specifies a postfix to add to the "
-     "target name when built in debug mode. For example \"foo.dll\" "
-     "versus \"fooD.dll\".  Ignored for Mac Frameworks and App Bundles.");
+     "See target property <CONFIG>_POSTFIX.",
+     "This property is a special case of the more-general <CONFIG>_POSTFIX "
+     "property for the DEBUG configuration.");
+
+  cm->DefineProperty
+    ("<CONFIG>_POSTFIX", cmProperty::TARGET,
+     "Postfix to append to the target file name for configuration <CONFIG>.",
+     "When building with configuration <CONFIG> the value of this property "
+     "is appended to the target file name built on disk.  "
+     "For non-executable targets, this property is initialized by the value "
+     "of the variable CMAKE_<CONFIG>_POSTFIX if it is set when a target is "
+     "created.  "
+     "This property is ignored on the Mac for Frameworks and App Bundles.");
 
   cm->DefineProperty
     ("EchoString", cmProperty::TARGET,
@@ -376,22 +385,34 @@ void cmTarget::DefineProperties(cmake *cm)
 
   cm->DefineProperty
     ("LOCATION", cmProperty::TARGET,
-     "Deprecated.  Use LOCATION_<CONFIG> or avoid altogether.",
-     "This property is provided for compatibility with CMake 2.4 and below. "
+     "Read-only location of a target on disk.",
+     "For an imported target, this read-only property returns the value of "
+     "the LOCATION_<CONFIG> property for an unspecified configuration "
+     "<CONFIG> provided by the target.\n"
+     "For a non-imported target, this property is provided for compatibility "
+     "with CMake 2.4 and below.  "
      "It was meant to get the location of an executable target's output file "
      "for use in add_custom_command.  "
+     "The path may contain a build-system-specific portion that "
+     "is replaced at build time with the configuration getting built "
+     "(such as \"$(ConfigurationName)\" in VS). "
      "In CMake 2.6 and above add_custom_command automatically recognizes a "
      "target name in its COMMAND and DEPENDS options and computes the "
-     "target location.  Therefore this property need not be used.  "
-     "This property is not defined for IMPORTED targets because they "
-     "were not available in CMake 2.4 or below anyway.");
+     "target location.  "
+     "Therefore this property is not needed for creating custom commands.");
 
   cm->DefineProperty
     ("LOCATION_<CONFIG>", cmProperty::TARGET,
      "Read-only property providing a target location on disk.",
      "A read-only property that indicates where a target's main file is "
      "located on disk for the configuration <CONFIG>.  "
-     "The property is defined only for library and executable targets.");
+     "The property is defined only for library and executable targets.  "
+     "An imported target may provide a set of configurations different "
+     "from that of the importing project.  "
+     "By default CMake looks for an exact-match but otherwise uses an "
+     "arbitrary available configuration.  "
+     "Use the MAP_IMPORTED_CONFIG_<CONFIG> property to map imported "
+     "configurations explicitly.");
 
   cm->DefineProperty
     ("LINK_INTERFACE_LIBRARIES", cmProperty::TARGET,
@@ -528,6 +549,13 @@ void cmTarget::DefineProperties(cmake *cm)
      "(such as \".so\") on a library name.");
 
   cm->DefineProperty
+    ("TYPE", cmProperty::TARGET,
+     "The type of the target.",
+     "This read-only property can be used to test the type of the given "
+     "target. It will be one of STATIC_LIBRARY, MODULE_LIBRARY, "
+     "SHARED_LIBRARY, EXECUTABLE or one of the internal target types.");
+
+  cm->DefineProperty
     ("VERSION", cmProperty::TARGET,
      "What version number is this target.",
      "For shared libraries VERSION and SOVERSION can be used to specify "
@@ -654,6 +682,32 @@ void cmTarget::DefineProperties(cmake *cm)
      "Read-only list of sources specified for a target.  "
      "The names returned are suitable for passing to the "
      "set_source_files_properties command.");
+
+  cm->DefineProperty
+    ("PROJECT_LABEL", cmProperty::TARGET,
+     "Change the name of a target in an IDE.",
+     "Can be used to change the name of the target in an IDE "
+     "like visual stuido. ");
+  cm->DefineProperty
+    ("VS_KEYWORD", cmProperty::TARGET,
+     "Visual Studio project keyword.",
+     "Can be set to change the visual studio keyword, for example "
+     "QT integration works better if this is set to Qt4VSv1.0. ");
+  cm->DefineProperty
+    ("VS_SCC_PROVIDER", cmProperty::TARGET,
+     "Visual Studio Source Code Control Provider.",
+     "Can be set to change the visual studio source code control "
+     "provider property.");
+  cm->DefineProperty
+    ("VS_SCC_LOCALPATH", cmProperty::TARGET,
+     "Visual Studio Source Code Control Provider.",
+     "Can be set to change the visual studio source code control "
+     "local path property.");
+  cm->DefineProperty
+    ("VS_SCC_PROJECTNAME", cmProperty::TARGET,
+     "Visual Studio Source Code Control Project.",
+     "Can be set to change the visual studio source code control "
+     "project name property.");
 
 #if 0
   cm->DefineProperty
@@ -1257,6 +1311,34 @@ const std::vector<std::string>& cmTarget::GetLinkDirectories()
 }
 
 //----------------------------------------------------------------------------
+cmTarget::LinkLibraryType cmTarget::ComputeLinkType(const char* config)
+{
+  // No configuration is always optimized.
+  if(!(config && *config))
+    {
+    return cmTarget::OPTIMIZED;
+    }
+
+  // Get the list of configurations considered to be DEBUG.
+  std::vector<std::string> const& debugConfigs =
+    this->Makefile->GetCMakeInstance()->GetDebugConfigs();
+
+  // Check if any entry in the list matches this configuration.
+  std::string configUpper = cmSystemTools::UpperCase(config);
+  for(std::vector<std::string>::const_iterator i = debugConfigs.begin();
+      i != debugConfigs.end(); ++i)
+    {
+    if(*i == configUpper)
+      {
+      return cmTarget::DEBUG;
+      }
+    }
+
+  // The current configuration is not a debug configuration.
+  return cmTarget::OPTIMIZED;
+}
+
+//----------------------------------------------------------------------------
 void cmTarget::ClearDependencyInformation( cmMakefile& mf,
                                            const char* target )
 {
@@ -1850,6 +1932,11 @@ const char* cmTarget::NormalGetLocation(const char* config)
     this->Location += cfgid;
     this->Location += "/";
     }
+  if(this->IsAppBundleOnApple())
+    {
+    this->Location += this->GetFullName(config, false);
+    this->Location += ".app/Contents/MacOS/";
+    }
    if(this->IsFrameworkOnApple())
     {
     this->Location += this->GetFullName(config, false);
@@ -1968,13 +2055,17 @@ const char *cmTarget::GetProperty(const char* prop,
      this->GetType() == cmTarget::MODULE_LIBRARY ||
      this->GetType() == cmTarget::UNKNOWN_LIBRARY)
     {
-    if(!this->IsImported() && strcmp(prop,"LOCATION") == 0)
+    if(strcmp(prop,"LOCATION") == 0)
       {
-      // Set the LOCATION property of the target.  Note that this
+      // Set the LOCATION property of the target.
+      //
+      // For an imported target this is the location of an arbitrary
+      // available configuration.
+      //
+      // For a non-imported target this is deprecated because it
       // cannot take into account the per-configuration name of the
       // target because the configuration type may not be known at
-      // CMake time.  It is now deprecated as described in the
-      // documentation.
+      // CMake time.
       this->SetProperty("LOCATION", this->GetLocation(0));
       }
 
@@ -2360,6 +2451,11 @@ std::string cmTarget::NormalGetFullPath(const char* config, bool implib,
   std::string fpath = this->GetDirectory(config, implib);
   fpath += "/";
 
+  if(this->IsAppBundleOnApple())
+    {
+    fpath += this->GetFullName(config, false);
+    fpath += ".app/Contents/MacOS/";
+    }
   if(this->IsFrameworkOnApple())
     {
     fpath += this->GetFullName(config, false);
@@ -3620,11 +3716,7 @@ cmTargetLinkInterface* cmTarget::ComputeLinkInterface(const char* config)
       }
 
     // Compute which library configuration to link.
-    cmTarget::LinkLibraryType linkType = cmTarget::OPTIMIZED;
-    if(config && cmSystemTools::UpperCase(config) == "DEBUG")
-      {
-      linkType = cmTarget::DEBUG;
-      }
+    cmTarget::LinkLibraryType linkType = this->ComputeLinkType(config);
 
     // Construct the list of libs linked for this configuration.
     cmTarget::LinkLibraryVectorType const& llibs =
@@ -3672,9 +3764,6 @@ cmTargetLinkInterface* cmTarget::ComputeLinkInterface(const char* config)
 cmComputeLinkInformation*
 cmTarget::GetLinkInformation(const char* config)
 {
-  // Link information does not make sense for static libraries.
-  assert(this->GetType() != cmTarget::STATIC_LIBRARY);
-
   // Lookup any existing information for this configuration.
   std::map<cmStdString, cmComputeLinkInformation*>::iterator
     i = this->LinkInformation.find(config?config:"");

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackBundleGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-06-25 13:51:33 $
-  Version:   $Revision: 1.1.2.2 $
+  Date:      $Date: 2009-02-04 16:44:18 $
+  Version:   $Revision: 1.1.2.3 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -18,30 +18,26 @@
 #ifndef cmCPackBundleGenerator_h
 #define cmCPackBundleGenerator_h
 
-#include "cmCPackGenerator.h"
+#include "cmCPackDragNDropGenerator.h"
 
 /** \class cmCPackBundleGenerator
  * \brief A generator for OSX bundles
  *
  * Based on Gimp.app
  */
-class cmCPackBundleGenerator : public cmCPackGenerator
+class cmCPackBundleGenerator : public cmCPackDragNDropGenerator
 {
 public:
-  cmCPackTypeMacro(cmCPackBundleGenerator, cmCPackGenerator);
+  cmCPackTypeMacro(cmCPackBundleGenerator, cmCPackDragNDropGenerator);
 
   cmCPackBundleGenerator();
   virtual ~cmCPackBundleGenerator();
 
 protected:
   virtual int InitializeInternal();
-  virtual const char* GetOutputExtension();
   virtual const char* GetPackagingInstallPrefix();
   int CompressFiles(const char* outFileName, const char* toplevel,
     const std::vector<std::string>& files);
-
-  bool CopyFile(cmOStringStream& source, cmOStringStream& target);
-  bool RunCommand(cmOStringStream& command);
 
   std::string InstallPrefix;
 };

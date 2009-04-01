@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmEnableLanguageCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.5.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -25,7 +25,7 @@ bool cmEnableLanguageCommand
   if(args.size() < 1 )
     {
     this->SetError
-      ("ENABLE_LANGUAGE called with incorrect number of arguments");
+      ("called with incorrect number of arguments");
     return false;
     } 
   for (std::vector<std::string>::const_iterator it = args.begin();

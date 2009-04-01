@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCallVisualStudioMacro.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-31 15:52:24 $
-  Version:   $Revision: 1.3.2.1 $
+  Date:      $Date: 2008-10-24 15:18:45 $
+  Version:   $Revision: 1.3.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -33,6 +33,31 @@ static bool LogErrorsAsMessages;
 
 
 #include <comdef.h>
+
+
+//----------------------------------------------------------------------------
+// Copied from a correct comdef.h to avoid problems with deficient versions
+// of comdef.h that exist in the wild... Fixes issue #7533.
+//
+#if ( _MSC_VER >= 1300 )
+// VS7 and later:
+#ifdef _NATIVE_WCHAR_T_DEFINED
+# ifdef _DEBUG
+# pragma comment(lib, "comsuppwd.lib")
+# else
+# pragma comment(lib, "comsuppw.lib")
+# endif
+#else
+# ifdef _DEBUG
+# pragma comment(lib, "comsuppd.lib")
+# else
+# pragma comment(lib, "comsupp.lib")
+# endif
+#endif
+#else
+// VS6 only had comsupp.lib:
+# pragma comment(lib, "comsupp.lib")
+#endif
 
 
 //----------------------------------------------------------------------------

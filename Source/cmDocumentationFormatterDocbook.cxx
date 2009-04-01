@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatterDocbook.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-15 19:39:54 $
-  Version:   $Revision: 1.1.2.2 $
+  Date:      $Date: 2009-01-13 18:03:51 $
+  Version:   $Revision: 1.1.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -134,20 +134,23 @@ void cmDocumentationFormatterDocbook
   const std::vector<cmDocumentationEntry> &entries = 
     section.GetEntries();
 
-  os << "<itemizedlist>\n";
-  for(std::vector<cmDocumentationEntry>::const_iterator op 
-        = entries.begin(); op != entries.end(); ++ op )
+  if (!entries.empty())
     {
-    if(op->Name.size())
+    os << "<itemizedlist>\n";
+    for(std::vector<cmDocumentationEntry>::const_iterator op 
+          = entries.begin(); op != entries.end(); ++ op )
       {
-      os << "    <listitem><link linkend=\"" << prefix << "_";
-      cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
-      os << "\"><emphasis><literal>";
-      cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
-      os << "</literal></emphasis></link></listitem>\n";
+      if(op->Name.size())
+        {
+        os << "    <listitem><link linkend=\"" << prefix << "_";
+        cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
+        os << "\"><emphasis><literal>";
+        cmDocumentationPrintDocbookEscapes(os, op->Name.c_str());
+        os << "</literal></emphasis></link></listitem>\n";
+        }
       }
+    os << "</itemizedlist>\n" ;
     }
-  os << "</itemizedlist>\n" ;
 
   for(std::vector<cmDocumentationEntry>::const_iterator op = entries.begin(); 
       op != entries.end();)
@@ -229,8 +232,9 @@ void cmDocumentationFormatterDocbook::PrintParagraph(std::ostream& os,
 }
 
 //----------------------------------------------------------------------------
-void cmDocumentationFormatterDocbook::PrintHeader(const char* name, 
-                                               std::ostream& os)
+void cmDocumentationFormatterDocbook::PrintHeader(const char* docname,
+                                                  const char* appname,
+                                                  std::ostream& os)
 {
   // this one is used to ensure that we don't create multiple link targets
   // with the same name. We can clear it here since we are at the 
@@ -244,7 +248,7 @@ void cmDocumentationFormatterDocbook::PrintHeader(const char* name,
         "<!ENTITY % English \"INCLUDE\"> ]>\n"
         "<article>\n"
         "<articleinfo>\n"
-        "<title>" << name << "</title>\n"
+        "<title>" << docname << " - " << appname << "</title>\n"
         "</articleinfo>\n";
 }
 

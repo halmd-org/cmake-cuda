@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.h,v $
   Language:  C++
-  Date:      $Date: 2008-08-06 21:04:20 $
-  Version:   $Revision: 1.109.2.6 $
+  Date:      $Date: 2009-01-13 18:03:54 $
+  Version:   $Revision: 1.109.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -332,6 +332,10 @@ class cmake
   bool IsPropertyDefined(const char *name, cmProperty::ScopeType scope);
   bool IsPropertyChained(const char *name, cmProperty::ScopeType scope);
 
+  /** Get the list of configurations (in upper case) considered to be
+      debugging configurations.*/
+  std::vector<std::string> const& GetDebugConfigs();
+
   // record accesses of properties and variables
   void RecordPropertyAccess(const char *name, cmProperty::ScopeType scope);
   void ReportUndefinedPropertyAccesses(const char *filename);
@@ -456,6 +460,7 @@ private:
   bool DebugTryCompile;
   cmFileTimeComparison* FileComparison;
   std::string GraphVizFile;
+  std::vector<std::string> DebugConfigs;
   
   void UpdateConversionPathTable();
 };

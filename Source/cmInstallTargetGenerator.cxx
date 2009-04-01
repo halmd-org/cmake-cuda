@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmInstallTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-29 13:15:30 $
-  Version:   $Revision: 1.62.2.3 $
+  Date:      $Date: 2008-12-02 12:07:39 $
+  Version:   $Revision: 1.62.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -57,16 +57,8 @@ void cmInstallTargetGenerator::GenerateScript(std::ostream& os)
     cmSystemTools::Message(msg.str().c_str(), "Warning");
     }
 
-  // Track indentation.
-  Indent indent;
-
-  // Begin this block of installation.
-  std::string component_test =
-    this->CreateComponentTest(this->Component.c_str());
-  os << indent << "IF(" << component_test << ")\n";
-
   // Compute the build tree directory from which to copy the target.
-  std::string fromDir;
+  std::string& fromDir = this->FromDir;
   if(this->Target->NeedRelinkBeforeInstall())
     {
     fromDir = this->Target->GetMakefile()->GetStartOutputDirectory();
@@ -79,70 +71,62 @@ void cmInstallTargetGenerator::GenerateScript(std::ostream& os)
     fromDir += "/";
     }
 
-  // Generate a portion of the script for each configuration.
+  // Perform the main install script generation.
+  this->cmInstallGenerator::GenerateScript(os);
+}
+
+//----------------------------------------------------------------------------
+void cmInstallTargetGenerator::GenerateScriptConfigs(std::ostream& os,
+                                                     Indent const& indent)
+{
   if(this->ConfigurationTypes->empty())
     {
-    this->GenerateScriptForConfig(os, fromDir.c_str(),
-                                  this->ConfigurationName,
-                                  indent.Next());
+    // In a single-configuration generator, only the install rule's
+    // configuration test is important.  If that passes, the target is
+    // installed regardless of for what configuration it was built.
+    this->cmInstallGenerator::GenerateScriptConfigs(os, indent);
     }
   else
     {
+    // In a multi-configuration generator, a separate rule is produced
+    // in a block for each configuration that is built.  However, the
+    // list of configurations is restricted to those for which this
+    // install rule applies.
     for(std::vector<std::string>::const_iterator i =
           this->ConfigurationTypes->begin();
         i != this->ConfigurationTypes->end(); ++i)
       {
-      this->GenerateScriptForConfig(os, fromDir.c_str(), i->c_str(),
-                                    indent.Next());
+      const char* config = i->c_str();
+      if(this->InstallsForConfig(config))
+        {
+        // Generate a per-configuration block.
+        std::string config_test = this->CreateConfigTest(config);
+        os << indent << "IF(" << config_test << ")\n";
+        this->GenerateScriptForConfig(os, config, indent.Next());
+        os << indent << "ENDIF(" << config_test << ")\n";
+        }
       }
     }
+}
 
-  // End this block of installation.
-  os << indent << "ENDIF(" << component_test << ")\n\n";
+//----------------------------------------------------------------------------
+void cmInstallTargetGenerator::GenerateScriptActions(std::ostream& os,
+                                                     Indent const& indent)
+{
+  // This is reached for single-configuration generators only.
+  this->GenerateScriptForConfig(os, this->ConfigurationName, indent);
 }
 
 //----------------------------------------------------------------------------
 void cmInstallTargetGenerator::GenerateScriptForConfig(std::ostream& os,
-                                                       const char* fromDir,
                                                        const char* config,
                                                        Indent const& indent)
 {
   // Compute the per-configuration directory containing the files.
-  std::string fromDirConfig = fromDir;
+  std::string fromDirConfig = this->FromDir;
   this->Target->GetMakefile()->GetLocalGenerator()->GetGlobalGenerator()
     ->AppendDirectoryForConfig("", config, "/", fromDirConfig);
 
-  if(config && *config)
-    {
-    // Skip this configuration for config-specific installation that
-    // does not match it.
-    if(!this->InstallsForConfig(config))
-      {
-      return;
-      }
-
-    // Generate a per-configuration block.
-    std::string config_test = this->CreateConfigTest(config);
-    os << indent << "IF(" << config_test << ")\n";
-    this->GenerateScriptForConfigDir(os, fromDirConfig.c_str(), config,
-                                     indent.Next());
-    os << indent << "ENDIF(" << config_test << ")\n";
-    }
-  else
-    {
-    this->GenerateScriptForConfigDir(os, fromDirConfig.c_str(), config,
-                                     indent);
-    }
-}
-
-//----------------------------------------------------------------------------
-void
-cmInstallTargetGenerator
-::GenerateScriptForConfigDir(std::ostream& os,
-                             const char* fromDirConfig,
-                             const char* config,
-                             Indent const& indent)
-{
   // Compute the full path to the main installed file for this target.
   NameType nameType = this->ImportLibrary? NameImplib : NameNormal;
   std::string toInstallPath = this->GetInstallDestination();
@@ -505,10 +489,17 @@ cmInstallTargetGenerator
     for(std::set<cmTarget*>::const_iterator j = sharedLibs.begin();
         j != sharedLibs.end(); ++j)
       {
+      cmTarget* tgt = *j;
+
+      // The install_name of an imported target does not change.
+      if(tgt->IsImported())
+        {
+        continue;
+        }
+
       // If the build tree and install tree use different path
       // components of the install_name field then we need to create a
       // mapping to be applied after installation.
-      cmTarget* tgt = *j;
       std::string for_build = tgt->GetInstallNameDirForBuildTree(config);
       std::string for_install = tgt->GetInstallNameDirForInstallTree(config);
       if(for_build != for_install)

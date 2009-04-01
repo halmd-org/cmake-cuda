@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMacroCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-07 13:40:36 $
-  Version:   $Revision: 1.36 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.36.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -36,6 +36,7 @@ public:
     // we must copy when we clone
     newC->Args = this->Args;
     newC->Functions = this->Functions;
+    newC->Policies = this->Policies;
     return newC;
   }
 
@@ -81,6 +82,7 @@ public:
 
   std::vector<std::string> Args;
   std::vector<cmListFileFunction> Functions;
+  cmPolicies::PolicyMap Policies;
 };
 
 
@@ -107,6 +109,13 @@ bool cmMacroHelperCommand::InvokeInitialPass
     return false;
     }
 
+  // Enforce matching logical blocks inside the macro.
+  cmMakefile::LexicalPushPop lexScope(this->Makefile);
+
+  // Push a weak policy scope which restores the policies recorded at
+  // macro creation.
+  cmMakefile::PolicyPushPop polScope(this->Makefile, true, this->Policies);
+
   // set the value of argc
   cmOStringStream argcDefStream;
   argcDefStream << expandedArgs.size();
@@ -129,13 +138,6 @@ bool cmMacroHelperCommand::InvokeInitialPass
     newLFF.Name = this->Functions[c].Name;
     newLFF.FilePath = this->Functions[c].FilePath;
     newLFF.Line = this->Functions[c].Line;
-    const char* def = this->Makefile->GetDefinition
-      ("CMAKE_MACRO_REPORT_DEFINITION_LOCATION"); 
-    bool macroReportLocation = false;
-    if(def && !cmSystemTools::IsOff(def))
-      {
-      macroReportLocation = true;
-      }
 
     // for each argument of the current function
     for (std::vector<cmListFileArgument>::const_iterator k = 
@@ -212,28 +214,8 @@ bool cmMacroHelperCommand::InvokeInitialPass
 
       arg.Value = tmps;
       arg.Quoted = k->Quoted;
-      if(macroReportLocation)
-        {
-        // Report the location of the argument where the macro was
-        // defined.
-        arg.FilePath = k->FilePath;
-        arg.Line = k->Line;
-        }
-      else
-        {
-        // Report the location of the argument where the macro was
-        // invoked.
-        if (args.size())
-          {
-          arg.FilePath = args[0].FilePath;
-          arg.Line = args[0].Line;
-          }
-        else
-          {
-          arg.FilePath = "Unknown";
-          arg.Line = 0;
-          }
-        }
+      arg.FilePath = k->FilePath;
+      arg.Line = k->Line;
       newLFF.Arguments.push_back(arg);
       }
     cmExecutionStatus status;
@@ -242,6 +224,8 @@ bool cmMacroHelperCommand::InvokeInitialPass
       {
       // The error message should have already included the call stack
       // so we do not need to report an error here.
+      lexScope.Quiet();
+      polScope.Quiet();
       inStatus.SetNestedError(true);
       return false;
       }
@@ -287,13 +271,14 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
       cmMacroHelperCommand *f = new cmMacroHelperCommand();
       f->Args = this->Args;
       f->Functions = this->Functions;
+      mf.RecordPolicies(f->Policies);
       std::string newName = "_" + this->Args[0];
       mf.GetCMakeInstance()->RenameCommand(this->Args[0].c_str(), 
                                            newName.c_str());
       mf.AddCommand(f);
 
       // remove the function blocker now that the macro is defined
-      mf.RemoveFunctionBlocker(lff);
+      mf.RemoveFunctionBlocker(this, lff);
       return true;
       }
     else
@@ -327,17 +312,6 @@ ShouldRemove(const cmListFileFunction& lff, cmMakefile &mf)
     }
 
   return false;
-}
-
-void cmMacroFunctionBlocker::
-ScopeEnded(cmMakefile &mf)
-{
-  // macros should end with an EndMacro
-  cmSystemTools::Error(
-    "The end of a CMakeLists file was reached with a MACRO statement that "
-    "was not closed properly. Within the directory: ",
-    mf.GetCurrentDirectory(), " with macro ",
-    this->Args[0].c_str());
 }
 
 bool cmMacroCommand::InitialPass(std::vector<std::string> const& args,
