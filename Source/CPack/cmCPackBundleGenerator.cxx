@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackBundleGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-22 18:04:24 $
-  Version:   $Revision: 1.2.2.3 $
+  Date:      $Date: 2009-02-04 16:44:18 $
+  Version:   $Revision: 1.2.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -19,6 +19,8 @@
 #include "cmCPackLog.h"
 #include "cmSystemTools.h"
 
+#include <cmsys/RegularExpression.hxx>
+
 //----------------------------------------------------------------------
 cmCPackBundleGenerator::cmCPackBundleGenerator()
 {
@@ -32,35 +34,17 @@ cmCPackBundleGenerator::~cmCPackBundleGenerator()
 //----------------------------------------------------------------------
 int cmCPackBundleGenerator::InitializeInternal()
 {
-  const std::string hdiutil_path = cmSystemTools::FindProgram("hdiutil",
-    std::vector<std::string>(), false);
-  if(hdiutil_path.empty())
+  const char* name = this->GetOption("CPACK_BUNDLE_NAME");
+  if(0 == name)
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Cannot locate hdiutil command"
+      "CPACK_BUNDLE_NAME must be set to use the Bundle generator."
       << std::endl);
-    return 0;
-    }
-  this->SetOptionIfNotSet("CPACK_COMMAND_HDIUTIL", hdiutil_path.c_str());
 
-  const std::string setfile_path = cmSystemTools::FindProgram("SetFile",
-    std::vector<std::string>(1, "/Developer/Tools"), false);
-  if(setfile_path.empty())
-    {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Cannot locate SetFile command"
-      << std::endl);
     return 0;
     }
-  this->SetOptionIfNotSet("CPACK_COMMAND_SETFILE", setfile_path.c_str());
 
   return this->Superclass::InitializeInternal();
-}
-
-//----------------------------------------------------------------------
-const char* cmCPackBundleGenerator::GetOutputExtension()
-{
-  return ".dmg";
 }
 
 //----------------------------------------------------------------------
@@ -80,7 +64,8 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
   (void) files;
 
   // Get required arguments ...
-  const std::string cpack_bundle_name = this->GetOption("CPACK_BUNDLE_NAME") ? this->GetOption("CPACK_BUNDLE_NAME") : "";
+  const std::string cpack_bundle_name = this->GetOption("CPACK_BUNDLE_NAME")
+    ? this->GetOption("CPACK_BUNDLE_NAME") : "";
   if(cpack_bundle_name.empty())
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
@@ -90,7 +75,8 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     return 0;
     }
 
-  const std::string cpack_bundle_plist = this->GetOption("CPACK_BUNDLE_PLIST") ? this->GetOption("CPACK_BUNDLE_PLIST") : "";
+  const std::string cpack_bundle_plist = this->GetOption("CPACK_BUNDLE_PLIST")
+    ? this->GetOption("CPACK_BUNDLE_PLIST") : "";
   if(cpack_bundle_plist.empty())
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
@@ -100,7 +86,8 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     return 0;
     }
 
-  const std::string cpack_bundle_icon = this->GetOption("CPACK_BUNDLE_ICON") ? this->GetOption("CPACK_BUNDLE_ICON") : "";
+  const std::string cpack_bundle_icon = this->GetOption("CPACK_BUNDLE_ICON")
+    ? this->GetOption("CPACK_BUNDLE_ICON") : "";
   if(cpack_bundle_icon.empty())
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
@@ -110,18 +97,13 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     return 0;
     }
 
-  const std::string cpack_bundle_startup_command = this->GetOption("CPACK_BUNDLE_STARTUP_COMMAND") ? this->GetOption("CPACK_BUNDLE_STARTUP_COMMAND") : "";
-  if(cpack_bundle_startup_command.empty())
-    {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "CPACK_BUNDLE_STARTUP_COMMAND must be set."
-      << std::endl);
-
-    return 0;
-    }
-
   // Get optional arguments ...
-  const std::string cpack_package_icon = this->GetOption("CPACK_PACKAGE_ICON") ? this->GetOption("CPACK_PACKAGE_ICON") : "";
+  const std::string cpack_package_icon = this->GetOption("CPACK_PACKAGE_ICON") 
+    ? this->GetOption("CPACK_PACKAGE_ICON") : "";
+
+  const std::string cpack_bundle_startup_command = 
+    this->GetOption("CPACK_BUNDLE_STARTUP_COMMAND") 
+    ? this->GetOption("CPACK_BUNDLE_STARTUP_COMMAND") : "";
 
   // The staging directory contains everything that will end-up inside the
   // final disk image ...
@@ -170,24 +152,28 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     return 0;
     }
 
-  // Install a user-provided startup command (could be an executable or a
-  // script) ...
-  cmOStringStream command_source;
-  command_source << cpack_bundle_startup_command;
-
-  cmOStringStream command_target;
-  command_target << application.str() << "/" << cpack_bundle_name;
-
-  if(!this->CopyFile(command_source, command_target))
+  // Optionally a user-provided startup command (could be an
+  // executable or a script) ...
+  if(!cpack_bundle_startup_command.empty())
     {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Error copying startup command.  Check the value of CPACK_BUNDLE_STARTUP_COMMAND."
-      << std::endl);
+    cmOStringStream command_source;
+    command_source << cpack_bundle_startup_command;
 
-    return 0;
+    cmOStringStream command_target;
+    command_target << application.str() << "/" << cpack_bundle_name;
+
+    if(!this->CopyFile(command_source, command_target))
+      {
+      cmCPackLogger(cmCPackLog::LOG_ERROR,
+                    "Error copying startup command. "
+                    " Check the value of CPACK_BUNDLE_STARTUP_COMMAND."
+        << std::endl);
+
+      return 0;
+      }
+
+    cmSystemTools::SetPermissions(command_target.str().c_str(), 0777);
     }
-
-  cmSystemTools::SetPermissions(command_target.str().c_str(), 0777);
 
   // Add a symlink to /Applications so users can drag-and-drop the bundle
   // into it
@@ -208,7 +194,8 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     if(!this->CopyFile(package_icon_source, package_icon_destination))
       {
       cmCPackLogger(cmCPackLog::LOG_ERROR,
-        "Error copying disk volume icon.  Check the value of CPACK_PACKAGE_ICON."
+        "Error copying disk volume icon.  "
+                    "Check the value of CPACK_PACKAGE_ICON."
         << std::endl);
 
       return 0;
@@ -242,16 +229,14 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
   if(!cpack_package_icon.empty())
     {
     cmOStringStream temp_mount;
-    temp_mount << this->GetOption("CPACK_TOPLEVEL_DIRECTORY") << "/mnt";
-    cmSystemTools::MakeDirectory(temp_mount.str().c_str());
 
     cmOStringStream attach_command;
     attach_command << this->GetOption("CPACK_COMMAND_HDIUTIL");
     attach_command << " attach";
-    attach_command << " -mountpoint \"" << temp_mount.str() << "\"";
     attach_command << " \"" << temp_image.str() << "\"";
 
-    if(!this->RunCommand(attach_command))
+    std::string attach_output;
+    if(!this->RunCommand(attach_command, &attach_output))
       {
       cmCPackLogger(cmCPackLog::LOG_ERROR,
         "Error attaching temporary disk image."
@@ -259,6 +244,10 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
 
       return 0;
       }
+
+    cmsys::RegularExpression mountpoint_regex(".*(/Volumes/[^\n]+)\n.*");
+    mountpoint_regex.find(attach_output.c_str());
+    temp_mount << mountpoint_regex.match(1);
 
     cmOStringStream setfile_command;
     setfile_command << this->GetOption("CPACK_COMMAND_SETFILE");
@@ -308,52 +297,4 @@ int cmCPackBundleGenerator::CompressFiles(const char* outFileName,
     }
 
   return 1;
-}
-
-//----------------------------------------------------------------------
-bool cmCPackBundleGenerator::CopyFile(cmOStringStream& source,
-  cmOStringStream& target)
-{
-  if(!cmSystemTools::CopyFileIfDifferent(
-    source.str().c_str(),
-    target.str().c_str()))
-    {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Error copying "
-      << source.str()
-      << " to "
-      << target.str()
-      << std::endl);
-
-    return false;
-    }
-
-  return true;
-}
-
-//----------------------------------------------------------------------
-bool cmCPackBundleGenerator::RunCommand(cmOStringStream& command)
-{
-  std::string output;
-  int exit_code = 1;
-
-  bool result = cmSystemTools::RunSingleCommand(
-    command.str().c_str(),
-    &output,
-    &exit_code,
-    0,
-    this->GeneratorVerbose,
-    0);
-
-  if(!result || exit_code)
-    {
-    cmCPackLogger(cmCPackLog::LOG_ERROR,
-      "Error executing: "
-      << command.str()
-      << std::endl);
-
-    return false;
-    }
-
-  return true;
 }

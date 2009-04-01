@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFunctionCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.3 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.3.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -34,7 +34,6 @@ public:
                                  cmMakefile &mf,
                                  cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction&, cmMakefile &mf);
-  virtual void ScopeEnded(cmMakefile &mf);
   
   std::vector<std::string> Args;
   std::vector<cmListFileFunction> Functions;
@@ -105,7 +104,11 @@ public:
       "will have the actual values of the arguments passed in. This "
       "facilitates creating functions with optional arguments. Additionally "
       "ARGV holds the list of all arguments given to the function and ARGN "
-      "holds the list of argument pass the last expected argument.";
+      "holds the list of argument pass the last expected argument."
+      "\n"
+      "See the cmake_policy() command documentation for the behavior of "
+      "policies inside functions."
+      ;
     }
 
   cmTypeMacro(cmFunctionCommand, cmCommand);

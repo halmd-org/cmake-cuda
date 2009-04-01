@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSetTargetPropertiesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.31 $
+  Date:      $Date: 2008-10-24 15:18:54 $
+  Version:   $Revision: 1.31.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -145,6 +145,9 @@ public:
         "the target in an IDE like visual studio.  VS_KEYWORD can be set "
         "to change the visual studio keyword, for example QT integration "
         "works better if this is set to Qt4VSv1.0.\n"
+        "VS_SCC_PROJECTNAME, VS_SCC_LOCALPATH, VS_SCC_PROVIDER can be set "
+        "to add support for source control bindings in a  Visual Studio "
+        "project file.\n"
         "When a library is built CMake by default generates code to remove "
         "any existing library using all possible names.  This is needed "
         "to support libraries that switch between STATIC and SHARED by "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackOSXX11Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-10-31 12:50:17 $
-  Version:   $Revision: 1.5 $
+  Date:      $Date: 2009-02-04 16:44:18 $
+  Version:   $Revision: 1.5.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -89,10 +89,15 @@ int cmCPackOSXX11Generator::CompressFiles(const char* outFileName,
   std::string contentsDirectory = packageDirFileName + "/Contents";
   std::string resourcesDirectory = contentsDirectory + "/Resources";
   std::string appDirectory = contentsDirectory + "/MacOS";
+  std::string scriptDirectory = resourcesDirectory + "/Scripts";
+  std::string resourceFileName = this->GetOption("CPACK_PACKAGE_FILE_NAME");
+  resourceFileName += ".rsrc";
 
   const char* dir = resourcesDirectory.c_str();
   const char* appdir = appDirectory.c_str();
+  const char* scrDir = scriptDirectory.c_str();
   const char* contDir = contentsDirectory.c_str();
+  const char* rsrcFile = resourceFileName.c_str();
   const char* iconFile = this->GetOption("CPACK_PACKAGE_ICON");
   if ( iconFile )
     {
@@ -124,6 +129,10 @@ int cmCPackOSXX11Generator::CompressFiles(const char* outFileName,
     !this->CopyResourcePlistFile("RuntimeScript", dir) ||
     !this->CopyResourcePlistFile("OSXX11.Info.plist", contDir,
       "Info.plist" ) ||
+    !this->CopyResourcePlistFile("OSXX11.main.scpt", scrDir,
+      "main.scpt", true ) ||
+    !this->CopyResourcePlistFile("OSXScriptLauncher.rsrc", dir, 
+      rsrcFile, true) ||
     !this->CopyResourcePlistFile("OSXScriptLauncher", appdir, 
       this->GetOption("CPACK_PACKAGE_FILE_NAME"), true)
   )

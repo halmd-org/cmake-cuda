@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator3
   Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-08-06 21:04:19 $
-  Version:   $Revision: 1.126.2.4 $
+  Date:      $Date: 2009-02-06 21:15:16 $
+  Version:   $Revision: 1.126.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -352,17 +352,25 @@ void cmGlobalUnixMakefileGenerator3::WriteMainCMakefile()
     cmakefileStream << "  \"" << 
       lg->Convert(tmpStr.c_str(),cmLocalGenerator::HOME_OUTPUT).c_str() 
                     << "\"\n";
-    const std::vector<std::string>& outfiles = 
-      lg->GetMakefile()->GetOutputFiles();
-    for(std::vector<std::string>::const_iterator k= outfiles.begin();
-        k != outfiles.end(); ++k)
-      {
-      cmakefileStream << "  \"" << 
-        lg->Convert(k->c_str(),cmLocalGenerator::HOME_OUTPUT).c_str() 
-                      << "\"\n";
-      }
     }
   cmakefileStream << "  )\n\n";
+
+  // CMake must rerun if a byproduct is missing.
+  {
+  cmakefileStream
+    << "# Byproducts of CMake generate step:\n"
+    << "SET(CMAKE_MAKEFILE_PRODUCTS\n";
+  const std::vector<std::string>& outfiles =
+    lg->GetMakefile()->GetOutputFiles();
+  for(std::vector<std::string>::const_iterator k = outfiles.begin();
+      k != outfiles.end(); ++k)
+    {
+    cmakefileStream << "  \"" <<
+      lg->Convert(k->c_str(),cmLocalGenerator::HOME_OUTPUT).c_str()
+                    << "\"\n";
+    }
+  cmakefileStream << "  )\n\n";
+  }
 
   this->WriteMainCMakefileLanguageRules(cmakefileStream, 
                                         this->LocalGenerators);

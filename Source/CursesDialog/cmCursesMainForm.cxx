@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCursesMainForm.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-07 21:32:09 $
-  Version:   $Revision: 1.73 $
+  Date:      $Date: 2008-10-24 15:18:55 $
+  Version:   $Revision: 1.73.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -683,14 +683,15 @@ int cmCursesMainForm::Configure(int noconfigure)
       {
       this->OkToGenerate = false;
       }
-    // reset error condition
-    cmSystemTools::ResetErrorOccuredFlag();
     int xx,yy;
     getmaxyx(stdscr, yy, xx);
     cmCursesLongMessageForm* msgs = new cmCursesLongMessageForm(
       this->Errors,
-      cmSystemTools::GetErrorOccuredFlag() ? "Errors occurred during the last pass." :
-                                             "CMake produced the following output.");
+      cmSystemTools::GetErrorOccuredFlag()
+      ? "Errors occurred during the last pass." :
+      "CMake produced the following output.");
+    // reset error condition
+    cmSystemTools::ResetErrorOccuredFlag();
     CurrentForm = msgs;
     msgs->Render(1,1,xx,yy);
     msgs->HandleInput();

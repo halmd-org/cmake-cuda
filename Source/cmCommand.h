@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-03-01 20:20:35 $
-  Version:   $Revision: 1.27 $
+  Date:      $Date: 2008-10-24 15:18:45 $
+  Version:   $Revision: 1.27.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,7 +64,12 @@ public:
                                  cmExecutionStatus &status)
     {
     std::vector<std::string> expandedArguments;
-    this->Makefile->ExpandArguments(args, expandedArguments);
+    if(!this->Makefile->ExpandArguments(args, expandedArguments))
+      {
+      // There was an error expanding arguments.  It was already
+      // reported, so we can skip this command without error.
+      return true;
+      }
     return this->InitialPass(expandedArguments,status);
     }
 

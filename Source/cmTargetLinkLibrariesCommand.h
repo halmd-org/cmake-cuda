@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTargetLinkLibrariesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.15.2.1 $
+  Date:      $Date: 2009-01-13 18:03:53 $
+  Version:   $Revision: 1.15.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -74,7 +74,9 @@ public:
       "A \"debug\", \"optimized\", or \"general\" keyword indicates that "
       "the library immediately following it is to be used only for the "
       "corresponding build configuration.  "
-      "The \"debug\" keyword corresponds to the Debug configuration.  "
+      "The \"debug\" keyword corresponds to the Debug configuration "
+      "(or to configurations named in the DEBUG_CONFIGURATIONS global "
+      "property if it is set).  "
       "The \"optimized\" keyword corresponds to all other configurations.  "
       "The \"general\" keyword corresponds to all configurations, and is "
       "purely optional (assumed if omitted).  "
@@ -93,14 +95,16 @@ public:
       "  target_link_libraries(<target> LINK_INTERFACE_LIBRARIES\n"
       "                        [[debug|optimized|general] <lib>] ...)\n"
       "The LINK_INTERFACE_LIBRARIES mode appends the libraries "
-      "to the LINK_INTERFACE_LIBRARIES and LINK_INTERFACE_LIBRARIES_DEBUG "
+      "to the LINK_INTERFACE_LIBRARIES and its per-configuration equivalent "
       "target properties instead of using them for linking.  "
       "Libraries specified as \"debug\" are appended to the "
-      "the LINK_INTERFACE_LIBRARIES_DEBUG property.  "
+      "the LINK_INTERFACE_LIBRARIES_DEBUG property (or to the properties "
+      "corresponding to configurations listed in the DEBUG_CONFIGURATIONS "
+      "global property if it is set).  "
       "Libraries specified as \"optimized\" are appended to the "
       "the LINK_INTERFACE_LIBRARIES property.  "
       "Libraries specified as \"general\" (or without any keyword) are "
-      "appended to both properties."
+      "treated as if specified for both \"debug\" and \"optimized\"."
       ;
     }
   

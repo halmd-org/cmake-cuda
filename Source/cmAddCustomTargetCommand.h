@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddCustomTargetCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.22 $
+  Date:      $Date: 2008-10-24 15:18:45 $
+  Version:   $Revision: 1.22.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -68,7 +68,8 @@ public:
       "                    [COMMAND command2 [args2...] ...]\n"
       "                    [DEPENDS depend depend depend ... ]\n"
       "                    [WORKING_DIRECTORY dir]\n"
-      "                    [COMMENT comment] [VERBATIM])\n"
+      "                    [COMMENT comment] [VERBATIM]\n"
+      "                    [SOURCES src1 [src2...]])\n"
       "Adds a target with the given name that executes the given commands. "
       "The target has no output file and is ALWAYS CONSIDERED OUT OF DATE "
       "even if the commands try to create a file with the name of the "
@@ -94,7 +95,13 @@ public:
       "Use of VERBATIM is recommended as it enables correct behavior. "
       "When VERBATIM is not given the behavior is platform specific. "
       "In the future VERBATIM may be enabled by default. The only reason "
-      "it is an option is to preserve compatibility with older CMake code.";
+      "it is an option is to preserve compatibility with older CMake code."
+      "\n"
+      "The SOURCES option specifies additional source files to be included "
+      "in the custom target.  "
+      "Specified source files will be added to IDE project files for "
+      "convenience in editing even if they have not build rules."
+      ;
     }
   
   cmTypeMacro(cmAddCustomTargetCommand, cmCommand);

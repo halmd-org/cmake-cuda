@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCPackNSISGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:24 $
-  Version:   $Revision: 1.11.2.2 $
+  Date:      $Date: 2008-10-24 15:18:55 $
+  Version:   $Revision: 1.11.2.3 $
 
   Copyright (c) 2002 Kitware, Inc. All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -65,8 +65,8 @@ protected:
                 (cmCPackComponent *component,
                  std::set<cmCPackComponent *>& visited);
 
-  /// Produce NSIS code that de-selects all of the components that are dependent
-  /// on this component, recursively.
+  /// Produce NSIS code that de-selects all of the components that are
+  /// dependent on this component, recursively.
   std::string CreateDeselectionDependenciesDescription
                 (cmCPackComponent *component,
                  std::set<cmCPackComponent *>& visited);

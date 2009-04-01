@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindBase.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.35.2.4 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.35.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -61,8 +61,10 @@ cmFindBase::cmFindBase()
     "a cmake style list of paths.  For example ENV PATH would be a way "
     "to list the system path variable. The argument "
     "after DOC will be used for the documentation string in "
-    "the cache.  PATH_SUFFIXES can be used to give sub directories "
-    "that will be appended to the search paths.\n"
+    "the cache.  "
+    "PATH_SUFFIXES specifies additional subdirectories to check below "
+    "each search path."
+    "\n"
     "If NO_DEFAULT_PATH is specified, then no additional paths are "
     "added to the search. "
     "If NO_DEFAULT_PATH is not specified, the search process is as follows:\n"
@@ -489,13 +491,7 @@ void cmFindBase::AddPathSuffixes()
       // later with lib being replaced for lib64 which may exist
       paths.push_back(p);
       }
-    }
-  // now put the path without the path suffixes in the SearchPaths
-  for(i = finalPath.begin();
-      i != finalPath.end(); ++i)
-    {
-    // put all search paths in because it may later be replaced
-    // by lib64 stuff fixes bug 4009
+    // now put the path without the path suffixes in the SearchPaths
     paths.push_back(*i);
     }
 }

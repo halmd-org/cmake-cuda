@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-08 14:27:44 $
-  Version:   $Revision: 1.21 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.21.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -28,6 +28,7 @@ bool cmIncludeCommand
       return false;
     }
   bool optional = false;
+  bool noPolicyScope = false;
   std::string fname = args[0];
   std::string resultVarName;
   
@@ -60,6 +61,10 @@ bool cmIncludeCommand
         return false;
         }
       }
+    else if(args[i] == "NO_POLICY_SCOPE")
+      {
+      noPolicyScope = true;
+      }
       else if(i > 1)  // compat.: in previous cmake versions the second 
                       // parameter was ignore if it wasn't "OPTIONAL"
         {
@@ -84,7 +89,8 @@ bool cmIncludeCommand
   std::string fullFilePath;
   bool readit = 
     this->Makefile->ReadListFile( this->Makefile->GetCurrentListFile(), 
-                                  fname.c_str(), &fullFilePath );
+                                  fname.c_str(), &fullFilePath,
+                                  noPolicyScope);
   
   // add the location of the included file if a result variable was given
   if (resultVarName.size())

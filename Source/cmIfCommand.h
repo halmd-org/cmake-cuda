@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIfCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-12 14:56:21 $
-  Version:   $Revision: 1.46.2.3 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.46.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -29,21 +29,19 @@ class cmIfFunctionBlocker : public cmFunctionBlocker
 {
 public:
   cmIfFunctionBlocker() {
-    this->HasRun = false; this->ScopeDepth = 0; this->Executing = false;}
+    this->HasRun = false; this->ScopeDepth = 0; }
   virtual ~cmIfFunctionBlocker() {}
   virtual bool IsFunctionBlocked(const cmListFileFunction& lff,
                                  cmMakefile &mf,
                                  cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction& lff,
                             cmMakefile &mf);
-  virtual void ScopeEnded(cmMakefile &mf);
   
   std::vector<cmListFileArgument> Args;
   std::vector<cmListFileFunction> Functions;
   bool IsBlocking;
   bool HasRun;
   unsigned int ScopeDepth;
-  bool Executing;
 };
 
 /** \class cmIfCommand
@@ -191,7 +189,7 @@ public:
   // arguments were valid, and if so, was the response true. If there is
   // an error, the errorString will be set.
   static bool IsTrue(const std::vector<std::string> &args, 
-    char** errorString, cmMakefile *mf);
+    std::string &errorString, cmMakefile *mf);
   
   // Get a definition from the makefile.  If it doesn't exist,
   // return the original string.

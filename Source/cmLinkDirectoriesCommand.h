@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLinkDirectoriesCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.13 $
+  Date:      $Date: 2009-02-04 22:04:49 $
+  Version:   $Revision: 1.13.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -66,7 +66,12 @@ public:
     return
       "  link_directories(directory1 directory2 ...)\n"
       "Specify the paths in which the linker should search for libraries. "
-      "The command will apply only to targets created after it is called.";
+      "The command will apply only to targets created after it is called. "
+      "For historical reasons, relative paths given to this command are "
+      "passed to the linker unchanged "
+      "(unlike many CMake commands which interpret them relative to the "
+      "current source directory)."
+      ;
     }
   
   cmTypeMacro(cmLinkDirectoriesCommand, cmCommand);

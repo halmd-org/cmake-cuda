@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalVisualStudio71Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.48.2.1 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.48.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -115,7 +115,9 @@ void cmGlobalVisualStudio71Generator
   this->GetTargetSets(projectTargets,
                       originalTargets,
                       root, generators);
-  this->WriteTargetsToSolution(fout, root, projectTargets, originalTargets);
+  OrderedTargetDependSet orderedProjectTargets(projectTargets);
+  this->WriteTargetsToSolution(fout, root, orderedProjectTargets,
+                               originalTargets);
   // Write out the configurations information for the solution
   fout << "Global\n";
   // Write out the configurations for the solution
@@ -123,7 +125,7 @@ void cmGlobalVisualStudio71Generator
   fout << "\tGlobalSection(" << this->ProjectConfigurationSectionName
        << ") = postSolution\n";
   // Write out the configurations for all the targets in the project
-  this->WriteTargetConfigurations(fout, root, projectTargets);
+  this->WriteTargetConfigurations(fout, root, orderedProjectTargets);
   fout << "\tEndGlobalSection\n";
   // Write the footer for the SLN file
   this->WriteSLNFooter(fout);
@@ -155,7 +157,8 @@ cmGlobalVisualStudio71Generator::WriteProject(std::ostream& fout,
 {
   // check to see if this is a fortran build
   const char* ext = ".vcproj";
-  const char* project = "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"";
+  const char* project = 
+    "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"";
   if(this->TargetIsFortranOnly(t))
     {
     ext = ".vfproj"; 

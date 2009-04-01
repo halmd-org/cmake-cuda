@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestScriptHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:28:01 $
-  Version:   $Revision: 1.43 $
+  Date:      $Date: 2008-12-02 12:07:40 $
+  Version:   $Revision: 1.43.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -380,10 +380,35 @@ int cmCTestScriptHandler::ReadInScript(const std::string& total_script_arg)
   f->CTestScriptHandler = this;
   this->Makefile->AddFunctionBlocker(f);
 
+  /* Execute CMakeDetermineSystem and CMakeSystemSpecificInformation, so 
+  that variables like CMAKE_SYSTEM and also the search paths for libraries,
+  header and executables are set correctly and can be used. Makes new-style
+  ctest scripting easier. */
+  std::string systemFile = 
+      this->Makefile->GetModulesFile("CMakeDetermineSystem.cmake");
+  if (!this->Makefile->ReadListFile(0, systemFile.c_str()) ||
+      cmSystemTools::GetErrorOccuredFlag())
+    {
+    return 2;
+    }
+
+  systemFile = 
+      this->Makefile->GetModulesFile("CMakeSystemSpecificInformation.cmake");
+  if (!this->Makefile->ReadListFile(0, systemFile.c_str()) ||
+      cmSystemTools::GetErrorOccuredFlag())
+    {
+    cmCTestLog(this->CTest, DEBUG, "Error in read: "  << systemFile.c_str()
+               << std::endl);
+    return 2;
+    }
+
   // finally read in the script
   if (!this->Makefile->ReadListFile(0, script.c_str()) ||
     cmSystemTools::GetErrorOccuredFlag())
     {
+    cmCTestLog(this->CTest, DEBUG, "Error in read script: "
+               << script.c_str()
+               << std::endl);
     return 2;
     }
 

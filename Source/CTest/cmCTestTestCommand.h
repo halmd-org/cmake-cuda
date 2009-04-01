@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestTestCommand.h,v $
   Language:  C++
-  Date:      $Date: 2006-03-29 17:01:24 $
-  Version:   $Revision: 1.6 $
+  Date:      $Date: 2008-12-02 12:07:40 $
+  Version:   $Revision: 1.6.12.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -44,7 +44,7 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "CTEST_TEST";}
+  virtual const char* GetName() { return "ctest_test";}
 
   /**
    * Succinct documentation.
@@ -60,9 +60,16 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  CTEST_TEST([BUILD build_dir] [RETURN_VALUE res])\n"
+      "  ctest_test([BUILD build_dir]\n"
+      "             [START start number] [END end number]\n"
+      "             [STRIDE stride number] [EXCLUDE exclude regex ]\n"
+      "             [INCLUDE include regex] [RETURN_VALUE res] )\n"
       "Tests the given build directory and stores results in Test.xml. The "
-      "second argument is a variable that will hold value.";
+      "second argument is a variable that will hold value. Optionally, "
+      "you can specify the starting test number START, the ending test number "
+      "END, the number of tests to skip between each test STRIDE, a regular "
+      "expression for tests to run INCLUDE, or a regular expression for tests "
+      "to not run EXCLUDE.";
     }
 
   cmTypeMacro(cmCTestTestCommand, cmCTestHandlerCommand);
@@ -77,6 +84,8 @@ protected:
     ctt_START,
     ctt_END,
     ctt_STRIDE,
+    ctt_EXCLUDE,
+    ctt_INCLUDE,
     ctt_LAST
   };
 };

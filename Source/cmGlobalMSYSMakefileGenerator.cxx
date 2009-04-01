@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalMSYSMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-10-22 16:48:39 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2008-12-31 15:14:29 $
+  Version:   $Revision: 1.14.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -78,7 +78,10 @@ void cmGlobalMSYSMakefileGenerator
   mf->AddDefinition("CMAKE_GENERATOR_CC", gcc.c_str());
   mf->AddDefinition("CMAKE_GENERATOR_CXX", gxx.c_str());
   this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
-  if(!mf->IsSet("CMAKE_AR") && !this->CMakeInstance->GetIsInTryCompile())
+
+  if(!mf->IsSet("CMAKE_AR") &&
+      !this->CMakeInstance->GetIsInTryCompile() &&
+      !(1==l.size() && l[0]=="NONE"))
     {
     cmSystemTools::Error
       ("CMAKE_AR was not found, please set to archive program. ",

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCTestBuildHandler.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-24 22:23:26 $
-  Version:   $Revision: 1.61.2.1 $
+  Date:      $Date: 2009-01-13 18:03:54 $
+  Version:   $Revision: 1.61.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -165,7 +165,8 @@ static cmCTestBuildCompileErrorWarningRex
 cmCTestWarningErrorFileLine[] = {
     { "^Warning W[0-9]+ ([a-zA-Z.\\:/0-9_+ ~-]+) ([0-9]+):", 1, 2 },
     { "^([a-zA-Z./0-9_+ ~-]+):([0-9]+):", 1, 2 },
-    { "^([a-zA-Z.\\:/0-9_+ ~-]+)\\(([0-9]+)\\)", 1, 2 },
+    { "^([a-zA-Z.\\:/0-9_+ ~-]+)\\(([0-9]+)\\)", 1, 2 }, 
+    { "^[0-9]+>([a-zA-Z.\\:/0-9_+ ~-]+)\\(([0-9]+)\\)", 1, 2 },
     { "^([a-zA-Z./0-9_+ ~-]+)\\(([0-9]+)\\)", 1, 2 },
     { "\"([a-zA-Z./0-9_+ ~-]+)\", line ([0-9]+)", 1, 2 },
     { "File = ([a-zA-Z./0-9_+ ~-]+), Line = ([0-9]+)", 1, 2 },

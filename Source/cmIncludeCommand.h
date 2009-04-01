@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.17 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.17.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -69,8 +69,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  include(file1 [OPTIONAL] [RESULT_VARIABLE <VAR>])\n"
-      "  include(module [OPTIONAL] [RESULT_VARIABLE <VAR>])\n"
+      "  include(<file|module> [OPTIONAL] [RESULT_VARIABLE <VAR>]\n"
+      "                        [NO_POLICY_SCOPE])\n"
       "Reads CMake listfile code from the given file.  Commands in the file "
       "are processed immediately as if they were written in place of the "
       "include command.  If OPTIONAL is present, then no error "
@@ -78,7 +78,11 @@ public:
       "the variable will be set to the full filename which "
       "has been included or NOTFOUND if it failed.\n"
       "If a module is specified instead of a file, the file with name "
-      "<modulename>.cmake is searched in the CMAKE_MODULE_PATH.";
+      "<modulename>.cmake is searched in the CMAKE_MODULE_PATH."
+      "\n"
+      "See the cmake_policy() command documentation for discussion of the "
+      "NO_POLICY_SCOPE option."
+      ;
     }
   
   cmTypeMacro(cmIncludeCommand, cmCommand);

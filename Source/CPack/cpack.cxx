@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cpack.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-24 14:07:50 $
-  Version:   $Revision: 1.42.2.2 $
+  Date:      $Date: 2009-02-04 16:44:18 $
+  Version:   $Revision: 1.42.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -472,6 +472,11 @@ int main (int argc, char *argv[])
 #undef cout
     return doc.PrintRequestedDocumentation(std::cout)? 0:1;
 #define cout no_cout_use_cmCPack_Log
+    }
+
+  if (cmSystemTools::GetErrorOccuredFlag())
+    {
+    return 1;
     }
 
   return 0;

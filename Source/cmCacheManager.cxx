@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmCacheManager.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.100.2.1 $
+  Date:      $Date: 2009-02-10 22:28:08 $
+  Version:   $Revision: 1.100.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -784,7 +784,25 @@ void cmCacheManager::AddCacheEntry(const char* key,
   // make sure we only use unix style paths
   if(type == FILEPATH || type == PATH)
     {
-    cmSystemTools::ConvertToUnixSlashes(e.Value);
+    if(e.Value.find(';') != e.Value.npos)
+      {
+      std::vector<std::string> paths;
+      cmSystemTools::ExpandListArgument(e.Value, paths);
+      const char* sep = "";
+      e.Value = "";
+      for(std::vector<std::string>::iterator i = paths.begin();
+          i != paths.end(); ++i)
+        {
+        cmSystemTools::ConvertToUnixSlashes(*i);
+        e.Value += sep;
+        e.Value += *i;
+        sep = ";";
+        }
+      }
+    else
+      {
+      cmSystemTools::ConvertToUnixSlashes(e.Value);
+      }
     }
   if ( helpString )
     {

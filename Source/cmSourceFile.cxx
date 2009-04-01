@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFile.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-29 13:15:31 $
-  Version:   $Revision: 1.47.2.3 $
+  Date:      $Date: 2008-10-24 15:18:54 $
+  Version:   $Revision: 1.47.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -507,10 +507,22 @@ void cmSourceFile::DefineProperties(cmake *cm)
      "or Resources directories.");
 
   cm->DefineProperty
-    ("OBJECT_DEPENDS", cmProperty::SOURCE_FILE, 
-     "Additional dependencies.",
-     "Additional dependencies that should be checked as part of "
-     "building this source file.");
+    ("OBJECT_DEPENDS", cmProperty::SOURCE_FILE,
+     "Additional files on which a compiled object file depends.",
+     "Specifies a semicolon-separated list of full-paths to files on which "
+     "any object files compiled from this source file depend.  "
+     "An object file will be recompiled if any of the named files is newer "
+     "than it.\n"
+     "This property need not be used to specify the dependency of a "
+     "source file on a generated header file that it includes.  "
+     "Although the property was originally introduced for this purpose, it "
+     "is no longer necessary.  "
+     "If the generated header file is created by a custom command in the "
+     "same target as the source file, the automatic dependency scanning "
+     "process will recognize the dependency.  "
+     "If the generated header file is created by another target, an "
+     "inter-target dependency should be created with the add_dependencies "
+     "command (if one does not already exist due to linking relationships).");
 
   cm->DefineProperty
     ("OBJECT_OUTPUTS", cmProperty::SOURCE_FILE, 

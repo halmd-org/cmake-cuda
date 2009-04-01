@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalUnixMakefileGenerator3.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-15 19:39:55 $
-  Version:   $Revision: 1.240.2.6 $
+  Date:      $Date: 2009-01-13 18:03:52 $
+  Version:   $Revision: 1.240.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -358,10 +358,10 @@ cmLocalUnixMakefileGenerator3
     commands.push_back(
       this->GetRecursiveMakeCall(tgtMakefileName.c_str(), targetName.c_str())
       );
-    this->CreateCDCommand(commands,
-                          this->Makefile->GetHomeOutputDirectory(),
-                          this->Makefile->GetStartOutputDirectory());
     }
+  this->CreateCDCommand(commands,
+                        this->Makefile->GetHomeOutputDirectory(),
+                        cmLocalGenerator::START_OUTPUT);
 
   // Write the rule to the makefile.
   std::vector<std::string> no_depends;
@@ -404,7 +404,7 @@ void cmLocalUnixMakefileGenerator3
                          (makefile2.c_str(),localName.c_str()));
       this->CreateCDCommand(commands,
                             this->Makefile->GetHomeOutputDirectory(),
-                            this->Makefile->GetStartOutputDirectory());
+                            cmLocalGenerator::START_OUTPUT);
       this->WriteMakeRule(ruleFileStream, "Convenience name for target.",
                           localName.c_str(), depends, commands, true);
       
@@ -432,7 +432,7 @@ void cmLocalUnixMakefileGenerator3
                          (makefileName.c_str(), makeTargetName.c_str()));
       this->CreateCDCommand(commands,
                             this->Makefile->GetHomeOutputDirectory(),
-                            this->Makefile->GetStartOutputDirectory());
+                            cmLocalGenerator::START_OUTPUT);
       this->WriteMakeRule(ruleFileStream, "fast build rule for target.",
                           localName.c_str(), depends, commands, true);
 
@@ -450,7 +450,7 @@ void cmLocalUnixMakefileGenerator3
                            (makefile2.c_str(), makeTargetName.c_str()));
         this->CreateCDCommand(commands,
                               this->Makefile->GetHomeOutputDirectory(),
-                              this->Makefile->GetStartOutputDirectory());
+                              cmLocalGenerator::START_OUTPUT);
         this->WriteMakeRule(ruleFileStream,
                             "Manual pre-install relink rule for target.",
                             localName.c_str(), depends, commands, true);
@@ -704,13 +704,13 @@ cmLocalUnixMakefileGenerator3
     << " -E remove -f\n"
     << "\n";
   
-  if(this->Makefile->GetDefinition("CMAKE_EDIT_COMMAND"))
+  if(const char* edit_cmd =
+     this->Makefile->GetDefinition("CMAKE_EDIT_COMMAND"))
     {
     makefileStream
       << "# The program to use to edit the cache.\n"
       << "CMAKE_EDIT_COMMAND = "
-      << (this->ConvertToOutputForExisting(
-            this->Makefile->GetDefinition("CMAKE_EDIT_COMMAND"))) << "\n"
+      << this->Convert(edit_cmd,FULL,SHELL) << "\n"
       << "\n";
     }
 
@@ -842,7 +842,7 @@ void cmLocalUnixMakefileGenerator3
     {
     this->CreateCDCommand(commands,
                           this->Makefile->GetHomeOutputDirectory(),
-                          this->Makefile->GetStartOutputDirectory());
+                          cmLocalGenerator::START_OUTPUT);
     }
   this->WriteMakeRule(makefileStream,
                       "Special rule to run CMake to check the build system "
@@ -960,12 +960,13 @@ cmLocalUnixMakefileGenerator3
 void
 cmLocalUnixMakefileGenerator3
 ::AppendCustomCommands(std::vector<std::string>& commands,
-                       const std::vector<cmCustomCommand>& ccs)
+                       const std::vector<cmCustomCommand>& ccs,
+                       cmLocalGenerator::RelativeRoot relative)
 {
   for(std::vector<cmCustomCommand>::const_iterator i = ccs.begin();
       i != ccs.end(); ++i)
     {
-    this->AppendCustomCommand(commands, *i, true);
+    this->AppendCustomCommand(commands, *i, true, relative);
     }
 }
 
@@ -973,7 +974,8 @@ cmLocalUnixMakefileGenerator3
 void
 cmLocalUnixMakefileGenerator3
 ::AppendCustomCommand(std::vector<std::string>& commands,
-                      const cmCustomCommand& cc, bool echo_comment)
+                      const cmCustomCommand& cc, bool echo_comment,
+                      cmLocalGenerator::RelativeRoot relative)
 {
   // Optionally create a command to display the custom command's
   // comment text.  This is used for pre-build, pre-link, and
@@ -1079,8 +1081,7 @@ cmLocalUnixMakefileGenerator3
     }
 
   // Setup the proper working directory for the commands.
-  this->CreateCDCommand(commands1, dir,
-                        this->Makefile->GetHomeOutputDirectory());
+  this->CreateCDCommand(commands1, dir, relative);
 
   // push back the custom commands
   commands.insert(commands.end(), commands1.begin(), commands1.end());
@@ -1617,9 +1618,11 @@ void cmLocalUnixMakefileGenerator3
       this->AppendCustomDepends(depends,   
                                 glIt->second.GetPostBuildCommands());
       this->AppendCustomCommands(commands, 
-                                 glIt->second.GetPreBuildCommands());
+                                 glIt->second.GetPreBuildCommands(),
+                                 cmLocalGenerator::START_OUTPUT);
       this->AppendCustomCommands(commands, 
-                                 glIt->second.GetPostBuildCommands());
+                                 glIt->second.GetPostBuildCommands(),
+                                 cmLocalGenerator::START_OUTPUT);
       std::string targetName = glIt->second.GetName();
       this->WriteMakeRule(ruleFileStream, targetString.c_str(), 
                           targetName.c_str(), depends, commands, true);
@@ -1681,7 +1684,7 @@ void cmLocalUnixMakefileGenerator3
                                                 recursiveTarget.c_str()));
   this->CreateCDCommand(commands,
                         this->Makefile->GetHomeOutputDirectory(),
-                        this->Makefile->GetStartOutputDirectory());
+                        cmLocalGenerator::START_OUTPUT);
     {
     cmOStringStream progCmd;
     progCmd << "$(CMAKE_COMMAND) -E cmake_progress_start "; // # 0
@@ -1703,7 +1706,7 @@ void cmLocalUnixMakefileGenerator3
                                                 recursiveTarget.c_str()));
   this->CreateCDCommand(commands,
                                 this->Makefile->GetHomeOutputDirectory(),
-                                this->Makefile->GetStartOutputDirectory());
+                                cmLocalGenerator::START_OUTPUT);
   this->WriteMakeRule(ruleFileStream, "The main clean target", "clean",
                       depends, commands, true);
   commands.clear();
@@ -1733,7 +1736,7 @@ void cmLocalUnixMakefileGenerator3
     (this->GetRecursiveMakeCall(mf2Dir.c_str(), recursiveTarget.c_str()));
   this->CreateCDCommand(commands,
                         this->Makefile->GetHomeOutputDirectory(),
-                        this->Makefile->GetStartOutputDirectory());
+                        cmLocalGenerator::START_OUTPUT);
   this->WriteMakeRule(ruleFileStream, "Prepare targets for installation.",
                       "preinstall", depends, commands, true);
   depends.clear();
@@ -1754,7 +1757,7 @@ void cmLocalUnixMakefileGenerator3
   commands.push_back(runRule);
   this->CreateCDCommand(commands,
                         this->Makefile->GetHomeOutputDirectory(),
-                        this->Makefile->GetStartOutputDirectory());
+                        cmLocalGenerator::START_OUTPUT);
   this->WriteMakeRule(ruleFileStream, "clear depends", 
                       "depend", 
                       depends, commands, true);
@@ -1932,12 +1935,12 @@ cmLocalUnixMakefileGenerator3
   obj += "/";
 
   // Get the object file name without the target directory.
-  std::string::size_type dir_len = 0;
-  dir_len += strlen(this->Makefile->GetCurrentOutputDirectory());
-  dir_len += 1;
-  dir_len += obj.size();
+  std::string dir_max;
+  dir_max += this->Makefile->GetCurrentOutputDirectory();
+  dir_max += "/";
+  dir_max += obj;
   std::string objectName =
-    this->GetObjectFileNameWithoutTarget(source, dir_len,
+    this->GetObjectFileNameWithoutTarget(source, dir_max,
                                          hasSourceExtension);
   if(nameWithoutTargetDir)
     {
@@ -2133,8 +2136,10 @@ cmLocalUnixMakefileGenerator3::AddImplicitDepends(cmTarget const& tgt,
 //----------------------------------------------------------------------------
 void cmLocalUnixMakefileGenerator3
 ::CreateCDCommand(std::vector<std::string>& commands, const char *tgtDir,
-                  const char *retDir)
+                  cmLocalGenerator::RelativeRoot relRetDir)
 {
+  const char* retDir = this->GetRelativeRootPath(relRetDir);
+
   // do we need to cd?
   if (!strcmp(tgtDir,retDir))
     {
@@ -2147,18 +2152,12 @@ void cmLocalUnixMakefileGenerator3
     // back because the shell keeps the working directory between
     // commands.
     std::string cmd = "cd ";
-    cmd += this->ConvertToOutputForExisting(tgtDir);
+    cmd += this->ConvertToOutputForExisting(tgtDir, relRetDir);
     commands.insert(commands.begin(),cmd);
-    
-    // Change back to the starting directory.  Any trailing slash must be
-    // removed to avoid problems with Borland Make.
-    std::string back = retDir;
-    if(back.size() && back[back.size()-1] == '/')
-      {
-      back = back.substr(0, back.size()-1);
-      }
+
+    // Change back to the starting directory.
     cmd = "cd ";
-    cmd += this->ConvertToOutputForExisting(back.c_str());
+    cmd += this->ConvertToOutputForExisting(relRetDir, tgtDir);
     commands.push_back(cmd);
     }
   else
@@ -2170,7 +2169,7 @@ void cmLocalUnixMakefileGenerator3
     for (; i != commands.end(); ++i)
       {
       std::string cmd = "cd ";
-      cmd += this->ConvertToOutputForExisting(tgtDir);
+      cmd += this->ConvertToOutputForExisting(tgtDir, relRetDir);
       cmd += " && ";
       cmd += *i;
       *i = cmd;

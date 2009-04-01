@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFindPackageCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-09-12 14:56:20 $
-  Version:   $Revision: 1.36.2.4 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.36.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,6 +64,7 @@ cmFindPackageCommand::cmFindPackageCommand()
   this->NoModule = false;
   this->DebugMode = false;
   this->UseLib64Paths = false;
+  this->PolicyScope = true;
   this->VersionMajor = 0;
   this->VersionMinor = 0;
   this->VersionPatch = 0;
@@ -77,7 +78,8 @@ cmFindPackageCommand::cmFindPackageCommand()
   this->VersionFoundCount = 0;
   this->CommandDocumentation =
     "  find_package(<package> [version] [EXACT] [QUIET]\n"
-    "               [[REQUIRED|COMPONENTS] [components...]])\n"
+    "               [[REQUIRED|COMPONENTS] [components...]]\n"
+    "               [NO_POLICY_SCOPE])\n"
     "Finds and loads settings from an external project.  "
     "<package>_FOUND will be set to indicate whether the package was found.  "
     "When the package is found package-specific information is provided "
@@ -91,6 +93,9 @@ cmFindPackageCommand::cmFindPackageCommand()
     "The [version] argument requests a version with which the package found "
     "should be compatible (format is major[.minor[.patch[.tweak]]]).  "
     "The EXACT option requests that the version be matched exactly.  "
+    "If no [version] is given to a recursive invocation inside a "
+    "find-module, the [version] and EXACT arguments are forwarded "
+    "automatically from the outer call.  "
     "Version support is currently provided only on a package-by-package "
     "basis (details below).\n"
     "User code should generally look for packages using the above simple "
@@ -113,6 +118,7 @@ cmFindPackageCommand::cmFindPackageCommand()
     "The complete Config mode command signature is:\n"
     "  find_package(<package> [version] [EXACT] [QUIET]\n"
     "               [[REQUIRED|COMPONENTS] [components...]] [NO_MODULE]\n"
+    "               [NO_POLICY_SCOPE]\n"
     "               [NAMES name1 [name2 ...]]\n"
     "               [CONFIGS config1 [config2 ...]]\n"
     "               [HINTS path1 [path2 ... ]]\n"
@@ -152,8 +158,7 @@ cmFindPackageCommand::cmFindPackageCommand()
     "argument is specified.  If REQUIRED is specified and the package "
     "is not found a fatal error is generated and the configure step stops "
     "executing.  If <package>_DIR has been set to a directory not containing "
-    "a configuration file a fatal error is always generated because user "
-    "intervention is required."
+    "a configuration file CMake will ignore it and search from scratch."
     "\n"
     "When the [version] argument is given Config mode will only find a "
     "version of the package that claims compatibility with the requested "
@@ -185,6 +190,7 @@ cmFindPackageCommand::cmFindPackageCommand()
     "  PACKAGE_VERSION            = full provided version string\n"
     "  PACKAGE_VERSION_EXACT      = true if version is exact match\n"
     "  PACKAGE_VERSION_COMPATIBLE = true if version is compatible\n"
+    "  PACKAGE_VERSION_UNSUITABLE = true if unsuitable as any version\n"
     "These variables are checked by the find_package command to determine "
     "whether the configuration file provides an acceptable version.  "
     "They are not available after the find_package call returns.  "
@@ -218,6 +224,9 @@ cmFindPackageCommand::cmFindPackageCommand()
     "UNIX (U), or Apple (A) conventions.\n"
     "  <prefix>/                                               (W)\n"
     "  <prefix>/(cmake|CMake)/                                 (W)\n"
+    "  <prefix>/<name>*/                                       (W)\n"
+    "  <prefix>/<name>*/(cmake|CMake)/                         (W)\n"
+    "  <prefix>/(share|lib)/cmake/<name>*/                     (U)\n"
     "  <prefix>/(share|lib)/<name>*/                           (U)\n"
     "  <prefix>/(share|lib)/<name>*/(cmake|CMake)/             (U)\n"
     "On systems supporting OS X Frameworks and Application Bundles "
@@ -284,6 +293,11 @@ cmFindPackageCommand::cmFindPackageCommand()
   this->CommandDocumentation += this->GenericDocumentationMacPolicy;
   this->CommandDocumentation += this->GenericDocumentationRootPath;
   this->CommandDocumentation += this->GenericDocumentationPathsOrder;
+  this->CommandDocumentation +=
+    "\n"
+    "See the cmake_policy() command documentation for discussion of the "
+    "NO_POLICY_SCOPE option."
+    ;
 }
 
 //----------------------------------------------------------------------------
@@ -400,6 +414,12 @@ bool cmFindPackageCommand
       this->Compatibility_1_6 = false;
       doing = DoingConfigs;
       }
+    else if(args[i] == "NO_POLICY_SCOPE")
+      {
+      this->PolicyScope = false;
+      this->Compatibility_1_6 = false;
+      doing = DoingNone;
+      }
     else if(args[i] == "NO_CMAKE_BUILDS_PATH")
       {
       this->NoBuilds = true;
@@ -418,7 +438,7 @@ bool cmFindPackageCommand
       // Set a variable telling the find script this component
       // is required.
       std::string req_var = this->Name + "_FIND_REQUIRED_" + args[i];
-      this->Makefile->AddDefinition(req_var.c_str(), "1");
+      this->AddFindDefinition(req_var.c_str(), "1");
 
       // Append to the list of required components.
       components += components_sep;
@@ -465,6 +485,35 @@ bool cmFindPackageCommand
       e << "called with invalid argument \"" << args[i].c_str() << "\"";
       this->SetError(e.str().c_str());
       return false;
+      }
+    }
+
+  // Ignore EXACT with no version.
+  if(this->Version.empty() && this->VersionExact)
+    {
+    this->VersionExact = false;
+    this->Makefile->IssueMessage(
+      cmake::AUTHOR_WARNING, "Ignoring EXACT since no version is requested.");
+    }
+
+  if(this->Version.empty())
+    {
+    // Check whether we are recursing inside "Find<name>.cmake" within
+    // another find_package(<name>) call.
+    std::string mod = this->Name;
+    mod += "_FIND_MODULE";
+    if(this->Makefile->IsOn(mod.c_str()))
+      {
+      // Get version information from the outer call if necessary.
+      // Requested version string.
+      std::string ver = this->Name;
+      ver += "_FIND_VERSION";
+      this->Version = this->Makefile->GetSafeDefinition(ver.c_str());
+
+      // Whether an exact version is required.
+      std::string exact = this->Name;
+      exact += "_FIND_VERSION_EXACT";
+      this->VersionExact = this->Makefile->IsOn(exact.c_str());
       }
     }
 
@@ -546,7 +595,7 @@ void cmFindPackageCommand::SetModuleVariables(const std::string& components)
 {
   // Store the list of components.
   std::string components_var = this->Name + "_FIND_COMPONENTS";
-  this->Makefile->AddDefinition(components_var.c_str(), components.c_str());
+  this->AddFindDefinition(components_var.c_str(), components.c_str());
    
   if(this->Quiet)
     {
@@ -554,7 +603,7 @@ void cmFindPackageCommand::SetModuleVariables(const std::string& components)
     // quietly.
     std::string quietly = this->Name;
     quietly += "_FIND_QUIETLY";
-    this->Makefile->AddDefinition(quietly.c_str(), "1");
+    this->AddFindDefinition(quietly.c_str(), "1");
     }
 
   if(this->Required)
@@ -563,7 +612,7 @@ void cmFindPackageCommand::SetModuleVariables(const std::string& components)
     // a fatal error if the package is not found.
     std::string req = this->Name;
     req += "_FIND_REQUIRED";
-    this->Makefile->AddDefinition(req.c_str(), "1");
+    this->AddFindDefinition(req.c_str(), "1");
     }
 
   if(!this->Version.empty())
@@ -572,27 +621,58 @@ void cmFindPackageCommand::SetModuleVariables(const std::string& components)
     // package has been requested.
     std::string ver = this->Name;
     ver += "_FIND_VERSION";
-    this->Makefile->AddDefinition(ver.c_str(), this->Version.c_str());
+    this->AddFindDefinition(ver.c_str(), this->Version.c_str());
     char buf[64];
     sprintf(buf, "%u", this->VersionMajor);
-    this->Makefile->AddDefinition((ver+"_MAJOR").c_str(), buf);
+    this->AddFindDefinition((ver+"_MAJOR").c_str(), buf);
     sprintf(buf, "%u", this->VersionMinor);
-    this->Makefile->AddDefinition((ver+"_MINOR").c_str(), buf);
+    this->AddFindDefinition((ver+"_MINOR").c_str(), buf);
     sprintf(buf, "%u", this->VersionPatch);
-    this->Makefile->AddDefinition((ver+"_PATCH").c_str(), buf);
+    this->AddFindDefinition((ver+"_PATCH").c_str(), buf);
     sprintf(buf, "%u", this->VersionTweak);
-    this->Makefile->AddDefinition((ver+"_TWEAK").c_str(), buf);
+    this->AddFindDefinition((ver+"_TWEAK").c_str(), buf);
     sprintf(buf, "%u", this->VersionCount);
-    this->Makefile->AddDefinition((ver+"_COUNT").c_str(), buf);
+    this->AddFindDefinition((ver+"_COUNT").c_str(), buf);
 
     // Tell the module whether an exact version has been requested.
     std::string exact = this->Name;
     exact += "_FIND_VERSION_EXACT";
-    this->Makefile->AddDefinition(exact.c_str(),
-                                  this->VersionExact? "1":"0");
+    this->AddFindDefinition(exact.c_str(), this->VersionExact? "1":"0");
    }
 }
 
+//----------------------------------------------------------------------------
+void cmFindPackageCommand::AddFindDefinition(const char* var, const char* val)
+{
+  if(const char* old = this->Makefile->GetDefinition(var))
+    {
+    this->OriginalDefs[var].exists = true;
+    this->OriginalDefs[var].value = old;
+    }
+  else
+    {
+    this->OriginalDefs[var].exists = false;
+    }
+  this->Makefile->AddDefinition(var, val);
+}
+
+//----------------------------------------------------------------------------
+void cmFindPackageCommand::RestoreFindDefinitions()
+{
+  for(std::map<cmStdString, OriginalDef>::iterator
+        i = this->OriginalDefs.begin(); i != this->OriginalDefs.end(); ++i)
+    {
+    OriginalDef const& od = i->second;
+    if(od.exists)
+      {
+      this->Makefile->AddDefinition(i->first.c_str(), od.value.c_str());
+      }
+    else
+      {
+      this->Makefile->RemoveDefinition(i->first.c_str());
+      }
+    }
+}
 
 //----------------------------------------------------------------------------
 bool cmFindPackageCommand::FindModule(bool& found)
@@ -603,9 +683,15 @@ bool cmFindPackageCommand::FindModule(bool& found)
   std::string mfile = this->Makefile->GetModulesFile(module.c_str());
   if ( mfile.size() )
     {
-    // Load the module we found.
+    // Load the module we found, and set "<name>_FIND_MODULE" to true
+    // while inside it.
     found = true;
-    return this->ReadListFile(mfile.c_str());
+    std::string var = this->Name;
+    var += "_FIND_MODULE";
+    this->Makefile->AddDefinition(var.c_str(), "1");
+    bool result = this->ReadListFile(mfile.c_str(), DoPolicyScope);
+    this->Makefile->RemoveDefinition(var.c_str());
+    return result;
     }
   return true;
 }
@@ -637,17 +723,8 @@ bool cmFindPackageCommand::HandlePackageMode()
       }
     }
 
-  // Search for the config file if it is not already found.
-  if(cmSystemTools::IsOff(def))
-    {
-    this->FindConfig();
-    def = this->Makefile->GetDefinition(this->Variable.c_str());
-    }
-
-  // If the config file was found, load it.
-  std::string file;
-  bool result = true;
-  bool found = false;
+  // Try to load the config file if the directory is known
+  bool cachedDirectoryOk = false;
   if(!cmSystemTools::IsOff(def))
     {
     // Get the directory from the variable value.
@@ -660,38 +737,44 @@ bool cmFindPackageCommand::HandlePackageMode()
       dir = "/" + dir;
       dir = this->Makefile->GetCurrentDirectory() + dir;
       }
-
-    // Find the configuration file.
-    if(this->FindConfigFileToLoad(dir, file))
+    // The file location was cached.  Look for the correct file.
+    std::string file;
+    if (this->FindConfigFile(dir, file))
       {
-      // Set the version variables before loading the config file.
-      // It may override them.
-      this->StoreVersionFound();
+      this->FileFound = file;
+      cachedDirectoryOk = true;
+      }
+    def = this->Makefile->GetDefinition(this->Variable.c_str());
+    }
 
-      // Parse the configuration file.
-      if(this->ReadListFile(file.c_str()))
-        {
-        // The package has been found.
-        found = true;
-        }
-      else
-        {
-        // The configuration file is invalid.
-        result = false;
-        }
+  // Search for the config file if it is not already found.
+  if(cmSystemTools::IsOff(def) || !cachedDirectoryOk)
+    {
+    this->FindConfig();
+    def = this->Makefile->GetDefinition(this->Variable.c_str());
+    }
+
+  // If the directory for the config file was found, try to read the file.
+  bool result = true;
+  bool found = false;
+  // in the following test FileFound should never be empty if def is valid
+  // but I don't want to put an assert() in there now, in case this still
+  // makes it into 2.6.3
+  if(!cmSystemTools::IsOff(def) && (!this->FileFound.empty()))
+    {
+    // Set the version variables before loading the config file.
+    // It may override them.
+    this->StoreVersionFound();
+
+    // Parse the configuration file.
+    if(this->ReadListFile(this->FileFound.c_str(), DoPolicyScope))
+      {
+      // The package has been found.
+      found = true;
       }
     else
       {
-      // The variable setting is wrong.
-      cmOStringStream e;
-      e << "cannot find package " << this->Name << " because "
-        << this->Variable << " is set to \"" << def << "\" "
-        << "which is not a directory containing a package configuration "
-        << "file (or it is not for the requested version).  "
-        << "Please set the cache entry " << this->Variable << " "
-        << "to the correct directory, or delete it to ask CMake "
-        << "to search.";
-      this->SetError(e.str().c_str());
+      // The configuration file is invalid.
       result = false;
       }
     }
@@ -743,7 +826,7 @@ bool cmFindPackageCommand::HandlePackageMode()
   fileVar += "_CONFIG";
   if(found)
     {
-    this->Makefile->AddDefinition(fileVar.c_str(), file.c_str());
+    this->Makefile->AddDefinition(fileVar.c_str(), this->FileFound.c_str());
     }
   else
     {
@@ -894,9 +977,10 @@ bool cmFindPackageCommand::FindAppBundleConfig()
 }
 
 //----------------------------------------------------------------------------
-bool cmFindPackageCommand::ReadListFile(const char* f)
+bool cmFindPackageCommand::ReadListFile(const char* f, PolicyScopeRule psr)
 {
-  if(this->Makefile->ReadListFile(this->Makefile->GetCurrentListFile(),f))
+  if(this->Makefile->ReadListFile(this->Makefile->GetCurrentListFile(), f, 0,
+                                  !this->PolicyScope || psr == NoPolicyScope))
     {
     return true;
     }
@@ -969,6 +1053,9 @@ void cmFindPackageCommand::AppendSuccessInformation()
       this->AppendToProperty("DISABLED_FEATURES");
       }
     }
+
+  // Restore original state of "_FIND_" variables we set.
+  this->RestoreFindDefinitions();
 }
 
 //----------------------------------------------------------------------------
@@ -1169,24 +1256,6 @@ bool cmFindPackageCommand::FindConfigFile(std::string const& dir,
 }
 
 //----------------------------------------------------------------------------
-bool cmFindPackageCommand::FindConfigFileToLoad(std::string const& dir,
-                                                std::string& file)
-{
-  if(this->FileFound.empty())
-    {
-    // The file location was cached.  Look for the correct file.
-    return this->FindConfigFile(dir, file);
-    }
-  else
-    {
-    // The file location was just found during this call.
-    // Use the file found without searching again.
-    file = this->FileFound;
-    return true;
-    }
-}
-
-//----------------------------------------------------------------------------
 bool cmFindPackageCommand::CheckVersion(std::string const& config_file)
 {
   // Get the filename without the .cmake extension.
@@ -1223,10 +1292,14 @@ bool cmFindPackageCommand::CheckVersion(std::string const& config_file)
 bool cmFindPackageCommand::CheckVersionFile(std::string const& version_file)
 {
   // The version file will be loaded in an isolated scope.
-  this->Makefile->PushScope();
+  cmMakefile::ScopePushPop varScope(this->Makefile);
+  cmMakefile::PolicyPushPop polScope(this->Makefile);
+  static_cast<void>(varScope);
+  static_cast<void>(polScope);
 
   // Clear the output variables.
   this->Makefile->RemoveDefinition("PACKAGE_VERSION");
+  this->Makefile->RemoveDefinition("PACKAGE_VERSION_UNSUITABLE");
   this->Makefile->RemoveDefinition("PACKAGE_VERSION_COMPATIBLE");
   this->Makefile->RemoveDefinition("PACKAGE_VERSION_EXACT");
 
@@ -1246,17 +1319,23 @@ bool cmFindPackageCommand::CheckVersionFile(std::string const& version_file)
   sprintf(buf, "%u", this->VersionCount);
   this->Makefile->AddDefinition("PACKAGE_FIND_VERSION_COUNT", buf);
 
-  // Load the version check file.
-  bool found = false;
-  if(this->ReadListFile(version_file.c_str()))
+  // Load the version check file.  Pass NoPolicyScope because we do
+  // our own policy push/pop independent of CMP0011.
+  bool suitable = false;
+  if(this->ReadListFile(version_file.c_str(), NoPolicyScope))
     {
     // Check the output variables.
-    found = this->Makefile->IsOn("PACKAGE_VERSION_EXACT");
-    if(!found && !this->VersionExact)
+    bool okay = this->Makefile->IsOn("PACKAGE_VERSION_EXACT");
+    bool unsuitable = this->Makefile->IsOn("PACKAGE_VERSION_UNSUITABLE");
+    if(!okay && !this->VersionExact)
       {
-      found = this->Makefile->IsOn("PACKAGE_VERSION_COMPATIBLE");
+      okay = this->Makefile->IsOn("PACKAGE_VERSION_COMPATIBLE");
       }
-    if(found || this->Version.empty())
+
+    // The package is suitable if the version is okay and not
+    // explicitly unsuitable.
+    suitable = !unsuitable && (okay || this->Version.empty());
+    if(suitable)
       {
       // Get the version found.
       this->VersionFound =
@@ -1283,11 +1362,8 @@ bool cmFindPackageCommand::CheckVersionFile(std::string const& version_file)
       }
     }
 
-  // Restore the original scope.
-  this->Makefile->PopScope();
-
-  // Succeed if the version was found or no version was requested.
-  return found || this->Version.empty();
+  // Succeed if the version is suitable.
+  return suitable;
 }
 
 //----------------------------------------------------------------------------
@@ -1701,6 +1777,31 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
     }
   }
 
+  //  PREFIX/(Foo|foo|FOO).*/
+  {
+  cmFindPackageFileList lister(this);
+  lister
+    / cmFileListGeneratorFixed(prefix)
+    / cmFileListGeneratorProject(this->Names);
+  if(lister.Search())
+    {
+    return true;
+    }
+  }
+
+  //  PREFIX/(Foo|foo|FOO).*/(cmake|CMake)/
+  {
+  cmFindPackageFileList lister(this);
+  lister
+    / cmFileListGeneratorFixed(prefix)
+    / cmFileListGeneratorProject(this->Names)
+    / cmFileListGeneratorCaseInsensitive("cmake");
+  if(lister.Search())
+    {
+    return true;
+    }
+  }
+
   // Construct list of common install locations (lib and share).
   std::vector<std::string> common;
   if(this->UseLib64Paths)
@@ -1709,6 +1810,20 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
     }
   common.push_back("lib");
   common.push_back("share");
+
+  //  PREFIX/(share|lib)/cmake/(Foo|foo|FOO).*/
+  {
+  cmFindPackageFileList lister(this);
+  lister
+    / cmFileListGeneratorFixed(prefix)
+    / cmFileListGeneratorEnumerate(common)
+    / cmFileListGeneratorFixed("cmake")
+    / cmFileListGeneratorProject(this->Names);
+  if(lister.Search())
+    {
+    return true;
+    }
+  }
 
   //  PREFIX/(share|lib)/(Foo|foo|FOO).*/
   {
@@ -1853,14 +1968,6 @@ bool cmFindPackageCommand::SearchAppBundlePrefix(std::string const& prefix_in)
 
   return false;
 }
-
-// TODO: Version numbers?  Perhaps have a listing component class that
-// sorts by lexicographic and numerical ordering.  Also try to match
-// some command argument for the version.  Alternatively provide an
-// API that just returns a list of valid directories?  Perhaps push a
-// scope and try loading the target file just to get its version
-// number?  Could add a foo-version.cmake or FooVersion.cmake file
-// in the projects that contains just version information.
 
 // TODO: Debug cmsys::Glob double slash problem.
 

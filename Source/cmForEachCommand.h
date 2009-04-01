@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmForEachCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.19 $
+  Date:      $Date: 2009-02-04 16:44:17 $
+  Version:   $Revision: 1.19.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -29,17 +29,15 @@
 class cmForEachFunctionBlocker : public cmFunctionBlocker
 {
 public:
-  cmForEachFunctionBlocker() {this->Executing = false; Depth = 0;}
+  cmForEachFunctionBlocker() {this->Depth = 0;}
   virtual ~cmForEachFunctionBlocker() {}
   virtual bool IsFunctionBlocked(const cmListFileFunction& lff,
                                  cmMakefile &mf,
                                  cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction& lff, cmMakefile &mf);
-  virtual void ScopeEnded(cmMakefile &mf);
   
   std::vector<std::string> Args;
   std::vector<cmListFileFunction> Functions;
-  bool Executing;
 private:
   int Depth;
 };

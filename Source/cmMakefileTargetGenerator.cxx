@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.93.2.6 $
+  Date:      $Date: 2008-10-24 15:18:52 $
+  Version:   $Revision: 1.93.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -567,7 +567,7 @@ cmMakefileTargetGenerator
   if(this->LocalGenerator->UseRelativePaths)
     {
     sourceFile = this->Convert(sourceFile.c_str(),
-                               cmLocalGenerator::HOME_OUTPUT);
+                               cmLocalGenerator::START_OUTPUT);
     }
   sourceFile = this->Convert(sourceFile.c_str(),
                              cmLocalGenerator::NONE,
@@ -614,7 +614,7 @@ cmMakefileTargetGenerator
   this->LocalGenerator->CreateCDCommand
     (compileCommands,
      this->Makefile->GetStartOutputDirectory(),
-     this->Makefile->GetHomeOutputDirectory());
+     cmLocalGenerator::HOME_OUTPUT);
   commands.insert(commands.end(),
                   compileCommands.begin(), compileCommands.end());
 
@@ -726,7 +726,7 @@ cmMakefileTargetGenerator
         this->LocalGenerator->CreateCDCommand
           (preprocessCommands,
            this->Makefile->GetStartOutputDirectory(),
-           this->Makefile->GetHomeOutputDirectory());
+           cmLocalGenerator::HOME_OUTPUT);
         commands.insert(commands.end(),
                         preprocessCommands.begin(),
                         preprocessCommands.end());
@@ -782,7 +782,7 @@ cmMakefileTargetGenerator
         this->LocalGenerator->CreateCDCommand
           (assemblyCommands,
            this->Makefile->GetStartOutputDirectory(),
-           this->Makefile->GetHomeOutputDirectory());
+           cmLocalGenerator::HOME_OUTPUT);
         commands.insert(commands.end(),
                         assemblyCommands.begin(),
                         assemblyCommands.end());
@@ -896,7 +896,7 @@ void cmMakefileTargetGenerator::WriteTargetCleanRules()
   this->LocalGenerator->CreateCDCommand
     (commands,
      this->Makefile->GetStartOutputDirectory(),
-     this->Makefile->GetHomeOutputDirectory());
+     cmLocalGenerator::HOME_OUTPUT);
 
   // Write the rule.
   this->LocalGenerator->WriteMakeRule(*this->BuildFileStream, 0,
@@ -949,16 +949,16 @@ void cmMakefileTargetGenerator::WriteTargetDependRules()
     << "\n"
     << "# Targets to which this target links.\n"
     << "SET(CMAKE_TARGET_LINKED_INFO_FILES\n";
-  cmGlobalGenerator* gg = this->GlobalGenerator;
   std::set<cmTarget const*> emitted;
-  cmTarget::LinkLibraryVectorType const& libs =
-    this->Target->GetLinkLibraries();
-  for(cmTarget::LinkLibraryVectorType::const_iterator j = libs.begin();
-      j != libs.end(); ++j)
+  const char* cfg = this->LocalGenerator->ConfigurationName.c_str();
+  if(cmComputeLinkInformation* cli = this->Target->GetLinkInformation(cfg))
     {
-    if(cmTarget const* linkee = gg->FindTarget(0, j->first.c_str()))
+    cmComputeLinkInformation::ItemVector const& items = cli->GetItems();
+    for(cmComputeLinkInformation::ItemVector::const_iterator
+          i = items.begin(); i != items.end(); ++i)
       {
-      if(emitted.insert(linkee).second)
+      cmTarget const* linkee = i->Target;
+      if(linkee && !linkee->IsImported() && emitted.insert(linkee).second)
         {
         cmMakefile* mf = linkee->GetMakefile();
         cmLocalGenerator* lg = mf->GetLocalGenerator();
@@ -1032,8 +1032,11 @@ void cmMakefileTargetGenerator::WriteTargetDependRules()
                           cmLocalGenerator::FULL, cmLocalGenerator::SHELL)
          << " "
          << this->Convert(this->InfoFileNameFull.c_str(),
-                          cmLocalGenerator::FULL, cmLocalGenerator::SHELL)
-         << " --color=$(COLOR)";
+                          cmLocalGenerator::FULL, cmLocalGenerator::SHELL);
+  if(this->LocalGenerator->GetColorMakefile())
+    {
+    depCmd << " --color=$(COLOR)";
+    }
   commands.push_back(depCmd.str());
 
   // Make sure all custom command outputs in this target are built.
@@ -1453,7 +1456,9 @@ std::string cmMakefileTargetGenerator::GetFrameworkFlags()
     if(emitted.insert(*i).second)
       {
       flags += "-F";
-      flags += this->LocalGenerator->ConvertToOutputForExisting(i->c_str());
+      flags += this->Convert(i->c_str(),
+                             cmLocalGenerator::START_OUTPUT,
+                             cmLocalGenerator::SHELL, true);
       flags += " ";
       }
     }
@@ -1619,6 +1624,65 @@ cmMakefileTargetGenerator
   responseFileName += "/";
   responseFileName += name;
   return responseFileName;
+}
+
+//----------------------------------------------------------------------------
+void
+cmMakefileTargetGenerator
+::CreateObjectLists(bool useLinkScript, bool useArchiveRules,
+                    bool useResponseFile, std::string& buildObjs,
+                    std::vector<std::string>& makefile_depends)
+{
+  std::string variableName;
+  std::string variableNameExternal;
+  this->WriteObjectsVariable(variableName, variableNameExternal);
+  if(useResponseFile)
+    {
+    // MSVC response files cannot exceed 128K.
+    std::string::size_type const responseFileLimit = 131000;
+
+    // Construct the individual object list strings.
+    std::vector<std::string> object_strings;
+    this->WriteObjectsStrings(object_strings, responseFileLimit);
+
+    // Write a response file for each string.
+    const char* sep = "";
+    for(unsigned int i = 0; i < object_strings.size(); ++i)
+      {
+      // Number the response files.
+      char rsp[32];
+      sprintf(rsp, "objects%u.rsp", i+1);
+
+      // Create this response file.
+      std::string objects_rsp =
+        this->CreateResponseFile(rsp, object_strings[i], makefile_depends);
+
+      // Separate from previous response file references.
+      buildObjs += sep;
+      sep = " ";
+
+      // Reference the response file.
+      buildObjs += "@";
+      buildObjs += this->Convert(objects_rsp.c_str(),
+                                 cmLocalGenerator::NONE,
+                                 cmLocalGenerator::SHELL);
+      }
+    }
+  else if(useLinkScript)
+    {
+    if(!useArchiveRules)
+      {
+      this->WriteObjectsString(buildObjs);
+      }
+    }
+  else
+    {
+    buildObjs = "$(";
+    buildObjs += variableName;
+    buildObjs += ") $(";
+    buildObjs += variableNameExternal;
+    buildObjs += ")";
+    }
 }
 
 //----------------------------------------------------------------------------

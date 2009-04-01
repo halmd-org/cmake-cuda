@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkInformation.h,v $
   Language:  C++
-  Date:      $Date: 2008-07-28 15:31:35 $
-  Version:   $Revision: 1.15.2.3 $
+  Date:      $Date: 2008-10-24 15:18:45 $
+  Version:   $Revision: 1.15.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -40,11 +40,14 @@ public:
 
   struct Item
   {
-    Item(): Value(), IsPath(true) {}
-    Item(Item const& item): Value(item.Value), IsPath(item.IsPath) {}
-    Item(std::string const& v, bool p): Value(v), IsPath(p) {}
+    Item(): Value(), IsPath(true), Target(0) {}
+    Item(Item const& item):
+      Value(item.Value), IsPath(item.IsPath), Target(item.Target) {}
+    Item(std::string const& v, bool p, cmTarget* target = 0):
+      Value(v), IsPath(p), Target(target) {}
     std::string Value;
     bool IsPath;
+    cmTarget* Target;
   };
   typedef std::vector<Item> ItemVector;
   ItemVector const& GetItems();

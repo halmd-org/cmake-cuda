@@ -18,7 +18,7 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
- * $Id: select.c,v 1.2 2007-03-15 19:22:13 andy Exp $
+ * $Id: select.c,v 1.2.12.1 2008-11-04 20:16:45 hoffman Exp $
  ***************************************************************************/
 
 #include "setup.h"
@@ -39,7 +39,7 @@
 #error "We can't compile without select() support!"
 #endif
 
-#ifdef __BEOS__
+#if defined(__BEOS__) && !defined(__HAIKU__)
 /* BeOS has FD_SET defined in socket.h */
 #include <socket.h>
 #endif

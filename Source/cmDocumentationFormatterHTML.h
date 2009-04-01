@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatterHTML.h,v $
   Language:  C++
-  Date:      $Date: 2008-03-05 16:05:22 $
-  Version:   $Revision: 1.3 $
+  Date:      $Date: 2008-10-24 15:18:46 $
+  Version:   $Revision: 1.3.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -30,7 +30,8 @@ public:
   virtual cmDocumentationEnums::Form GetForm() const
                                       { return cmDocumentationEnums::HTMLForm;}
 
-  virtual void PrintHeader(const char* name, std::ostream& os);
+  virtual void PrintHeader(const char* docname, const char* appname,
+                           std::ostream& os);
   virtual void PrintFooter(std::ostream& os);
   virtual void PrintSection(std::ostream& os,
                     const cmDocumentationSection& section,

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.h,v $
   Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.109.2.7 $
+  Date:      $Date: 2009-01-13 18:03:53 $
+  Version:   $Revision: 1.109.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -185,6 +185,9 @@ public:
   return this->LinkLibraries;}
   const LinkLibraryVectorType &GetOriginalLinkLibraries() const
     {return this->OriginalLinkLibraries;}
+
+  /** Compute the link type to use for the given configuration.  */
+  LinkLibraryType ComputeLinkType(const char* config);
 
   /**
    * Clear the dependency information recorded for this target, if any.

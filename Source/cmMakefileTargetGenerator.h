@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileTargetGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-04-08 16:22:50 $
-  Version:   $Revision: 1.24.2.1 $
+  Date:      $Date: 2008-10-24 15:18:53 $
+  Version:   $Revision: 1.24.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -143,6 +143,11 @@ protected:
   std::string CreateResponseFile(const char* name,
                                  std::string const& options,
                                  std::vector<std::string>& makefile_depends);
+
+  /** Create lists of object files for linking and cleaning.  */
+  void CreateObjectLists(bool useLinkScript, bool useArchiveRules,
+                         bool useResponseFile, std::string& buildObjs,
+                         std::vector<std::string>& makefile_depends);
 
   virtual void CloseFileStreams();
   void RemoveForbiddenFlags(const char* flagVar, const char* linkLang,
