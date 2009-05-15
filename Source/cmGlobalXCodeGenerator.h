@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalXCodeGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:48 $
-  Version:   $Revision: 1.52.2.2 $
+  Date:      $Date: 2009-03-23 17:58:41 $
+  Version:   $Revision: 1.52.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -159,6 +159,7 @@ private:
                                        cmTarget& cmtarget);
   void CreateXCodeTargets(cmLocalGenerator* gen, 
                           std::vector<cmXCodeObject*>&);
+  bool IsHeaderFile(cmSourceFile*);
   void AddDependTarget(cmXCodeObject* target,
                        cmXCodeObject* dependTarget);
   void CreateXCodeDependHackTarget(std::vector<cmXCodeObject*>& targets);

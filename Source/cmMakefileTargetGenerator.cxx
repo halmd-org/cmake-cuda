@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefileTargetGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:52 $
-  Version:   $Revision: 1.93.2.7 $
+  Date:      $Date: 2009-03-23 17:58:48 $
+  Version:   $Revision: 1.93.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -268,8 +268,7 @@ void cmMakefileTargetGenerator::WriteTargetLanguageFlags()
     // Add the export symbol definition for shared library objects.
     if(const char* exportMacro = this->Target->GetExportMacro())
       {
-      flags += "-D";
-      flags += exportMacro;
+      this->LocalGenerator->AppendDefines(defines, exportMacro, lang);
       }
 
     // Add preprocessor definitions for this target and configuration.

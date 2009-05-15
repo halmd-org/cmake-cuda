@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.103.2.3 $
+  Date:      $Date: 2009-03-23 17:58:45 $
+  Version:   $Revision: 1.103.2.4 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -190,7 +190,7 @@ public:
 
   /** Get the include flags for the current makefile and language.  */
   void GetIncludeDirectories(std::vector<std::string>& dirs,
-                             bool filter_system_dirs = true);
+                             const char* lang = "C");
 
   /** Compute the language used to compile the given source file.  */
   const char* GetSourceFileLanguage(const cmSourceFile& source);

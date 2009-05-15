@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmExtraEclipseCDT4Generator.h,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.4.2.1 $
+  Date:      $Date: 2009-03-27 15:56:06 $
+  Version:   $Revision: 1.4.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   Copyright (c) 2004 Alexander Neundorf, neundorf@kde.org. All rights reserved.
@@ -110,6 +110,10 @@ private:
   bool AppendOutLinkedResource(cmGeneratedFileStream& fout,
                                const std::string&     defname,
                                const std::string&     altdefname);
+
+  static void AppendIncludeDirectories(cmGeneratedFileStream& fout,
+                                   const std::vector<std::string>& includeDirs,
+                                   std::set<std::string>& emittedDirs);
 
   std::vector<std::string> SrcLinkedResources;
   std::vector<std::string> OutLinkedResources;

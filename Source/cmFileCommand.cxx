@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmFileCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.103.2.8 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.103.2.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -2185,13 +2185,20 @@ bool cmFileCommand::HandleRemove(std::vector<std::string> const& args,
   i++; // Get rid of subcommand
   for(;i != args.end(); ++i)
     {
-    if(cmSystemTools::FileIsDirectory(i->c_str()) && recurse)
+    std::string fileName = *i;
+    if(!cmsys::SystemTools::FileIsFullPath(fileName.c_str()))
       {
-      cmSystemTools::RemoveADirectory(i->c_str());
+      fileName = this->Makefile->GetCurrentDirectory();
+      fileName += "/" + *i;
+      }
+
+    if(cmSystemTools::FileIsDirectory(fileName.c_str()) && recurse)
+      {
+      cmSystemTools::RemoveADirectory(fileName.c_str());
       }
     else
       {
-      cmSystemTools::RemoveFile(i->c_str());
+      cmSystemTools::RemoveFile(fileName.c_str());
       }
     }
   return true;

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmSourceFile.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:54 $
-  Version:   $Revision: 1.47.2.4 $
+  Date:      $Date: 2009-03-27 15:56:47 $
+  Version:   $Revision: 1.47.2.6 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -246,25 +246,6 @@ void cmSourceFile::CheckExtension()
     this->SetProperty("EXTERNAL_OBJECT", "1");
     }
 
-  // Look for header files.
-  cmMakefile* mf = this->Location.GetMakefile();
-  const std::vector<std::string>& hdrExts = mf->GetHeaderExtensions();
-  if(std::find(hdrExts.begin(), hdrExts.end(), this->Extension) ==
-     hdrExts.end())
-    {
-    // This is not a known header file extension.  Mark it as not a
-    // header unless the user has already explicitly set the property.
-    if(!this->GetProperty("HEADER_FILE_ONLY"))
-      {
-      this->SetProperty("HEADER_FILE_ONLY", "0");
-      }
-    }
-  else
-    {
-    // This is a known header file extension.  The source cannot be compiled.
-    this->SetProperty("HEADER_FILE_ONLY", "1");
-    }
-
   // Try to identify the source file language from the extension.
   if(this->Language.empty())
     {
@@ -424,7 +405,7 @@ void cmSourceFile::DefineProperties(cmake *cm)
      "(ex. \"COMPILE_DEFINITIONS_DEBUG\").\n"
      "CMake will automatically drop some definitions that "
      "are not supported by the native build tool.  "
-     "The VS6 IDE does not support definitions with values "
+     "The VS6 IDE does not support definition values with spaces "
      "(but NMake does).  Xcode does not support per-configuration "
      "definitions on source files.\n"
      "Dislaimer: Most native build tools have poor support for escaping "

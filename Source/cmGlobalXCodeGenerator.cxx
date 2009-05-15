@@ -3,8 +3,8 @@
 Program:   CMake - Cross-Platform Makefile Generator
 Module:    $RCSfile: cmGlobalXCodeGenerator.cxx,v $
 Language:  C++
-Date:      $Date: 2009-02-19 16:53:45 $
-Version:   $Revision: 1.186.2.13 $
+Date:      $Date: 2009-03-23 17:58:41 $
+Version:   $Revision: 1.186.2.14 $
 
 Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
 See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -728,7 +728,7 @@ cmGlobalXCodeGenerator::CreateXCodeTargets(cmLocalGenerator* gen,
         {
         externalObjFiles.push_back(xsf);
         }
-      else if((*i)->GetPropertyAsBool("HEADER_FILE_ONLY") ||
+      else if(this->IsHeaderFile(*i) ||
         (tsFlags.Type == cmTarget::SourceFileTypePrivateHeader) ||
         (tsFlags.Type == cmTarget::SourceFileTypePublicHeader))
         {
@@ -738,7 +738,7 @@ cmGlobalXCodeGenerator::CreateXCodeTargets(cmLocalGenerator* gen,
         {
         resourceFiles.push_back(xsf);
         }
-      else
+      else if(!(*i)->GetPropertyAsBool("HEADER_FILE_ONLY"))
         {
         // Include this file in the build if it has a known language
         // and has not been listed as an ignored extension for this
@@ -905,6 +905,15 @@ cmGlobalXCodeGenerator::CreateXCodeTargets(cmLocalGenerator* gen,
 
     targets.push_back(this->CreateXCodeTarget(cmtarget, buildPhases));
     }
+}
+
+//----------------------------------------------------------------------------
+bool cmGlobalXCodeGenerator::IsHeaderFile(cmSourceFile* sf)
+{
+  const std::vector<std::string>& hdrExts =
+    this->CurrentMakefile->GetHeaderExtensions();
+  return (std::find(hdrExts.begin(), hdrExts.end(), sf->GetExtension()) !=
+          hdrExts.end());
 }
 
 //----------------------------------------------------------------------------

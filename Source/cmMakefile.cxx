@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakefile.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.463.2.12 $
+  Date:      $Date: 2009-03-27 15:56:41 $
+  Version:   $Revision: 1.463.2.14 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -83,7 +83,7 @@ cmMakefile::cmMakefile()
   this->AddSourceGroup("", "^.*$");
   this->AddSourceGroup
     ("Source Files",
-     "\\.(C|M|c|c\\+\\+|cc|cpp|cxx|f|f90|for|fpp"
+     "\\.(C|M|c|c\\+\\+|cc|cpp|cxx|f|F|f90|for|fpp"
      "|ftn|m|mm|rc|def|r|odl|idl|hpj|bat)$");
   this->AddSourceGroup("Header Files",
                        "\\.(h|hh|h\\+\\+|hm|hpp|hxx|in|txx|inl)$");
@@ -1208,10 +1208,10 @@ bool cmMakefile::ParseDefineFlag(std::string const& def, bool remove)
     return false;
     }
 
-  // VS6 IDE does not support definitions with values.
+  // VS6 IDE does not support definition values with spaces.
   if((strcmp(this->LocalGenerator->GetGlobalGenerator()->GetName(),
              "Visual Studio 6") == 0) &&
-     (def.find("=") != def.npos))
+     (def.find(" ") != def.npos))
     {
     return false;
     }
@@ -1533,6 +1533,21 @@ void cmMakefile::AddSubDirectory(const char* srcPath, const char *binPath,
          srcPath);
       return;
       }
+    }
+
+  // Make sure the binary directory is unique.
+  cmGlobalGenerator* gg = this->LocalGenerator->GetGlobalGenerator();
+  if(!gg->BinaryDirectoryIsNew(binPath))
+    {
+    cmOStringStream e;
+    e << "The binary directory\n"
+      << "  " << binPath << "\n"
+      << "is already used to build another source directory, so it cannot "
+      << "be used to build source directory\n"
+      << "  " << srcPath << "\n"
+      << "Specify a unique binary directory name.";
+    this->IssueMessage(cmake::FATAL_ERROR, e.str());
+    return;
     }
 
   // create a new local generator and set its parent
@@ -3460,7 +3475,7 @@ void cmMakefile::DefineProperties(cmake *cm)
      "in the directory's parent.\n"
      "CMake will automatically drop some definitions that "
      "are not supported by the native build tool.  "
-     "The VS6 IDE does not support definitions with values "
+     "The VS6 IDE does not support definition values with spaces "
      "(but NMake does).\n"
      "Dislaimer: Most native build tools have poor support for escaping "
      "certain values.  CMake has work-arounds for many cases but some "

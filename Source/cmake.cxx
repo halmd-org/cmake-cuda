@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmake.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-02-06 21:15:16 $
-  Version:   $Revision: 1.375.2.17 $
+  Date:      $Date: 2009-03-23 17:58:49 $
+  Version:   $Revision: 1.375.2.18 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1363,24 +1363,28 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
       if(soName != realName)
         {
         std::string fname = cmSystemTools::GetFilenameName(realName);
-        if(cmSystemTools::FileExists(soName.c_str()))
+        if(cmSystemTools::FileExists(soName.c_str()) ||
+           cmSystemTools::FileIsSymlink(soName.c_str()))
           {
           cmSystemTools::RemoveFile(soName.c_str());
           }
         if(!cmSystemTools::CreateSymlink(fname.c_str(), soName.c_str()))
           {
+          cmSystemTools::ReportLastSystemError("cmake_symlink_library");
           result = 1;
           }
         }
       if(name != soName)
         {
         std::string fname = cmSystemTools::GetFilenameName(soName);
-        if(cmSystemTools::FileExists(soName.c_str()))
+        if(cmSystemTools::FileExists(name.c_str()) ||
+           cmSystemTools::FileIsSymlink(name.c_str()))
           {
           cmSystemTools::RemoveFile(name.c_str());
           }
         if(!cmSystemTools::CreateSymlink(fname.c_str(), name.c_str()))
           {
+          cmSystemTools::ReportLastSystemError("cmake_symlink_library");
           result = 1;
           }
         }
@@ -1395,12 +1399,14 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
       if(name != realName)
         {
         std::string fname = cmSystemTools::GetFilenameName(realName);
-        if(cmSystemTools::FileExists(realName.c_str()))
+        if(cmSystemTools::FileExists(name.c_str()) ||
+           cmSystemTools::FileIsSymlink(name.c_str()))
           {
           cmSystemTools::RemoveFile(name.c_str());
           }
         if(!cmSystemTools::CreateSymlink(fname.c_str(), name.c_str()))
           {
+          cmSystemTools::ReportLastSystemError("cmake_symlink_executable");
           result = 1;
           }
         }

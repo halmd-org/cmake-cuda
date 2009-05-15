@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmComputeLinkDepends.h,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:51 $
-  Version:   $Revision: 1.5.2.7 $
+  Date:      $Date: 2009-04-07 19:32:07 $
+  Version:   $Revision: 1.5.2.8 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -81,14 +81,14 @@ private:
 
   std::map<cmStdString, int>::iterator
   AllocateLinkEntry(std::string const& item);
-  int AddLinkEntry(std::string const& item);
+  int AddLinkEntry(int depender_index, std::string const& item);
   void AddVarLinkEntries(int depender_index, const char* value);
   void AddTargetLinkEntries(int depender_index,
                             LinkLibraryVectorType const& libs);
   void AddLinkEntries(int depender_index,
                       std::vector<std::string> const& libs);
   std::string CleanItemName(std::string const& item);
-  cmTarget* FindTargetToLink(const char* name);
+  cmTarget* FindTargetToLink(int depender_index, const char* name);
 
   // One entry for each unique item.
   std::vector<LinkEntry> EntryList;
@@ -162,7 +162,7 @@ private:
 
   // Compatibility help.
   bool OldLinkDirMode;
-  void CheckWrongConfigItem(std::string const& item);
+  void CheckWrongConfigItem(int depender_index, std::string const& item);
   std::set<cmTarget*> OldWrongConfigItems;
 };
 

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmIncludeDirectoryCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-03-08 14:50:56 $
-  Version:   $Revision: 1.30 $
+  Date:      $Date: 2009-03-27 15:56:22 $
+  Version:   $Revision: 1.30.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -94,20 +94,15 @@ void cmIncludeDirectoryCommand::AddDirectory(const char *i,
     }
 
   // remove any leading or trailing spaces and \r
-  pos = ret.size()-1;
-  while(ret[pos] == ' ' || ret[pos] == '\r')
+  std::string::size_type b = ret.find_first_not_of(" \r");
+  std::string::size_type e = ret.find_last_not_of(" \r");
+  if ((b!=ret.npos) && (e!=ret.npos))  
     {
-    ret.erase(pos);
-    pos--;
+    ret.assign(ret, b, 1+e-b);   // copy the remaining substring
     }
-  pos = 0;
-  while(ret.size() && ret[pos] == ' ' || ret[pos] == '\r')
+  else
     {
-    ret.erase(pos,1);
-    }
-  if (!ret.size())
-    {
-    return;
+    return;         // if we get here, we had only whitespace in the string
     }
   
   if (!cmSystemTools::IsOff(ret.c_str()))

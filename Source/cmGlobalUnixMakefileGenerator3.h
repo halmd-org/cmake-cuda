@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator3
   Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.h,v $
   Language:  C++
-  Date:      $Date: 2008-06-13 12:55:17 $
-  Version:   $Revision: 1.55.2.1 $
+  Date:      $Date: 2009-03-27 15:56:15 $
+  Version:   $Revision: 1.55.2.2 $
 
   Copyright (c) 2005 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -176,7 +176,6 @@ protected:
   // in the rule to satisfy the make program.
   std::string EmptyRuleHackCommand;
 
-  std::map<cmStdString, int > TargetSourceFileCount;
   bool ForceVerboseMakefiles;
 };
 

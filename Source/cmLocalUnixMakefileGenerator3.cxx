@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalUnixMakefileGenerator3.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.240.2.8 $
+  Date:      $Date: 2009-03-27 15:56:29 $
+  Version:   $Revision: 1.240.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -500,7 +500,7 @@ void cmLocalUnixMakefileGenerator3::WriteDirectoryInformationFile()
   infoFileStream
     << "SET(CMAKE_C_INCLUDE_PATH\n";
   std::vector<std::string> includeDirs;
-  this->GetIncludeDirectories(includeDirs, false);
+  this->GetIncludeDirectories(includeDirs);
   for(std::vector<std::string>::iterator i = includeDirs.begin();
       i != includeDirs.end(); ++i)
     {
@@ -1974,7 +1974,7 @@ cmLocalUnixMakefileGenerator3
   cmd += this->Convert(makefile,NONE,SHELL);
   cmd += " ";
   
-  // Passg down verbosity level.
+  // Pass down verbosity level.
   if(this->GetMakeSilentFlag().size())
     {
     cmd += this->GetMakeSilentFlag();

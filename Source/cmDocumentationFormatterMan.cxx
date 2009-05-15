@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDocumentationFormatterMan.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:46 $
-  Version:   $Revision: 1.5.2.1 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.5.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -71,7 +71,7 @@ void cmDocumentationFormatterMan::PrintPreformatted(std::ostream& os,
   os << ".nf\n" << man_text;
   if (*text && man_text.at(man_text.length()-1) != '\n')
       os << "\n";
-  os << ".fi\n";
+  os << ".fi\n\n";
 }
 
 void cmDocumentationFormatterMan::PrintParagraph(std::ostream& os, 
