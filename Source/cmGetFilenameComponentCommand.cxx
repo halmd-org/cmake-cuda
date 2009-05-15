@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetFilenameComponentCommand.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.17 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.17.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -75,7 +75,8 @@ bool cmGetFilenameComponentCommand
     {
     result = cmSystemTools::GetFilenameWithoutExtension(filename);
     }
-  else if (args[2] == "ABSOLUTE")
+  else if (args[2] == "ABSOLUTE" ||
+           args[2] == "REALPATH")
     {
     // If the path given is relative evaluate it relative to the
     // current source directory.
@@ -92,6 +93,11 @@ bool cmGetFilenameComponentCommand
 
     // Collapse the path to its simplest form.
     result = cmSystemTools::CollapseFullPath(filename.c_str());
+    if(args[2] == "REALPATH")
+      {
+      // Resolve symlinks if possible
+      result = cmSystemTools::GetRealPath(filename.c_str());
+      }
     }
   else 
     {

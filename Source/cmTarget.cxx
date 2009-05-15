@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmTarget.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.207.2.13 $
+  Date:      $Date: 2009-03-27 15:56:47 $
+  Version:   $Revision: 1.207.2.15 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -73,7 +73,9 @@ void cmTarget::DefineProperties(cmake *cm)
      "BUILD_WITH_INSTALL_RPATH is a boolean specifying whether to link "
      "the target in the build tree with the INSTALL_RPATH.  This takes "
      "precedence over SKIP_BUILD_RPATH and avoids the need for relinking "
-     "before installation.");
+     "before installation.  "
+     "This property is initialized by the value of the variable "
+     "CMAKE_BUILD_WITH_INSTALL_RPATH if it is set when a target is created.");
 
   cm->DefineProperty
     ("CLEAN_DIRECT_OUTPUT", cmProperty::TARGET,
@@ -106,7 +108,7 @@ void cmTarget::DefineProperties(cmake *cm)
      "(ex. \"COMPILE_DEFINITIONS_DEBUG\").\n"
      "CMake will automatically drop some definitions that "
      "are not supported by the native build tool.  "
-     "The VS6 IDE does not support definitions with values "
+     "The VS6 IDE does not support definition values with spaces "
      "(but NMake does).\n"
      "Dislaimer: Most native build tools have poor support for escaping "
      "certain values.  CMake has work-arounds for many cases but some "
@@ -341,14 +343,19 @@ void cmTarget::DefineProperties(cmake *cm)
     ("INSTALL_RPATH", cmProperty::TARGET,
      "The rpath to use for installed targets.",
      "A semicolon-separated list specifying the rpath "
-     "to use in installed targets (for platforms that support it).");
+     "to use in installed targets (for platforms that support it).  "
+     "This property is initialized by the value of the variable "
+     "CMAKE_INSTALL_RPATH if it is set when a target is created.");
 
   cm->DefineProperty
     ("INSTALL_RPATH_USE_LINK_PATH", cmProperty::TARGET,
      "Add paths to linker search and installed rpath.",
      "INSTALL_RPATH_USE_LINK_PATH is a boolean that if set to true will "
      "append directories in the linker search path and outside the "
-     "project to the INSTALL_RPATH. ");
+     "project to the INSTALL_RPATH.  "
+     "This property is initialized by the value of the variable "
+     "CMAKE_INSTALL_RPATH_USE_LINK_PATH if it is set when a target is "
+     "created.");
 
   cm->DefineProperty
     ("LINK_FLAGS", cmProperty::TARGET,
@@ -522,7 +529,9 @@ void cmTarget::DefineProperties(cmake *cm)
      "Should rpaths be used for the build tree.",
      "SKIP_BUILD_RPATH is a boolean specifying whether to skip automatic "
      "generation of an rpath allowing the target to run from the "
-     "build tree. ");
+     "build tree.  "
+     "This property is initialized by the value of the variable "
+     "CMAKE_SKIP_BUILD_RPATH if it is set when a target is created.");
 
   cm->DefineProperty
     ("SOVERSION", cmProperty::TARGET,

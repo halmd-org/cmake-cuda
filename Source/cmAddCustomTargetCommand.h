@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmAddCustomTargetCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:45 $
-  Version:   $Revision: 1.22.2.1 $
+  Date:      $Date: 2009-04-07 19:32:07 $
+  Version:   $Revision: 1.22.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -87,15 +87,16 @@ public:
       "If COMMENT is set, the value will be displayed as a "
       "message before the commands are executed at build time. "
       "Dependencies listed with the DEPENDS argument may reference files "
-      "and outputs of custom commands created with ADD_CUSTOM_COMMAND.\n"
-      "If VERBATIM is given then all the arguments to the commands will be "
-      "passed exactly as specified no matter the build tool used. "
+      "and outputs of custom commands created with add_custom_command() in "
+      "the same directory (CMakeLists.txt file).\n"
+      "If VERBATIM is given then all arguments to the commands will be "
+      "escaped properly for the build tool so that the invoked command "
+      "receives each argument unchanged.  "
       "Note that one level of escapes is still used by the CMake language "
       "processor before add_custom_target even sees the arguments. "
       "Use of VERBATIM is recommended as it enables correct behavior. "
-      "When VERBATIM is not given the behavior is platform specific. "
-      "In the future VERBATIM may be enabled by default. The only reason "
-      "it is an option is to preserve compatibility with older CMake code."
+      "When VERBATIM is not given the behavior is platform specific because "
+      "there is no protection of tool-specific special characters."
       "\n"
       "The SOURCES option specifies additional source files to be included "
       "in the custom target.  "

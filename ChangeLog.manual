@@ -1,3 +1,52 @@
+Changes in CMake 2.6.4 RC 6
+- Use $ var in CPack.cmake, and not @var@
+- Add more missing OSXX11 CPack files
+
+Changes in CMake 2.6.4 RC 5
+- Add missing file for OSXX11 CPack generator
+- cmake-gui fix path length in the binary directory's combo box
+
+Changes in CMake 2.6.4 RC 4
+- Better document Verbatim in custom commands
+- Fix #8843 ctest system information was not always correct on linux
+- Fix transitive linking of imported libraries 
+
+Changes in CMake 2.6.4 RC 3
+- Documentation fix for #8815
+- Fix CDash only submit with ctest_submit
+- various fixes for FindQt4.cmake
+- cmake-gui block checkable flag for item during configure/generate.
+- put qt version in about for cmake-gui
+
+Changes in CMake 2.6.4 RC 2
+- Fix issues in FindBoost #8576 #8734
+- Fix -D issues with VS 6
+- Fix scope issue with CMAKE_CURRENT_LIST_FILE  and macros
+- Eclipse make VERBOSE off in makfiles #7585, and use built-in includes
+- Codeblocks auto header finding
+- Fix crash in include_directories #8704
+- Some documentation fixes to commands and classes.
+- Do not warn if LIBPATH is not set for nmake
+
+Changes in CMake 2.6.4 RC 1
+- Add some better documentation about RPATH variables
+- No longer mark header files as HEADER_FILE_ONLY automatically,
+  this gets rid of the ugly red marks in Visual Stuido
+- Fix man-page preformatted text paragraphing
+- Teach file(REMOVE) how to use relative paths
+- Gracefully handle broken version symlinks
+- Fix ASM source file extension default list
+- Pass shared library export symbol in DEFINES
+- Enforce unique binary directories
+- Fix cmake-mode.el indentation cursor motion
+- Simplify reverse cmLocalGenerator::Convert
+- More robust decision to suppress implicit include dirs
+- Fix Fortran implicit dependency include path (and test it)
+- Clarify docs of old *_OUTPUT_PATH vars
+- Fix svn update logic for modified files
+- Add get_filename_component(... REALPATH)
+- Work around broken GetLongPathName case 
+
 Changes in CMake 2.6.3 RC 17 - 15
 - Fix Xcode rebuild issue with static libraries and add a test.
 

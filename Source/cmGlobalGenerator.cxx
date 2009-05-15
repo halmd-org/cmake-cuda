@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-11-11 21:52:22 $
-  Version:   $Revision: 1.227.2.9 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.227.2.10 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -732,17 +732,21 @@ void cmGlobalGenerator::Configure()
   this->ProjectMap.clear();
   this->RuleHashes.clear();
   this->DirectoryContentMap.clear();
+  this->BinaryDirectories.clear();
 
   // start with this directory
   cmLocalGenerator *lg = this->CreateLocalGenerator();
   this->LocalGenerators.push_back(lg);
 
   // set the Start directories
+  cmMakefile* mf = lg->GetMakefile();
   lg->GetMakefile()->SetStartDirectory
     (this->CMakeInstance->GetStartDirectory());
   lg->GetMakefile()->SetStartOutputDirectory
     (this->CMakeInstance->GetStartOutputDirectory());
   lg->GetMakefile()->MakeStartDirectoriesCurrent();
+
+  this->BinaryDirectories.insert(mf->GetStartOutputDirectory());
 
   // now do it
   lg->Configure();

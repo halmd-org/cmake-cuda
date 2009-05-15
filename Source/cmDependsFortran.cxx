@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsFortran.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-05-15 19:39:50 $
-  Version:   $Revision: 1.46.2.2 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.46.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -141,6 +141,9 @@ cmDependsFortran
   cmDepends(lg),
   Internal(new cmDependsFortranInternals)
 {
+  // Configure the include file search path.
+  this->SetIncludePathFromLanguage("Fortran");
+
   // Get the list of definitions.
   std::vector<std::string> definitions;
   cmMakefile* mf = this->LocalGenerator->GetMakefile();

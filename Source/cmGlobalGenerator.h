@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalGenerator.h,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:46 $
-  Version:   $Revision: 1.107.2.6 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.107.2.7 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -252,6 +252,12 @@ public:
                    std::vector<std::string>::const_iterator first,
                    std::vector<std::string>::const_iterator last);
 
+  /** Return whether the given binary directory is unused.  */
+  bool BinaryDirectoryIsNew(const char* dir)
+    {
+    return this->BinaryDirectories.insert(dir).second;
+    }
+
 protected:
   // for a project collect all its targets by following depend
   // information, and also collect all the targets
@@ -346,6 +352,9 @@ private:
       derived(dc), LoadedFromDisk(dc.LoadedFromDisk) {}
   };
   std::map<cmStdString, DirectoryContent> DirectoryContentMap;
+
+  // Set of binary directories on disk.
+  std::set<cmStdString> BinaryDirectories;
 };
 
 #endif

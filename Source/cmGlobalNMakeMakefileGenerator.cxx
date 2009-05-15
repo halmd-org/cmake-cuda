@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGlobalNMakeMakefileGenerator.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:46 $
-  Version:   $Revision: 1.26.2.1 $
+  Date:      $Date: 2009-03-27 15:56:10 $
+  Version:   $Revision: 1.26.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -35,8 +35,7 @@ void cmGlobalNMakeMakefileGenerator
   mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
   mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
   if(!(cmSystemTools::GetEnv("INCLUDE") && 
-       cmSystemTools::GetEnv("LIB") &&
-       cmSystemTools::GetEnv("LIBPATH"))
+       cmSystemTools::GetEnv("LIB"))
     )
     {
     std::string message = "To use the NMake generator, cmake must be run "

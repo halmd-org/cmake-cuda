@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmProjectCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.16 $
+  Date:      $Date: 2009-03-27 15:56:45 $
+  Version:   $Revision: 1.16.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -64,14 +64,16 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  project(projectname [CXX] [C] [Java])\n"
+      "  project(<projectname> [languageName1 languageName2 ... ] )\n"
       "Sets the name of the project.  "
-      "This creates the variables projectname_BINARY_DIR and "
-      "projectname_SOURCE_DIR.  "
+      "Additionally this sets the variables <projectName>_BINARY_DIR and "
+      "<projectName>_SOURCE_DIR to the respective values.\n"
       "Optionally you can specify which languages your project supports.  "
-      "By default all languages are supported.  If you do not have a "
-      "C++ compiler, but want" 
-      " to build a c program with cmake, then use this option.";
+      "Example languages are CXX (i.e. C++), C, Fortran, etc. "
+      "By default C and CXX are enabled.  E.g. if you do not have a "
+      "C++ compiler, you can disable the check for it by explicitely listing "
+      "the languages you want to support, e.g. C.  By using the special "
+      "language \"NONE\" all checks for any language can be disabled.";
     }
   
   cmTypeMacro(cmProjectCommand, cmCommand);

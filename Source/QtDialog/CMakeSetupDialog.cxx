@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: CMakeSetupDialog.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-12-31 15:14:30 $
-  Version:   $Revision: 1.40.2.8 $
+  Date:      $Date: 2009-03-31 14:29:15 $
+  Version:   $Revision: 1.40.2.9 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -32,7 +32,7 @@
 #include <QUrl>
 #include <QShortcut>
 #include <QMacInstallDialog.h>
-
+#include "cmVersion.h"
 #include "QCMake.h"
 #include "QCMakeCacheView.h"
 #include "AddCacheEntry.h"
@@ -673,7 +673,12 @@ void CMakeSetupDialog::doDeleteCache()
 
 void CMakeSetupDialog::doAbout()
 {
-  QString msg = "CMake\nwww.cmake.org";
+  QString msg = "CMake %1\n"
+                "Using Qt %2\n"
+                "www.cmake.org";
+
+  msg = msg.arg(cmVersion::GetCMakeVersion().c_str());
+  msg = msg.arg(qVersion());
 
   QDialog dialog;
   dialog.setWindowTitle(tr("About"));

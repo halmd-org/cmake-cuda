@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmMakeDepend.cxx,v $
   Language:  C++
-  Date:      $Date: 2007-12-15 01:31:27 $
-  Version:   $Revision: 1.46 $
+  Date:      $Date: 2009-03-23 17:58:48 $
+  Version:   $Revision: 1.46.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -264,30 +264,6 @@ cmDependInformation* cmMakeDepend::GetDependInformation(const char* file,
 }
 
 
-void cmMakeDepend::GenerateMakefileDependencies()
-{
-  // Now create cmDependInformation objects for files in the directory
-  cmTargets &tgts = this->Makefile->GetTargets();
-  for(cmTargets::iterator l = tgts.begin(); 
-      l != tgts.end(); l++)
-    {
-    const std::vector<cmSourceFile*> &classes = l->second.GetSourceFiles();
-    for(std::vector<cmSourceFile*>::const_iterator i = classes.begin();
-        i != classes.end(); ++i)
-      {
-      if(!(*i)->GetPropertyAsBool("HEADER_FILE_ONLY"))
-        {
-        cmDependInformation* info =
-          this->GetDependInformation((*i)->GetFullPath().c_str(),0);
-        this->AddFileToSearchPath(info->FullPath.c_str());
-        info->SourceFile = *i;
-        this->GenerateDependInformation(info);
-        }
-      }
-    }
-}
-
-
 // find the full path to fname by searching the this->IncludeDirectories array
 std::string cmMakeDepend::FullPath(const char* fname, const char *extraPath)
 {
@@ -361,38 +337,4 @@ std::string cmMakeDepend::FullPath(const char* fname, const char *extraPath)
 void cmMakeDepend::AddSearchPath(const char* path)
 {
   this->IncludeDirectories.push_back(path);
-}
-
-// Add a directory to the search path
-void cmMakeDepend::AddFileToSearchPath(const char* file)
-{
-  std::string filepath = file;
-  std::string::size_type pos = filepath.rfind('/');
-  if(pos != std::string::npos)
-    {
-    std::string path = filepath.substr(0, pos);
-    if(std::find(this->IncludeDirectories.begin(),
-                 this->IncludeDirectories.end(), path)
-       == this->IncludeDirectories.end())
-      {
-      this->IncludeDirectories.push_back(path);
-      return;
-      }
-    }
-}
-
-const cmDependInformation*
-cmMakeDepend::GetDependInformationForSourceFile(const cmSourceFile &sf) const
-{
-  for(DependInformationMapType::const_iterator i = 
-        this->DependInformationMap.begin();
-      i != this->DependInformationMap.end(); ++i)
-    {
-    const cmDependInformation* info = i->second;
-    if(info->SourceFile == &sf)
-      {
-      return info;
-      }
-    }
-  return 0;
 }

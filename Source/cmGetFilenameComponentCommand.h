@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmGetFilenameComponentCommand.h,v $
   Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.14 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.14.2.1 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -68,11 +68,12 @@ public:
     {
     return
       "  get_filename_component(VarName FileName\n"
-      "                         PATH|ABSOLUTE|NAME|EXT|NAME_WE\n"
+      "                         PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH\n"
       "                         [CACHE])\n"
       "Set VarName to be the path (PATH), file name (NAME), file "
       "extension (EXT), file name without extension (NAME_WE) of FileName, "
-      "or the full absolute (ABSOLUTE) file name without symlinks.  "
+      "the full path (ABSOLUTE), or the full path with all symlinks "
+      "resolved (REALPATH).  "
       "Note that the path is converted to Unix slashes format and has no "
       "trailing slashes. The longest file extension is always considered. "
       "If the optional CACHE argument is specified, the result variable is "

@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalUnixMakefileGenerator3.h,v $
   Language:  C++
-  Date:      $Date: 2008-10-24 15:18:52 $
-  Version:   $Revision: 1.82.2.1 $
+  Date:      $Date: 2009-03-27 15:56:34 $
+  Version:   $Revision: 1.82.2.2 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -282,7 +282,7 @@ protected:
   void WriteLocalMakefileTargets(std::ostream& ruleFileStream,
                                  std::set<cmStdString> &emitted);
 
-  // this method Writes the Directory informaiton files
+  // this method Writes the Directory information files
   void WriteDirectoryInformationFile();
 
 

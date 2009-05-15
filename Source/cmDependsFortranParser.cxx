@@ -145,8 +145,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmDependsFortranParser.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-04-24 16:56:25 $
-  Version:   $Revision: 1.16.2.2 $
+  Date:      $Date: 2009-03-23 17:58:40 $
+  Version:   $Revision: 1.16.2.3 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -242,8 +242,8 @@ static char charmap[] = {
 inline int strcasecmpCM(const char *s1, const char *s2) 
 {
   const char *cm = charmap;
-  const char* us1 = s1;
-  const char* us2 = s2;
+  unsigned char const* us1 = reinterpret_cast<unsigned char const*>(s1);
+  unsigned char const* us2 = reinterpret_cast<unsigned char const*>(s2);
   
   while(cm[*us1] == cm[*us2++])
     if(*us1++ == '\0') 

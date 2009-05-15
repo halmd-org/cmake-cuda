@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: QCMakeCacheView.cxx,v $
   Language:  C++
-  Date:      $Date: 2008-07-13 21:55:25 $
-  Version:   $Revision: 1.26.2.4 $
+  Date:      $Date: 2009-03-31 14:29:18 $
+  Version:   $Revision: 1.26.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -517,6 +517,7 @@ Qt::ItemFlags QCMakeCacheModel::flags (const QModelIndex& idx) const
   if(!this->EditEnabled)
     {
     f &= ~Qt::ItemIsEditable;
+    return f;
     }
   if(QCMakeProperty::BOOL == this->data(idx, TypeRole).toInt())
     {

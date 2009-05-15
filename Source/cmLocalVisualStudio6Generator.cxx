@@ -3,8 +3,8 @@
   Program:   CMake - Cross-Platform Makefile Generator
   Module:    $RCSfile: cmLocalVisualStudio6Generator.cxx,v $
   Language:  C++
-  Date:      $Date: 2009-01-13 18:03:53 $
-  Version:   $Revision: 1.141.2.4 $
+  Date:      $Date: 2009-03-27 15:56:36 $
+  Version:   $Revision: 1.141.2.5 $
 
   Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
   See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
@@ -1712,11 +1712,11 @@ cmLocalVisualStudio6Generator
     }
 
   // Now do the VS6-specific check.
-  if(define.find_first_of("=") != define.npos)
+  if(define.find_first_of(" ") != define.npos)
     {
     cmOStringStream e;
-    e << "WARNING: The VS6 IDE does not support preprocessor definitions "
-      << "with values.\n"
+    e << "WARNING: The VS6 IDE does not support preprocessor definition "
+      << "values with spaces.\n"
       << "CMake is dropping a preprocessor definition: " << define << "\n"
       << "Consider defining the macro in a (configured) header file.\n";
     cmSystemTools::Message(e.str().c_str());
