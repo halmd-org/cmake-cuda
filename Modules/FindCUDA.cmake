@@ -23,15 +23,21 @@ FIND_PATH(CUDA_INCLUDE_DIR cuda_runtime.h
 
 FIND_LIBRARY(CUDA_LIBRARY NAMES cuda
   PATHS
+  ${CUDA_INSTALL_PREFIX}/lib64
   ${CUDA_INSTALL_PREFIX}/lib
+  /usr/local/lib64
   /usr/local/lib
+  /usr/lib64
   /usr/lib
 )
 
 FIND_LIBRARY(CUDA_RUNTIME_LIBRARY NAMES cudart
   PATHS
+  ${CUDA_INSTALL_PREFIX}/lib64
   ${CUDA_INSTALL_PREFIX}/lib
+  /usr/local/lib64
   /usr/local/lib
+  /usr/lib64
   /usr/lib
 )
 
