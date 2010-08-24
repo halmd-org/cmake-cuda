@@ -3,28 +3,41 @@
 # This module can be used to find Squish (currently support is aimed at version 3).
 #
 # ---- Variables and Macros
-# SQUISH_FOUND                    If false, don't try to use Squish
-# SQUISH_VERSION_MAJOR            The major version of Squish found
-# SQUISH_VERSION_MINOR            The minor version of Squish found
-# SQUISH_VERSION_PATCH            The patch version of Squish found
+#  SQUISH_FOUND                    If false, don't try to use Squish
+#  SQUISH_VERSION_MAJOR            The major version of Squish found
+#  SQUISH_VERSION_MINOR            The minor version of Squish found
+#  SQUISH_VERSION_PATCH            The patch version of Squish found
 #
-# SQUISH_INSTALL_DIR              The Squish installation directory (containing bin, lib, etc)
-# SQUISH_SERVER_EXECUTABLE        The squishserver executable
-# SQUISH_CLIENT_EXECUTABLE        The squishrunner executable
+#  SQUISH_INSTALL_DIR              The Squish installation directory (containing bin, lib, etc)
+#  SQUISH_SERVER_EXECUTABLE        The squishserver executable
+#  SQUISH_CLIENT_EXECUTABLE        The squishrunner executable
 #
-# SQUISH_INSTALL_DIR_FOUND        Was the install directory found?
-# SQUISH_SERVER_EXECUTABLE_FOUND  Was the server executable found?
-# SQUISH_CLIENT_EXECUTABLE_FOUND  Was the client executable found?
+#  SQUISH_INSTALL_DIR_FOUND        Was the install directory found?
+#  SQUISH_SERVER_EXECUTABLE_FOUND  Was the server executable found?
+#  SQUISH_CLIENT_EXECUTABLE_FOUND  Was the client executable found?
 #
 # macro SQUISH_ADD_TEST(testName applicationUnderTest testSuite testCase)
 #
 # ---- Typical Use
-# ENABLE_TESTING()
-# FIND_PACKAGE(Squish)
-# IF (SQUISH_FOUND)
-#   SQUISH_ADD_TEST(myTestName myApplication testSuiteName testCaseName)
-# ENDIF (SQUISH_FOUND)
+#  ENABLE_TESTING()
+#  FIND_PACKAGE(Squish)
+#  IF (SQUISH_FOUND)
+#    SQUISH_ADD_TEST(myTestName myApplication testSuiteName testCaseName)
+#  ENDIF (SQUISH_FOUND)
 #
+
+#=============================================================================
+# Copyright 2008-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 SET(SQUISH_INSTALL_DIR_STRING "Directory containing the bin, doc, and lib directories for Squish; this should be the root of the installation directory.")
 SET(SQUISH_SERVER_EXECUTABLE_STRING "The squishserver executable program.")

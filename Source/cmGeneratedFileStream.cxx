@@ -1,30 +1,17 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGeneratedFileStream.cxx,v $
-  Language:  C++
-  Date:      $Date: 2007-11-16 12:01:58 $
-  Version:   $Revision: 1.19 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGeneratedFileStream.h"
 
 #include "cmSystemTools.h"
-
-// Includes needed for implementation of RenameFile.  This is not in
-// system tools because it is not implemented robustly enough to move
-// files across directories.
-#ifdef _WIN32
-# include <windows.h>
-# include <sys/stat.h>
-#endif
 
 #if defined(CMAKE_BUILD_WITH_CMAKE)
 # include <cm_zlib.h>
@@ -158,7 +145,11 @@ void cmGeneratedFileStreamBase::Open(const char* name)
 
   // Create the name of the temporary file.
   this->TempName = name;
+#if defined(__VMS)
+  this->TempName += "_tmp";
+#else
   this->TempName += ".tmp";
+#endif
 
   // Make sure the temporary file that will be used is not present.
   cmSystemTools::RemoveFile(this->TempName.c_str());
@@ -254,51 +245,7 @@ int cmGeneratedFileStreamBase::CompressFile(const char*, const char*)
 int cmGeneratedFileStreamBase::RenameFile(const char* oldname,
                                           const char* newname)
 {
-#ifdef _WIN32
-  /* On Windows the move functions will not replace existing files.
-     Check if the destination exists.  */
-  struct stat newFile;
-  if(stat(newname, &newFile) == 0)
-    {
-    /* The destination exists.  We have to replace it carefully.  The
-       MoveFileEx function does what we need but is not available on
-       Win9x.  */
-    OSVERSIONINFO osv;
-    DWORD attrs;
-
-    /* Make sure the destination is not read only.  */
-    attrs = GetFileAttributes(newname);
-    if(attrs & FILE_ATTRIBUTE_READONLY)
-      {
-      SetFileAttributes(newname, attrs & ~FILE_ATTRIBUTE_READONLY);
-      }
-
-    /* Check the windows version number.  */
-    osv.dwOSVersionInfoSize = sizeof(osv);
-    GetVersionEx(&osv);
-    if(osv.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS)
-      {
-      /* This is Win9x.  There is no MoveFileEx implementation.  We
-         cannot quite rename the file atomically.  Just delete the
-         destination and then move the file.  */
-      DeleteFile(newname);
-      return MoveFile(oldname, newname);
-      }
-    else
-      {
-      /* This is not Win9x.  Use the MoveFileEx implementation.  */
-      return MoveFileEx(oldname, newname, MOVEFILE_REPLACE_EXISTING);
-      }
-    }
-  else
-    {
-    /* The destination does not exist.  Just move the file.  */
-    return MoveFile(oldname, newname);
-    }
-#else
-  /* On UNIX we have an OS-provided call to do this atomically.  */
-  return rename(oldname, newname) == 0;
-#endif
+  return cmSystemTools::RenameFile(oldname, newname);
 }
 
 //----------------------------------------------------------------------------

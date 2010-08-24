@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmELF.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-08-06 21:04:19 $
-  Version:   $Revision: 1.8.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmStandardIncludes.h" // to get CMAKE_USE_ELF_PARSER first
 #include "cmELF.h"
 
@@ -545,7 +540,7 @@ bool cmELFInternalImpl<Types>::LoadDynamicSection()
 
   // Allocate the dynamic section entries.
   ELF_Shdr const& sec = this->SectionHeaders[this->DynamicSectionIndex];
-  int n = sec.sh_size / sec.sh_entsize;
+  int n = static_cast<int>(sec.sh_size / sec.sh_entsize);
   this->DynamicSectionEntries.resize(n);
 
   // Read each entry.
@@ -597,7 +592,7 @@ unsigned long cmELFInternalImpl<Types>::GetDynamicEntryPosition(int j)
     return 0;
     }
   ELF_Shdr const& sec = this->SectionHeaders[this->DynamicSectionIndex];
-  return sec.sh_offset + sec.sh_entsize*j;
+  return static_cast<unsigned long>(sec.sh_offset + sec.sh_entsize*j);
 }
 
 //----------------------------------------------------------------------------
@@ -692,7 +687,7 @@ cmELFInternalImpl<Types>::GetDynamicSectionString(int tag)
       // The value has been read successfully.  Report it.
       se.Position = static_cast<unsigned long>(strtab.sh_offset + first);
       se.Size = last - first;
-      se.IndexInSection = di - this->DynamicSectionEntries.begin();
+      se.IndexInSection = static_cast<int>(di - this->DynamicSectionEntries.begin());
       return &se;
       }
     }

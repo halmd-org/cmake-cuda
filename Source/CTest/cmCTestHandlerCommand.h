@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestHandlerCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:28:01 $
-  Version:   $Revision: 1.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestHandlerCommand_h
 #define cmCTestHandlerCommand_h
 
@@ -52,13 +47,31 @@ public:
 
 protected:
   virtual cmCTestGenericHandler* InitializeHandler() = 0;
-  bool ProcessArguments(std::vector<std::string> const& args,
-    int last, const char** strings, std::vector<const char*>& values);
+
+  // Command argument handling.
+  virtual bool CheckArgumentKeyword(std::string const& arg);
+  virtual bool CheckArgumentValue(std::string const& arg);
+  enum
+  {
+    ArgumentDoingNone,
+    ArgumentDoingError,
+    ArgumentDoingKeyword,
+    ArgumentDoingLast1
+  };
+  int ArgumentDoing;
+  unsigned int ArgumentIndex;
+
+  bool AppendXML;
 
   std::string ReturnVariable;
   std::vector<const char*> Arguments;
   std::vector<const char*> Values;
   size_t Last;
 };
+
+#define CTEST_COMMAND_APPEND_OPTION_DOCS \
+  "The APPEND option marks results for append to those previously " \
+  "submitted to a dashboard server since the last ctest_start.  " \
+  "Append semantics are defined by the dashboard server in use."
 
 #endif

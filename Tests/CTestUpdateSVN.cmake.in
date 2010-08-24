@@ -5,6 +5,7 @@
 # Test in a directory next to this script.
 get_filename_component(TOP "${CMAKE_CURRENT_LIST_FILE}" PATH)
 set(TOP "${TOP}/@CTestUpdateSVN_DIR@")
+set(UPDATE_GLOBAL_ELEMENTS SVNPath)
 
 # Include code common to all update tests.
 include("@CMAKE_CURRENT_SOURCE_DIR@/CTestUpdateCommon.cmake")
@@ -20,7 +21,7 @@ message(" svnadmin = ${SVNADMIN}")
 # Isolate svn test operations from the user configuration.
 file(MAKE_DIRECTORY ${TOP}/config)
 set(SVNCMD ${SVN} --config-dir ${TOP}/config)
-set(SVNUSER --username testauthor --non-interactive)
+set(SVNUSER --username "test author" --non-interactive)
 
 #-----------------------------------------------------------------------------
 # Initialize the testing directory.
@@ -58,7 +59,13 @@ run_child(
 #-----------------------------------------------------------------------------
 # Make changes in the working tree.
 message("Changing content...")
-update_content(user-source files_added files_removed)
+update_content(user-source files_added files_removed dirs_added)
+if(dirs_added)
+  run_child(
+    WORKING_DIRECTORY ${TOP}/user-source
+    COMMAND ${SVNCMD} add ${dirs_added}
+    )
+endif(dirs_added)
 run_child(
   WORKING_DIRECTORY ${TOP}/user-source
   COMMAND ${SVNCMD} add ${files_added}
@@ -77,12 +84,29 @@ run_child(
   )
 
 #-----------------------------------------------------------------------------
+# Make changes in the working tree.
+message("Changing content again...")
+change_content(user-source)
+
+#-----------------------------------------------------------------------------
+# Commit the changes to the repository.
+message("Committing revision 3...")
+run_child(
+  WORKING_DIRECTORY ${TOP}/user-source
+  COMMAND ${SVNCMD} commit -m "Changed content again"
+  )
+
+#-----------------------------------------------------------------------------
 # Go back to before the changes so we can test updating.
 message("Backing up to revision 1...")
 run_child(
   WORKING_DIRECTORY ${TOP}/user-source
   COMMAND ${SVNCMD} up -r1
   )
+
+# Create a modified file.
+message("Modifying locally...")
+modify_content(user-source)
 
 #-----------------------------------------------------------------------------
 # Test updating the user work directory with the command-line interface.
@@ -103,7 +127,7 @@ run_dashboard_command_line(user-binary)
 # Test initial checkout and update with a dashboard script.
 message("Running CTest Dashboard Script...")
 
-create_dashboard_script(dashboard.cmake
+create_dashboard_script(dash-binary
   "# Subversion command configuration
 set(CTEST_SVN_COMMAND \"${SVN}\")
 set(CTEST_SVN_UPDATE_OPTIONS
@@ -113,4 +137,4 @@ set(CTEST_CHECKOUT_COMMAND
 ")
 
 # Run the dashboard script with CTest.
-run_dashboard_script(dashboard.cmake)
+run_dashboard_script(dash-binary)

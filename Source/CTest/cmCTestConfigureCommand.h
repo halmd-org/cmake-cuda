@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestConfigureCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:58 $
-  Version:   $Revision: 1.5.12.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestConfigureCommand_h
 #define cmCTestConfigureCommand_h
 
@@ -27,8 +22,7 @@
 class cmCTestConfigureCommand : public cmCTestHandlerCommand
 {
 public:
-
-  cmCTestConfigureCommand() {}
+  cmCTestConfigureCommand();
 
   /**
    * This is a virtual constructor for the command.
@@ -51,7 +45,7 @@ public:
    */
   virtual const char* GetTerseDocumentation()
     {
-    return "Configures the repository.";
+    return "Configure the project build tree.";
     }
 
   /**
@@ -60,10 +54,18 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ctest_configure(BUILD build_dir RETURN_VALUE res)\n"
+      "  ctest_configure([BUILD build_dir] [SOURCE source_dir] [APPEND]\n"
+      "                  [OPTIONS options] [RETURN_VALUE res])\n"
       "Configures the given build directory and stores results in "
-      "Configure.xml. The second argument is a variable that will hold "
-      "return value.";
+      "Configure.xml. "
+      "If no BUILD is given, the CTEST_BINARY_DIRECTORY variable is used. "
+      "If no SOURCE is given, the CTEST_SOURCE_DIRECTORY variable is used. "
+      "The OPTIONS argument specifies command line arguments to pass to "
+      "the configuration tool. "
+      "The RETURN_VALUE option specifies a variable in which to store the "
+      "return value of the native build tool."
+      "\n"
+      CTEST_COMMAND_APPEND_OPTION_DOCS;
     }
 
   cmTypeMacro(cmCTestConfigureCommand, cmCTestHandlerCommand);
@@ -71,6 +73,11 @@ public:
 protected:
   cmCTestGenericHandler* InitializeHandler();
 
+  enum {
+    ctc_FIRST = ct_LAST,
+    ctc_OPTIONS,
+    ctc_LAST
+  };
 };
 
 

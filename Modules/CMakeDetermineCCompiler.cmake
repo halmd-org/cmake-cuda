@@ -1,4 +1,17 @@
 
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # determine the compiler to use for C programs
 # NOTE, a generator may set CMAKE_C_COMPILER before
 # loading this file to force a compiler.
@@ -107,6 +120,9 @@ IF(NOT CMAKE_C_COMPILER_ID_RUN)
   SET(CMAKE_C_COMPILER_ID_TEST_FLAGS
     # Try compiling to an object file only.
     "-c"
+
+    # Try enabling ANSI mode on HP.
+    "-Aa"
     )
 
   # Try to identify the compiler.
@@ -155,11 +171,13 @@ ENDIF (CMAKE_CROSSCOMPILING
 
 
 INCLUDE(CMakeFindBinUtils)
-
+IF(MSVC_C_ARCHITECTURE_ID)
+  SET(SET_MSVC_C_ARCHITECTURE_ID
+    "SET(MSVC_C_ARCHITECTURE_ID ${MSVC_C_ARCHITECTURE_ID})")
+ENDIF(MSVC_C_ARCHITECTURE_ID)
 # configure variables set in this file for fast reload later on
 CONFIGURE_FILE(${CMAKE_ROOT}/Modules/CMakeCCompiler.cmake.in
   "${CMAKE_PLATFORM_ROOT_BIN}/CMakeCCompiler.cmake"
   @ONLY IMMEDIATE # IMMEDIATE must be here for compatibility mode <= 2.0
-  )
-
+  ) 
 SET(CMAKE_C_COMPILER_ENV_VAR "CC")

@@ -1,23 +1,21 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmLocalUnixMakefileGenerator3.h,v $
-  Language:  C++
-  Date:      $Date: 2009-03-27 15:56:34 $
-  Version:   $Revision: 1.82.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmLocalUnixMakefileGenerator3_h
 #define cmLocalUnixMakefileGenerator3_h
 
 #include "cmLocalGenerator.h"
+
+// for cmDepends::DependencyVector
+#include "cmDepends.h"
 
 class cmCustomCommand;
 class cmDependInformation;
@@ -65,10 +63,6 @@ public:
   
   // write the main variables used by the makefiles
   void WriteMakeVariables(std::ostream& makefileStream);
-
-  // write the progress variables used by the makefiles
-  void WriteProgressVariables(unsigned long total, unsigned long &current);
-  void WriteAllProgressVariable();
 
   /**
    * If true, then explicitly pass MAKEFLAGS on the make all target for makes
@@ -250,15 +244,15 @@ public:
   struct LocalObjectInfo: public std::vector<LocalObjectEntry>
   {
     bool HasSourceExtension;
+    bool HasPreprocessRule;
+    bool HasAssembleRule;
+    LocalObjectInfo():HasSourceExtension(false), HasPreprocessRule(false), 
+                      HasAssembleRule(false) {}
   };
   std::map<cmStdString, LocalObjectInfo> const& GetLocalObjectFiles()
     { return this->LocalObjectFiles;}
 
   std::vector<cmStdString> const& GetLocalHelp() { return this->LocalHelp; }
-
-  // return info about progress actions
-  unsigned long GetNumberOfProgressActions();
-  unsigned long GetNumberOfProgressActionsForTarget(const char *);
 
   /** Get whether to create rules to generate preprocessed and
       assembly sources.  This could be converted to a variable lookup
@@ -274,6 +268,12 @@ public:
   // Get the directories into which the .o files will go for this target
   void GetTargetObjectFileDirectories(cmTarget* target,
                                       std::vector<std::string>& dirs);
+
+  // Fill the vector with the target names for the object files, 
+  // preprocessed files and assembly files. Currently only used by the 
+  // Eclipse generator.
+  void GetIndividualFileTargets(std::vector<std::string>& targets);
+  
 protected:
   void WriteLocalMakefile();
   
@@ -326,24 +326,29 @@ protected:
                           const cmCustomCommand& cc);
   void AppendCustomCommands(std::vector<std::string>& commands,
                             const std::vector<cmCustomCommand>& ccs,
+                            cmTarget* target,
                             cmLocalGenerator::RelativeRoot relative =
                             cmLocalGenerator::HOME_OUTPUT);
   void AppendCustomCommand(std::vector<std::string>& commands,
                            const cmCustomCommand& cc,
+                           cmTarget* target,
                            bool echo_comment=false,
                            cmLocalGenerator::RelativeRoot relative =
-                           cmLocalGenerator::HOME_OUTPUT);
+                           cmLocalGenerator::HOME_OUTPUT,
+                           std::ostream* content = 0);
   void AppendCleanCommand(std::vector<std::string>& commands,
                           const std::vector<std::string>& files,
                           cmTarget& target, const char* filename =0);
 
-  std::map<cmStdString, std::vector<int> > ProgressFiles;
-
   // Helper methods for dependeny updates.
-  bool ScanDependencies(const char* targetDir);
+  bool ScanDependencies(const char* targetDir,
+                std::map<std::string, cmDepends::DependencyVector>& validDeps);
   void CheckMultipleOutputs(bool verbose);
 
 private:
+  std::string MakeLauncher(const cmCustomCommand& cc, cmTarget* target,
+                           RelativeRoot relative);
+
   friend class cmMakefileTargetGenerator;
   friend class cmMakefileExecutableTargetGenerator;
   friend class cmMakefileLibraryTargetGenerator;
@@ -384,7 +389,6 @@ private:
   std::vector<cmStdString> LocalHelp;
 
   /* does the work for each target */
-  std::vector<cmMakefileTargetGenerator *> TargetGenerators;
   std::map<cmStdString, cmStdString> MakeVariableMap;
   std::map<cmStdString, cmStdString> ShortMakeVariableMap;
 };

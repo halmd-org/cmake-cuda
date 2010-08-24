@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGetPropertyCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-09-04 21:10:44 $
-  Version:   $Revision: 1.6.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGetPropertyCommand_h
 #define cmGetPropertyCommand_h
 
@@ -66,6 +61,7 @@ public:
         "                TARGET    <target> |\n"
         "                SOURCE    <source> |\n"
         "                TEST      <test>   |\n"
+        "                CACHE     <entry>  |\n"
         "                VARIABLE>\n"
         "               PROPERTY <name>\n"
         "               [SET | DEFINED | BRIEF_DOCS | FULL_DOCS])\n"
@@ -81,6 +77,7 @@ public:
         "TARGET scope must name one existing target.\n"
         "SOURCE scope must name one source file.\n"
         "TEST scope must name one existing test.\n"
+        "CACHE scope must name one cache entry.\n"
         "VARIABLE scope is unique and does not accept a name.\n"
         "The required PROPERTY option is immediately followed by the name "
         "of the property to get.  "
@@ -114,6 +111,7 @@ private:
   bool HandleSourceMode();
   bool HandleTestMode();
   bool HandleVariableMode();
+  bool HandleCacheMode();
 };
 
 #endif

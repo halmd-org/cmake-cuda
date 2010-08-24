@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmInstallDirectoryGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-28 13:38:35 $
-  Version:   $Revision: 1.6 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmInstallDirectoryGenerator.h"
 
 #include "cmTarget.h"
@@ -26,10 +21,11 @@ cmInstallDirectoryGenerator
                               const char* dir_permissions,
                               std::vector<std::string> const& configurations,
                               const char* component,
-                              const char* literal_args):
+                              const char* literal_args,
+                              bool optional):
   cmInstallGenerator(dest, configurations, component), Directories(dirs),
   FilePermissions(file_permissions), DirPermissions(dir_permissions),
-  LiteralArguments(literal_args)
+  LiteralArguments(literal_args), Optional(optional)
 {
 }
 
@@ -45,12 +41,10 @@ cmInstallDirectoryGenerator::GenerateScriptActions(std::ostream& os,
                                                    Indent const& indent)
 {
   // Write code to install the directories.
-  bool not_optional = false;
-  const char* no_properties = 0;
   const char* no_rename = 0;
   this->AddInstallRule(os, cmTarget::INSTALL_DIRECTORY,
                        this->Directories,
-                       not_optional, no_properties,
+                       this->Optional,
                        this->FilePermissions.c_str(),
                        this->DirPermissions.c_str(),
                        no_rename, this->LiteralArguments.c_str(),

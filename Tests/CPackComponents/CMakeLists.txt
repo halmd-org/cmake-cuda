@@ -14,8 +14,27 @@ add_library(mylib mylib.cpp)
 add_executable(mylibapp mylibapp.cpp)
 target_link_libraries(mylibapp mylib)
 
+# On Linux, enable using an absolute install path to verify that
+# CMAKE_INSTALL_PREFIX and CPACK_SET_DESTDIR interact properly.
+#
+# But only use absolute paths if not targeting an NSIS installer
+# as indicated by CPACK_BINARY_NSIS. (If we allow this, the test
+# fails on Linux machines with makensis installed when we are not
+# cross-compiling...)
+#
+if(UNIX AND NOT APPLE)
+  if(NOT CPACK_BINARY_NSIS)
+    set(mylib_install_to_absolute_path ON)
+  endif()
+endif()
+
+if(mylib_install_to_absolute_path)
+  set(CMAKE_INSTALL_PREFIX "/opt/mylib")
+  set(CPACK_SET_DESTDIR ON)
+endif()
+
 # Create installation targets. Note that we put each kind of file
-# into a different component via COMPONENT. These components will 
+# into a different component via COMPONENT. These components will
 # be used to create the installation components.
 install(TARGETS mylib 
   ARCHIVE
@@ -28,10 +47,20 @@ install(TARGETS mylibapp
 install(FILES mylib.h
   DESTINATION include
   COMPONENT headers)
+install(FILES "Issue 7470.html"
+  DESTINATION docs
+  COMPONENT documentation)
+
+if(mylib_install_to_absolute_path)
+ install(FILES mylib.cpp
+    DESTINATION /opt/mylib-source
+    COMPONENT source)
+endif()
 
 # CPack boilerplate for this project
 set(CPACK_PACKAGE_NAME "MyLib")
 set(CPACK_PACKAGE_VENDOR "CMake.org")
+set(CPACK_PACKAGE_CONTACT "somebody@cmake.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MyLib - CPack Component Installation Example")
 set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
@@ -59,6 +88,11 @@ cpack_add_component(applications
   DESCRIPTION "An extremely useful application that makes use of MyLib"
   GROUP Runtime
   INSTALL_TYPES Full)
+cpack_add_component(documentation
+  DISPLAY_NAME "MyLib Documentation"
+  DESCRIPTION "The extensive suite of MyLib Application documentation files"
+  GROUP Runtime
+  INSTALL_TYPES Full)
 cpack_add_component(libraries
   DISPLAY_NAME "Libraries"
   DESCRIPTION "Static libraries used to build programs with MyLib"
@@ -70,3 +104,12 @@ cpack_add_component(headers
   GROUP Development
   DEPENDS libraries
   INSTALL_TYPES Developer Full)
+
+if(mylib_install_to_absolute_path)
+  cpack_add_component(source
+    DISPLAY_NAME "C++ Source Files"
+    DESCRIPTION "C/C++ source files to build MyLib"
+    GROUP Development
+    DEPENDS libraries
+    INSTALL_TYPES Developer Full)
+endif()

@@ -1,20 +1,17 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmForEachCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.27.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmForEachCommand.h"
+
+#include <cmsys/auto_ptr.hxx>
 
 bool cmForEachFunctionBlocker::
 IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
@@ -70,6 +67,10 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
             mf.AddDefinition(this->Args[0].c_str(),oldDef.c_str());
             return true;
             }
+          if(cmSystemTools::GetFatalErrorOccured() )
+            {
+            return true;
+            }
           }
         }
       // restore the variable to its prior value
@@ -115,6 +116,10 @@ bool cmForEachCommand
     {
     this->SetError("called with incorrect number of arguments");
     return false;
+    }
+  if(args.size() > 1 && args[1] == "IN")
+    {
+    return this->HandleInMode(args);
     }
   
   // create a function blocker
@@ -197,3 +202,45 @@ bool cmForEachCommand
   return true;
 }
 
+//----------------------------------------------------------------------------
+bool cmForEachCommand::HandleInMode(std::vector<std::string> const& args)
+{
+  cmsys::auto_ptr<cmForEachFunctionBlocker> f(new cmForEachFunctionBlocker());
+  f->Args.push_back(args[0]);
+
+  enum Doing { DoingNone, DoingLists, DoingItems };
+  Doing doing = DoingNone;
+  for(unsigned int i=2; i < args.size(); ++i)
+    {
+    if(doing == DoingItems)
+      {
+      f->Args.push_back(args[i]);
+      }
+    else if(args[i] == "LISTS")
+      {
+      doing = DoingLists;
+      }
+    else if(args[i] == "ITEMS")
+      {
+      doing = DoingItems;
+      }
+    else if(doing == DoingLists)
+      {
+      const char* value = this->Makefile->GetDefinition(args[i].c_str());
+      if(value && *value)
+        {
+        cmSystemTools::ExpandListArgument(value, f->Args, true);
+        }
+      }
+    else
+      {
+      cmOStringStream e;
+      e << "Unknown argument:\n" << "  " << args[i] << "\n";
+      this->Makefile->IssueMessage(cmake::FATAL_ERROR, e.str());
+      return true;
+      }
+    }
+
+  this->Makefile->AddFunctionBlocker(f.release()); // TODO: pass auto_ptr
+  return true;
+}

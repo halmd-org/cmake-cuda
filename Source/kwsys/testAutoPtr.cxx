@@ -1,19 +1,20 @@
-/*=========================================================================
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   KWSys - Kitware System Library
-  Module:    $RCSfile: testAutoPtr.cxx,v $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
+#ifdef __BORLANDC__
+# pragma warn -8027 /* 'for' not inlined.  */
+# pragma warn -8026 /* exception not inlined.  */
+#endif 
 #include "kwsysPrivate.h"
 #include KWSYS_HEADER(auto_ptr.hxx)
-
 // Work-around CMake dependency scanning limitation.  This must
 // duplicate the above list of headers.
 #if 0
@@ -24,7 +25,7 @@
 
 #define ASSERT(x,y) if (!(x)) { printf("FAIL: " y "\n"); status = 1; }
 
-static int instances = 0;
+int instances = 0; // don't declare as static
 
 struct A
 {

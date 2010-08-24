@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 2.6)
-project(ExportImport C)
+cmake_minimum_required (VERSION 2.7.20090711)
+project(ExportImport C CXX)
 
 # Wipe out the install tree to make sure the exporter works.
 add_custom_command(
@@ -22,6 +22,9 @@ else(CMAKE_CONFIGURATION_TYPES)
   endif(CMAKE_BUILD_TYPE)
 endif(CMAKE_CONFIGURATION_TYPES)
 
+configure_file(${ExportImport_SOURCE_DIR}/InitialCache.cmake.in
+               ${ExportImport_BINARY_DIR}/InitialCache.cmake @ONLY)
+
 # Build and install the exporter.
 add_custom_command(
   OUTPUT ${ExportImport_BINARY_DIR}/ExportProject
@@ -34,16 +37,8 @@ add_custom_command(
     --build-target install
     --build-generator ${CMAKE_GENERATOR}
     --build-makeprogram ${CMAKE_MAKE_PROGRAM}
-    --build-options
-      -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-      -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
-      -DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}
-      -DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}
-      -DCMAKE_C_FLAGS_MINSIZEREL:STRING=${CMAKE_C_FLAGS_MINSIZEREL}
-      -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_C_FLAGS_RELWITHDEBINFO}
-      -DCMAKE_INSTALL_PREFIX:STRING=${ExportImport_BINARY_DIR}/Root
-      -DCMAKE_SKIP_RPATH:BOOL=ON
-       )
+    --build-options -C${ExportImport_BINARY_DIR}/InitialCache.cmake
+    )
 add_custom_target(ExportTarget ALL DEPENDS ${ExportImport_BINARY_DIR}/ExportProject)
 add_dependencies(ExportTarget CleanupTarget)
 set_property(
@@ -62,16 +57,8 @@ add_custom_command(
    --build-project Import
    --build-generator ${CMAKE_GENERATOR}
    --build-makeprogram ${CMAKE_MAKE_PROGRAM}
-   --build-options
-     -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-     -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
-     -DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}
-     -DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}
-     -DCMAKE_C_FLAGS_MINSIZEREL:STRING=${CMAKE_C_FLAGS_MINSIZEREL}
-     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_C_FLAGS_RELWITHDEBINFO}
-     -DCMAKE_INSTALL_PREFIX:STRING=${ExportImport_BINARY_DIR}/Root
-     -DCMAKE_SKIP_RPATH:BOOL=ON
-     )
+   --build-options -C${ExportImport_BINARY_DIR}/InitialCache.cmake
+   )
 add_custom_target(ImportTarget ALL DEPENDS ${ExportImport_BINARY_DIR}/ImportProject)
 add_dependencies(ImportTarget ExportTarget)
 set_property(

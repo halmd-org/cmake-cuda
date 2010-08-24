@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestCoverageHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2007-06-08 16:29:40 $
-  Version:   $Revision: 1.17 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestCoverageHandler_h
 #define cmCTestCoverageHandler_h
@@ -25,8 +20,17 @@
 #include <cmsys/RegularExpression.hxx>
 
 class cmGeneratedFileStream;
-class cmCTestCoverageHandlerContainer;
-
+class cmCTestCoverageHandlerContainer
+{
+public:
+  int Error;
+  std::string SourceDir;
+  std::string BinaryDir;
+  typedef std::vector<int> SingleFileCoverageVector;
+  typedef std::map<std::string, SingleFileCoverageVector> TotalCoverageMap;
+  TotalCoverageMap TotalCoverage;
+  std::ostream* OFS;
+};
 /** \class cmCTestCoverageHandler
  * \brief A class that handles coverage computaiton for ctest
  *
@@ -50,14 +54,22 @@ public:
    */
   void PopulateCustomVectors(cmMakefile *mf);
 
+  /** Report coverage only for sources with these labels.  */
+  void SetLabelFilter(std::set<cmStdString> const& labels);
+
 private:
   bool ShouldIDoCoverage(const char* file, const char* srcDir,
     const char* binDir);
+  void CleanCoverageLogFiles(std::ostream& log);
   bool StartCoverageLogFile(cmGeneratedFileStream& ostr, int logFileCount);
   void EndCoverageLogFile(cmGeneratedFileStream& ostr, int logFileCount);
 
   //! Handle coverage using GCC's GCov
   int HandleGCovCoverage(cmCTestCoverageHandlerContainer* cont);
+  void FindGCovFiles(std::vector<std::string>& files);
+
+  //! Handle coverage using xdebug php coverage
+  int HandlePHPCoverage(cmCTestCoverageHandlerContainer* cont);
 
   //! Handle coverage using Bullseye
   int HandleBullseyeCoverage(cmCTestCoverageHandlerContainer* cont);
@@ -66,6 +78,7 @@ private:
                                 std::set<cmStdString>& coveredFileNames,
                                 std::vector<std::string>& files,
                                 std::vector<std::string>& filesFullPath);
+
   int RunBullseyeCommand(
     cmCTestCoverageHandlerContainer* cont,
     const char* cmd,
@@ -91,52 +104,34 @@ private:
   std::string FindFile(cmCTestCoverageHandlerContainer* cont,
     std::string fileName);
 
-  struct cmCTestCoverage
-    {
-    cmCTestCoverage()
-      {
-      this->AbsolutePath = "";
-      this->FullPath = "";
-      this->Covered = false;
-      this->Tested = 0;
-      this->UnTested = 0;
-      this->Lines.clear();
-      this->Show = false;
-      }
-    cmCTestCoverage(const cmCTestCoverage& rhs) :
-      AbsolutePath(rhs.AbsolutePath),
-      FullPath(rhs.FullPath),
-      Covered(rhs.Covered),
-      Tested(rhs.Tested),
-      UnTested(rhs.UnTested),
-      Lines(rhs.Lines),
-      Show(rhs.Show)
-      {
-      }
-    cmCTestCoverage& operator=(const cmCTestCoverage& rhs)
-      {
-      this->AbsolutePath = rhs.AbsolutePath;
-      this->FullPath = rhs.FullPath;
-      this->Covered = rhs.Covered;
-      this->Tested = rhs.Tested;
-      this->UnTested = rhs.UnTested;
-      this->Lines = rhs.Lines;
-      this->Show = rhs.Show;
-      return *this;
-      }
-    std::string      AbsolutePath;
-    std::string      FullPath;
-    bool             Covered;
-    int              Tested;
-    int              UnTested;
-    std::vector<int> Lines;
-    bool             Show;
-    };
-
+  std::set<std::string> FindUncoveredFiles(
+    cmCTestCoverageHandlerContainer* cont);
   std::vector<cmStdString> CustomCoverageExclude;
   std::vector<cmsys::RegularExpression> CustomCoverageExcludeRegex;
+  std::vector<cmStdString> ExtraCoverageGlobs;
 
-  typedef std::map<std::string, cmCTestCoverage> CoverageMap;
+
+  // Map from source file to label ids.
+  class LabelSet: public std::set<int> {};
+  typedef std::map<cmStdString, LabelSet> LabelMapType;
+  LabelMapType SourceLabels;
+  LabelMapType TargetDirs;
+
+  // Map from label name to label id.
+  typedef std::map<cmStdString, int> LabelIdMapType;
+  LabelIdMapType LabelIdMap;
+  std::vector<std::string> Labels;
+  int GetLabelId(std::string const& label);
+
+  // Label reading and writing methods.
+  void LoadLabels();
+  void LoadLabels(const char* dir);
+  void WriteXMLLabels(std::ofstream& os, std::string const& source);
+
+  // Label-based filtering.
+  std::set<int> LabelFilter;
+  bool IntersectsFilter(LabelSet const& labels);
+  bool IsFilteredOut(std::string const& source);
 };
 
 #endif

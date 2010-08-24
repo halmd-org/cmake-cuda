@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmStringCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.27.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmStringCommand.h"
 #include <cmsys/RegularExpression.hxx>
 #include <cmsys/SystemTools.hxx>
@@ -131,7 +126,7 @@ bool cmStringCommand::HandleAsciiCommand(std::vector<std::string> const& args)
     else
       {
       std::string error = "Character with code ";
-      error += ch;
+      error += args[cc];
       error += " does not exist.";
       this->SetError(error.c_str());
       return false;
@@ -386,7 +381,7 @@ bool cmStringCommand::RegexReplace(std::vector<std::string> const& args)
         {
         std::string e = "sub-command REGEX, mode REPLACE: Unknown escape \"";
         e += replace.substr(r, 2);
-        e += "\"in replace-expression.";
+        e += "\" in replace-expression.";
         this->SetError(e.c_str());
         return false;
         }
@@ -564,7 +559,7 @@ bool cmStringCommand::HandleReplaceCommand(std::vector<std::string> const&
 {
   if(args.size() < 5)
     {
-    this->SetError("sub-command REPLACE requires four arguments.");
+    this->SetError("sub-command REPLACE requires at least four arguments.");
     return false;
     }
 
@@ -591,7 +586,7 @@ bool cmStringCommand::HandleSubstringCommand(std::vector<std::string> const&
 {
   if(args.size() != 5)
     {
-    this->SetError("sub-command REPLACE requires four arguments.");
+    this->SetError("sub-command SUBSTRING requires four arguments.");
     return false;
     }
 
@@ -652,7 +647,7 @@ bool cmStringCommand::HandleStripCommand(
 {
  if(args.size() != 3)
     {
-    this->SetError("sub-command LENGTH requires two arguments.");
+    this->SetError("sub-command STRIP requires two arguments.");
     return false;
     }
 
@@ -705,6 +700,9 @@ bool cmStringCommand
     return false;
     }
 
+  static bool seeded = false;
+  bool force_seed = false;
+  int seed = (int) time(NULL);
   int length = 5;
   const char cmStringCommandDefaultAlphabet[] = "qwertyuiopasdfghjklzxcvbnm"
     "QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -728,6 +726,12 @@ bool cmStringCommand
         ++i;
         alphabet = args[i];
         }
+      else if ( args[i] == "RANDOM_SEED" )
+        {
+        ++i;
+        seed = atoi(args[i].c_str());
+        force_seed = true;
+        }
       }
     }
   if ( !alphabet.size() )
@@ -749,7 +753,13 @@ bool cmStringCommand
   const std::string& variableName = args[args.size()-1];
 
   std::vector<char> result;
-  srand((int)time(NULL));
+
+  if (!seeded || force_seed)
+    {
+    seeded = true;
+    srand(seed);
+    }
+
   const char* alphaPtr = alphabet.c_str();
   int cc;
   for ( cc = 0; cc < length; cc ++ )

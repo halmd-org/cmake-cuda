@@ -1,26 +1,36 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestConfigureCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2006-07-11 19:58:07 $
-  Version:   $Revision: 1.11 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCTestConfigureCommand.h"
 
+#include "cmGlobalGenerator.h"
 #include "cmCTest.h"
 #include "cmCTestGenericHandler.h"
 
+cmCTestConfigureCommand::cmCTestConfigureCommand()
+{
+  this->Arguments[ctc_OPTIONS] = "OPTIONS";
+  this->Arguments[ctc_LAST] = 0;
+  this->Last = ctc_LAST;
+}
+
 cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
 {
+  std::vector<std::string> options;
+
+  if (this->Values[ctc_OPTIONS])
+    {
+    cmSystemTools::ExpandListArgument(this->Values[ctc_OPTIONS], options);
+    }
+
   if ( this->Values[ct_BUILD] )
     {
     this->CTest->SetCTestConfiguration("BuildDirectory",
@@ -33,6 +43,7 @@ cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
       cmSystemTools::CollapseFullPath(
        this->Makefile->GetDefinition("CTEST_BINARY_DIRECTORY")).c_str());
     }
+
   if ( this->Values[ct_SOURCE] )
     {
     this->CTest->SetCTestConfiguration("SourceDirectory",
@@ -45,6 +56,7 @@ cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
       cmSystemTools::CollapseFullPath(
         this->Makefile->GetDefinition("CTEST_SOURCE_DIRECTORY")).c_str());
     }
+
   if ( this->CTest->GetCTestConfiguration("BuildDirectory").empty() )
     {
     this->SetError("Build directory not specified. Either use BUILD "
@@ -55,6 +67,7 @@ cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
 
   const char* ctestConfigureCommand
     = this->Makefile->GetDefinition("CTEST_CONFIGURE_COMMAND");
+
   if ( ctestConfigureCommand && *ctestConfigureCommand )
     {
     this->CTest->SetCTestConfiguration("ConfigureCommand",
@@ -75,21 +88,74 @@ cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
           "variable");
         return 0;
         }
+
+      const std::string cmakelists_file = source_dir + "/CMakeLists.txt";
+      if ( !cmSystemTools::FileExists(cmakelists_file.c_str()) )
+        {
+        cmOStringStream e;
+        e << "CMakeLists.txt file does not exist ["
+          << cmakelists_file << "]";
+        this->SetError(e.str().c_str());
+        return 0;
+        }
+
+      bool multiConfig = false;
+      bool cmakeBuildTypeInOptions = false;
+
+      cmGlobalGenerator *gg =
+        this->Makefile->GetCMakeInstance()->CreateGlobalGenerator(
+          cmakeGeneratorName);
+      if(gg)
+        {
+        multiConfig = gg->IsMultiConfig();
+        delete gg;
+        }
+
       std::string cmakeConfigureCommand = "\"";
       cmakeConfigureCommand += this->CTest->GetCMakeExecutable();
-      cmakeConfigureCommand += "\" \"-G";
+      cmakeConfigureCommand += "\"";
+
+      std::vector<std::string>::const_iterator it;
+      std::string option;
+      for (it= options.begin(); it!=options.end(); ++it)
+        {
+        option = *it;
+
+        cmakeConfigureCommand += " \"";
+        cmakeConfigureCommand += option;
+        cmakeConfigureCommand += "\"";
+
+        if ((0 != strstr(option.c_str(), "CMAKE_BUILD_TYPE=")) ||
+           (0 != strstr(option.c_str(), "CMAKE_BUILD_TYPE:STRING=")))
+          {
+          cmakeBuildTypeInOptions = true;
+          }
+        }
+
+      if (!multiConfig && !cmakeBuildTypeInOptions &&
+          !this->CTest->GetConfigType().empty())
+        {
+        cmakeConfigureCommand += " \"-DCMAKE_BUILD_TYPE:STRING=";
+        cmakeConfigureCommand += this->CTest->GetConfigType();
+        cmakeConfigureCommand += "\"";
+        }
+
+      cmakeConfigureCommand += " \"-G";
       cmakeConfigureCommand += cmakeGeneratorName;
-      cmakeConfigureCommand += "\" \"";
+      cmakeConfigureCommand += "\"";
+
+      cmakeConfigureCommand += " \"";
       cmakeConfigureCommand += source_dir;
       cmakeConfigureCommand += "\"";
+
       this->CTest->SetCTestConfiguration("ConfigureCommand",
         cmakeConfigureCommand.c_str());
       }
     else
       {
-      this->SetError("Configure command is not specified. If this is a CMake "
-        "project, specify CTEST_CMAKE_GENERATOR, or if this is not CMake "
-        "project, specify CTEST_CONFIGURE_COMMAND.");
+      this->SetError("Configure command is not specified. If this is a "
+        "\"built with CMake\" project, set CTEST_CMAKE_GENERATOR. If not, "
+        "set CTEST_CONFIGURE_COMMAND.");
       return 0;
       }
     }
@@ -104,5 +170,3 @@ cmCTestGenericHandler* cmCTestConfigureCommand::InitializeHandler()
     }
   return handler;
 }
-
-

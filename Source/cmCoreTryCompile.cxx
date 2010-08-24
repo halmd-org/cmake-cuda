@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCoreTryCompile.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.7.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2007 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCoreTryCompile.h"
 #include "cmake.h"
 #include "cmCacheManager.h"
@@ -22,7 +17,6 @@
 
 int cmCoreTryCompile::TryCompileCode(std::vector<std::string> const& argv)
 {
-  
   this->BinaryDirectory = argv[1].c_str();
   this->OutputFile = "";
   // which signature were we called with ?
@@ -251,6 +245,20 @@ int cmCoreTryCompile::TryCompileCode(std::vector<std::string> const& argv)
       flag += this->Makefile->GetSafeDefinition("CMAKE_OSX_ARCHITECTURES");
       cmakeFlags.push_back(flag);
       }
+    /* on APPLE also pass CMAKE_OSX_SYSROOT to the try_compile */
+    if(this->Makefile->GetDefinition("CMAKE_OSX_SYSROOT")!=0)
+      {
+      std::string flag="-DCMAKE_OSX_SYSROOT=";
+      flag += this->Makefile->GetSafeDefinition("CMAKE_OSX_SYSROOT");
+      cmakeFlags.push_back(flag);
+      }
+    /* on APPLE also pass CMAKE_OSX_DEPLOYMENT_TARGET to the try_compile */
+    if(this->Makefile->GetDefinition("CMAKE_OSX_DEPLOYMENT_TARGET")!=0)
+      {
+      std::string flag="-DCMAKE_OSX_DEPLOYMENT_TARGET=";
+      flag += this->Makefile->GetSafeDefinition("CMAKE_OSX_DEPLOYMENT_TARGET");
+      cmakeFlags.push_back(flag);
+      }
 
     fprintf(fout, "ADD_EXECUTABLE(cmTryCompileExec \"%s\")\n",source.c_str());
     fprintf(fout, 
@@ -284,6 +292,7 @@ int cmCoreTryCompile::TryCompileCode(std::vector<std::string> const& argv)
                                        this->BinaryDirectory.c_str(),
                                        projectName, 
                                        targetName, 
+                                       this->SrcFileSignature,
                                        &cmakeFlags, 
                                        &output);
   if ( erroroc )
@@ -305,15 +314,24 @@ int cmCoreTryCompile::TryCompileCode(std::vector<std::string> const& argv)
   if (this->SrcFileSignature)
     {
     this->FindOutputFile(targetName);
+
     if ((res==0) && (copyFile.size()))
       {
-      if(!cmSystemTools::CopyFileAlways(this->OutputFile.c_str(), 
+      if(this->OutputFile.empty() ||
+         !cmSystemTools::CopyFileAlways(this->OutputFile.c_str(),
                                         copyFile.c_str()))
         {
         cmOStringStream emsg;
         emsg << "Could not COPY_FILE.\n"
           << "  OutputFile: '" << this->OutputFile.c_str() << "'\n"
           << "    copyFile: '" << copyFile.c_str() << "'\n";
+
+        if (this->FindErrorMessage.size())
+          {
+          emsg << "\n";
+          emsg << this->FindErrorMessage.c_str() << "\n";
+          }
+
         cmSystemTools::Error(emsg.str().c_str());
         return -1;
         }

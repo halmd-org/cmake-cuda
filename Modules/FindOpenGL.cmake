@@ -15,6 +15,19 @@
 # People will have to change the cache values of OPENGL_glu_LIBRARY 
 # and OPENGL_gl_LIBRARY to use OpenGL with X11 on OSX
 
+#=============================================================================
+# Copyright 2001-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 IF (WIN32)
   IF (CYGWIN)
 
@@ -45,6 +58,15 @@ ELSE (WIN32)
     FIND_PATH(OPENGL_INCLUDE_DIR OpenGL/gl.h DOC "Include for OpenGL on OSX")
 
   ELSE(APPLE)
+    # Handle HP-UX cases where we only want to find OpenGL in either hpux64
+    # or hpux32 depending on if we're doing a 64 bit build.
+    IF(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      SET(HPUX_IA_OPENGL_LIB_PATH /opt/graphics/OpenGL/lib/hpux32/)
+    ELSE(CMAKE_SIZEOF_VOID_P EQUAL 4)
+      SET(HPUX_IA_OPENGL_LIB_PATH 
+        /opt/graphics/OpenGL/lib/hpux64/
+        /opt/graphics/OpenGL/lib/pa20_64)
+    ENDIF(CMAKE_SIZEOF_VOID_P EQUAL 4)
 
     # The first line below is to make sure that the proper headers
     # are used on a Linux machine with the NVidia drivers installed.
@@ -71,6 +93,7 @@ ELSE (WIN32)
       PATHS /opt/graphics/OpenGL/lib
             /usr/openwin/lib
             /usr/shlib /usr/X11R6/lib
+            ${HPUX_IA_OPENGL_LIB_PATH}
     )
 
     # On Unix OpenGL most certainly always requires X11.

@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmMessageCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-04-21 00:44:52 $
-  Version:   $Revision: 1.22.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmMessageCommand.h"
 
 // cmLibraryCommand
@@ -28,29 +23,34 @@ bool cmMessageCommand
   std::string message;
   std::vector<std::string>::const_iterator i = args.begin();
 
-  bool send_error = false;
-  bool fatal_error = false;
+  cmake::MessageType type = cmake::MESSAGE;
   bool status = false;
+  bool fatal = false;
   if (*i == "SEND_ERROR")
     {
-    send_error = true;
+    type = cmake::FATAL_ERROR;
     ++i;
     }
-  else
+  else if (*i == "FATAL_ERROR")
     {
-    if (*i == "STATUS")
-      {
-      status = true;
-      ++i;
-      }
-    else
-      {
-      if (*i == "FATAL_ERROR")
-        {
-        fatal_error = true;
-        ++i;
-        }
-      }
+    fatal = true;
+    type = cmake::FATAL_ERROR;
+    ++i;
+    }
+  else if (*i == "WARNING")
+    {
+    type = cmake::WARNING;
+    ++i;
+    }
+  else if (*i == "AUTHOR_WARNING")
+    {
+    type = cmake::AUTHOR_WARNING;
+    ++i;
+    }
+  else if (*i == "STATUS")
+    {
+    status = true;
+    ++i;
     }
 
   for(;i != args.end(); ++i)
@@ -58,9 +58,9 @@ bool cmMessageCommand
     message += *i;
     }
 
-  if (send_error || fatal_error)
+  if (type != cmake::MESSAGE)
     {
-    this->Makefile->IssueMessage(cmake::FATAL_ERROR, message.c_str());
+    this->Makefile->IssueMessage(type, message.c_str());
     }
   else
     {
@@ -73,7 +73,7 @@ bool cmMessageCommand
       cmSystemTools::Message(message.c_str());
       }
     }
-  if(fatal_error )
+  if(fatal)
     {
     cmSystemTools::SetFatalErrorOccured();
     }

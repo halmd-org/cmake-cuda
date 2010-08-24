@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDepends.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:50 $
-  Version:   $Revision: 1.14.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmDepends_h
 #define cmDepends_h
 
@@ -59,12 +54,16 @@ public:
 
   /** Write dependencies for the target file.  */
   bool Write(std::ostream &makeDepends, std::ostream &internalDepends);
-  
+
+  class DependencyVector: public std::vector<std::string> {};
+
   /** Check dependencies for the target file.  Returns true if
       dependencies are okay and false if they must be generated.  If
       they must be generated Clear has already been called to wipe out
-      the old dependencies.  */
-  bool Check(const char *makeFile, const char* internalFile);
+      the old dependencies.
+      Dependencies which are still valid will be stored in validDeps. */
+  bool Check(const char *makeFile, const char* internalFile,
+             std::map<std::string, DependencyVector>& validDeps);
 
   /** Clear dependencies for the target file so they will be regenerated.  */
   void Clear(const char *file);
@@ -83,7 +82,8 @@ protected:
   // Check dependencies for the target file in the given stream.
   // Return false if dependencies must be regenerated and true
   // otherwise.
-  virtual bool CheckDependencies(std::istream& internalDepends);
+  virtual bool CheckDependencies(std::istream& internalDepends,
+                           std::map<std::string, DependencyVector>& validDeps);
 
   // Finalize the dependency information for the target.
   virtual bool Finalize(std::ostream& makeDepends,

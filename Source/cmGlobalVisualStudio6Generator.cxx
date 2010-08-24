@@ -1,23 +1,33 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudio6Generator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.75.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGlobalVisualStudio6Generator.h"
 #include "cmLocalVisualStudio6Generator.h"
 #include "cmMakefile.h"
 #include "cmake.h"
+
+// Utility function to make a valid VS6 *.dsp filename out
+// of a CMake target name:
+//
+std::string GetVS6TargetName(const std::string& targetName)
+{
+  std::string name(targetName);
+
+  // Eliminate hyphens. VS6 cannot handle hyphens in *.dsp filenames...
+  // Replace them with underscores.
+  //
+  cmSystemTools::ReplaceString(name, "-", "_");
+
+  return name;
+}
 
 cmGlobalVisualStudio6Generator::cmGlobalVisualStudio6Generator()
 {
@@ -34,6 +44,8 @@ void cmGlobalVisualStudio6Generator
   mf->AddDefinition("CMAKE_GENERATOR_RC", "rc"); 
   mf->AddDefinition("CMAKE_GENERATOR_NO_COMPILER_ENV", "1");
   mf->AddDefinition("CMAKE_GENERATOR_Fortran", "ifort");
+  mf->AddDefinition("MSVC_C_ARCHITECTURE_ID", "X86");
+  mf->AddDefinition("MSVC_CXX_ARCHITECTURE_ID", "X86");
   mf->AddDefinition("MSVC60", "1");
   this->GenerateConfigurations(mf);
   this->cmGlobalGenerator::EnableLanguage(lang, mf, optional);
@@ -176,165 +188,40 @@ void cmGlobalVisualStudio6Generator
 {
   // Write out the header for a DSW file
   this->WriteDSWHeader(fout);
-  
-  // Get the home directory with the trailing slash
-  std::string homedir = root->GetMakefile()->GetStartOutputDirectory();
-  homedir += "/";
-    
-  unsigned int i;
-  bool doneAllBuild = false;
-  bool doneRunTests = false;
-  bool doneInstall = false;
-  bool doneEditCache = false;
-  bool doneRebuildCache = false;
-  bool donePackage = false;
 
-  for(i = 0; i < generators.size(); ++i)
+  // Collect all targets under this root generator and the transitive
+  // closure of their dependencies.
+  TargetDependSet projectTargets;
+  TargetDependSet originalTargets;
+  this->GetTargetSets(projectTargets, originalTargets, root, generators);
+  OrderedTargetDependSet orderedProjectTargets(projectTargets);
+
+  std::string rootdir = root->GetMakefile()->GetStartOutputDirectory();
+  rootdir += "/";
+  for(OrderedTargetDependSet::const_iterator
+        tt = orderedProjectTargets.begin();
+      tt != orderedProjectTargets.end(); ++tt)
     {
-    if(this->IsExcluded(root, generators[i]))
+    cmTarget* target = *tt;
+    cmMakefile* mf = target->GetMakefile();
+    // Write the project into the DSW file
+    const char* expath = target->GetProperty("EXTERNAL_MSPROJECT");
+    if(expath)
       {
-      continue;
+      std::string project = target->GetName();
+      std::string location = expath;
+      this->WriteExternalProject(fout, project.c_str(),
+                                 location.c_str(), target->GetUtilities());
       }
-    cmMakefile* mf = generators[i]->GetMakefile();
-    
-    // Get the source directory from the makefile
-    std::string dir = mf->GetStartOutputDirectory();
-    // remove the home directory and / from the source directory
-    // this gives a relative path 
-    cmSystemTools::ReplaceString(dir, homedir.c_str(), "");
-
-    // Get the list of create dsp files names from the LocalGenerator, more
-    // than one dsp could have been created per input CMakeLists.txt file
-    // for each target
-    std::vector<std::string> dspnames = 
-      static_cast<cmLocalVisualStudio6Generator *>(generators[i])
-      ->GetCreatedProjectNames();
-    cmTargets &tgts = generators[i]->GetMakefile()->GetTargets();
-    std::vector<std::string>::iterator si = dspnames.begin(); 
-    for(cmTargets::iterator l = tgts.begin(); l != tgts.end(); ++l)
+    else
       {
-      // special handling for the current makefile
-      if(mf == generators[0]->GetMakefile())
-        {
-        dir = "."; // no subdirectory for project generated
-        // if this is the special ALL_BUILD utility, then
-        // make it depend on every other non UTILITY project.
-        // This is done by adding the names to the GetUtilities
-        // vector on the makefile
-        if(l->first == "ALL_BUILD" && !doneAllBuild)
-          {
-          unsigned int j;
-          for(j = 0; j < generators.size(); ++j)
-            {
-            cmTargets &atgts = generators[j]->GetMakefile()->GetTargets();
-            for(cmTargets::iterator al = atgts.begin();
-                al != atgts.end(); ++al)
-              {
-              if (!al->second.GetPropertyAsBool("EXCLUDE_FROM_ALL"))
-                {
-                if (al->second.GetType() == cmTarget::UTILITY ||
-                    al->second.GetType() == cmTarget::GLOBAL_TARGET)
-                  {
-                  l->second.AddUtility(al->first.c_str());
-                  }
-                else
-                  {
-                  l->second.AddLinkLibrary(al->first, cmTarget::GENERAL);
-                  }
-                }
-              }
-            }
-          }
-        }
-      // Write the project into the DSW file
-      if (strncmp(l->first.c_str(), "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-        {
-        cmCustomCommand cc = l->second.GetPostBuildCommands()[0];
-        const cmCustomCommandLines& cmds = cc.GetCommandLines();
-        std::string project = cmds[0][0];
-        std::string location = cmds[0][1];
-        this->WriteExternalProject(fout, project.c_str(), 
-                                   location.c_str(), cc.GetDepends());
-        }
-      else 
-        {
-          bool skip = false;
-          // skip ALL_BUILD and RUN_TESTS if they have already been added
-          if(l->first == "ALL_BUILD" )
-            {
-            if(doneAllBuild)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneAllBuild = true;
-              }
-            }
-          if(l->first == "INSTALL")
-            {
-            if(doneInstall)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneInstall = true;
-              }
-            }
-          if(l->first == "RUN_TESTS")
-            {
-            if(doneRunTests)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneRunTests = true;
-              }
-            }
-          if(l->first == "EDIT_CACHE")
-            {
-            if(doneEditCache)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneEditCache = true;
-              }
-            }
-          if(l->first == "REBUILD_CACHE")
-            {
-            if(doneRebuildCache)
-              {
-              skip = true;
-              }
-            else
-              {
-              doneRebuildCache = true;
-              }
-            }
-          if(l->first == "PACKAGE")
-            {
-            if(donePackage)
-              {
-              skip = true;
-              }
-            else
-              {
-              donePackage = true;
-              }
-            }
-          if(!skip)
-            {
-            this->WriteProject(fout, si->c_str(), dir.c_str(),l->second);
-            }
-          ++si;
-        }
+      std::string dspname = GetVS6TargetName(target->GetName());
+      std::string dir = target->GetMakefile()->GetStartOutputDirectory();
+      dir = root->Convert(dir.c_str(), cmLocalGenerator::START_OUTPUT);
+      this->WriteProject(fout, dspname.c_str(), dir.c_str(), *target);
       }
     }
-  
+
   // Write the footer for the DSW file
   this->WriteDSWFooter(fout);
 }
@@ -371,23 +258,6 @@ void cmGlobalVisualStudio6Generator::OutputDSWFile()
     this->OutputDSWFile(it->second[0], it->second);
     }
 }
-
-
-// Utility function to make a valid VS6 *.dsp filename out
-// of a CMake target name:
-//
-std::string GetVS6TargetName(const std::string& targetName)
-{
-  std::string name(targetName);
-
-  // Eliminate hyphens. VS6 cannot handle hyphens in *.dsp filenames...
-  // Replace them with underscores.
-  //
-  cmSystemTools::ReplaceString(name, "-", "_");
-
-  return name;
-}
-
 
 // Write a dsp file into the DSW file,
 // Note, that dependencies from executables to 
@@ -451,7 +321,7 @@ void cmGlobalVisualStudio6Generator::WriteProject(std::ostream& fout,
 void cmGlobalVisualStudio6Generator::WriteExternalProject(std::ostream& fout, 
                                const char* name,
                                const char* location,
-                               const std::vector<std::string>& dependencies)
+                               const std::set<cmStdString>& dependencies)
 {
  fout << "#########################################################"
     "######################\n\n";
@@ -462,7 +332,7 @@ void cmGlobalVisualStudio6Generator::WriteExternalProject(std::ostream& fout,
   fout << "{{{\n";
 
   
-  std::vector<std::string>::const_iterator i, end;
+  std::set<cmStdString>::const_iterator i, end;
   // write dependencies.
   i = dependencies.begin();
   end = dependencies.end();

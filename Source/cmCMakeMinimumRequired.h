@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCMakeMinimumRequired.h,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:49 $
-  Version:   $Revision: 1.12.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCMakeMinimumRequired_h
 #define cmCMakeMinimumRequired_h
 
@@ -66,13 +61,13 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  cmake_minimum_required(VERSION major[.minor[.patch]]\n"
+      "  cmake_minimum_required(VERSION major[.minor[.patch[.tweak]]]\n"
       "                         [FATAL_ERROR])\n"
       "If the current version of CMake is lower than that required "
       "it will stop processing the project and report an error.  "
       "When a version higher than 2.4 is specified the command implicitly "
       "invokes\n"
-      "  cmake_policy(VERSION major[.minor[.patch]])\n"
+      "  cmake_policy(VERSION major[.minor[.patch[.tweak]]])\n"
       "which sets the cmake policy version level to the version specified.  "
       "When version 2.4 or lower is given the command implicitly invokes\n"
       "  cmake_policy(VERSION 2.4)\n"

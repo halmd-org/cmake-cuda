@@ -1,32 +1,26 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: CMakeSetup.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-21 19:43:45 $
-  Version:   $Revision: 1.17.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "QCMake.h"  // include to disable MS warnings
 #include <QApplication>
-#include <QFileInfo>
 #include <QDir>
 #include <QTranslator>
 #include <QLocale>
 #include "QMacInstallDialog.h"
-
 #include "CMakeSetupDialog.h"
 #include "cmDocumentation.h"
 #include "cmake.h"
 #include "cmVersion.h"
 #include <cmsys/CommandLineArguments.hxx>
+#include <cmsys/SystemTools.hxx>
 
 //----------------------------------------------------------------------------
 static const char * cmDocumentationName[][3] =
@@ -140,12 +134,12 @@ int main(int argc, char** argv)
   // app setup
   app.setApplicationName("CMakeSetup");
   app.setOrganizationName("Kitware");
-  app.setWindowIcon(QIcon(":/Icons/CMakeSetup.png"));
+  QIcon appIcon;
+  appIcon.addFile(":/Icons/CMakeSetup32.png");
+  appIcon.addFile(":/Icons/CMakeSetup128.png");
+  app.setWindowIcon(appIcon);
   
   CMakeSetupDialog dialog;
-  QString title = QString("CMake %1");
-  title = title.arg(cmVersion::GetCMakeVersion().c_str());
-  dialog.setWindowTitle(title);
   dialog.show();
  
   cmsys::CommandLineArguments arg;
@@ -170,16 +164,19 @@ int main(int argc, char** argv)
     QStringList args = app.arguments();
     if(args.count() == 2)
       {
-      QFileInfo buildFileInfo(args[1], "CMakeCache.txt");
-      QFileInfo srcFileInfo(args[1], "CMakeLists.txt");
-      if(buildFileInfo.exists())
+      cmsys_stl::string filePath = cmSystemTools::CollapseFullPath(args[1].toAscii().data());
+      cmsys_stl::string buildFilePath =
+        cmSystemTools::CollapseFullPath("CMakeCache.txt", filePath.c_str());
+      cmsys_stl::string srcFilePath =
+        cmSystemTools::CollapseFullPath("CMakeLists.txt", filePath.c_str());
+      if(cmSystemTools::FileExists(buildFilePath.c_str()))
         {
-        dialog.setBinaryDirectory(buildFileInfo.absolutePath());
+        dialog.setBinaryDirectory(filePath.c_str());
         }
-      else if(srcFileInfo.exists())
+      else if(cmSystemTools::FileExists(srcFilePath.c_str()))
         {
-        dialog.setSourceDirectory(srcFileInfo.absolutePath());
-        dialog.setBinaryDirectory(QDir::currentPath());
+        dialog.setSourceDirectory(filePath.c_str());
+        dialog.setBinaryDirectory(cmSystemTools::CollapseFullPath(".").c_str());
         }
       }
     }

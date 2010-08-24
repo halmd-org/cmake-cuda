@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestMemCheckHandler.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-30 16:17:36 $
-  Version:   $Revision: 1.19 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "cmCTestMemCheckHandler.h"
 #include "cmXMLParser.h"
@@ -24,6 +19,7 @@
 #include <cmsys/RegularExpression.hxx>
 #include <cmsys/Base64.h>
 #include "cmMakefile.h"
+#include "cmXMLSafe.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -77,8 +73,8 @@ public:
       int i = 0;
       for(; atts[i] != 0; i+=2)
         {
-        ostr << "   " << this->CTest->MakeXMLSafe(atts[i]).c_str() 
-             << " - " << this->CTest->MakeXMLSafe(atts[i+1]).c_str() << "\n";
+        ostr << "   " << cmXMLSafe(atts[i])
+             << " - " << cmXMLSafe(atts[i+1]) << "\n";
         }
       ostr << "\n";
       this->Log += ostr.str();
@@ -248,15 +244,14 @@ int cmCTestMemCheckHandler::PostProcessHandler()
 
 //----------------------------------------------------------------------
 void cmCTestMemCheckHandler::GenerateTestCommand(
-  std::vector<const char*>& args)
+  std::vector<std::string>& args)
 {
   std::vector<cmStdString>::size_type pp;
-  args.push_back(this->MemoryTester.c_str());
   std::string memcheckcommand = "";
   memcheckcommand = this->MemoryTester;
   for ( pp = 0; pp < this->MemoryTesterOptionsParsed.size(); pp ++ )
     {
-    args.push_back(this->MemoryTesterOptionsParsed[pp].c_str());
+    args.push_back(this->MemoryTesterOptionsParsed[pp]);
     memcheckcommand += " ";
     memcheckcommand += cmSystemTools::EscapeSpaces(
       this->MemoryTesterOptionsParsed[pp].c_str());
@@ -287,7 +282,7 @@ void cmCTestMemCheckHandler::GenerateDartOutput(std::ostream& os)
     return;
     }
 
-  this->CTest->StartXML(os);
+  this->CTest->StartXML(os, this->AppendXML);
   os << "<DynamicAnalysis Checker=\"";
   switch ( this->MemoryTesterStyle )
     {
@@ -313,7 +308,7 @@ void cmCTestMemCheckHandler::GenerateDartOutput(std::ostream& os)
     {
     cmCTestTestResult *result = &this->TestResults[cc];
     std::string testPath = result->Path + "/" + result->Name;
-    os << "\t\t<Test>" << cmCTest::MakeXMLSafe(
+    os << "\t\t<Test>" << cmXMLSafe(
       this->CTest->GetShortPathToFile(testPath.c_str()))
       << "</Test>" << std::endl;
     }
@@ -337,30 +332,8 @@ void cmCTestMemCheckHandler::GenerateDartOutput(std::ostream& os)
       }
     this->CleanTestOutput(memcheckstr,
       static_cast<size_t>(this->CustomMaximumFailedTestOutputSize));
-    os << "\t<Test Status=\"";
-    if ( result->Status == cmCTestMemCheckHandler::COMPLETED )
-      {
-      os << "passed";
-      }
-    else if ( result->Status == cmCTestMemCheckHandler::NOT_RUN )
-      {
-      os << "notrun";
-      }
-    else
-      {
-      os << "failed";
-      }
-    std::string testPath = result->Path + "/" + result->Name;
-    os << "\">\n"
-      << "\t\t<Name>" << cmCTest::MakeXMLSafe(result->Name) << "</Name>\n"
-      << "\t\t<Path>" << cmCTest::MakeXMLSafe(
-        this->CTest->GetShortPathToFile(result->Path.c_str())) << "</Path>\n"
-      << "\t\t<FullName>" << cmCTest::MakeXMLSafe(
-        this->CTest->GetShortPathToFile(testPath.c_str())) << "</FullName>\n"
-      << "\t\t<FullCommandLine>"
-      << cmCTest::MakeXMLSafe(result->FullCommandLine)
-      << "</FullCommandLine>\n"
-      << "\t\t<Results>" << std::endl;
+    this->WriteTestResultHeader(os, result);
+    os << "\t\t<Results>" << std::endl;
     for ( kk = 0; cmCTestMemCheckResultLongStrings[kk]; kk ++ )
       {
       if ( memcheckresults[kk] )
@@ -375,8 +348,8 @@ void cmCTestMemCheckHandler::GenerateDartOutput(std::ostream& os)
     os
       << "\t\t</Results>\n"
       << "\t<Log>\n" << memcheckstr << std::endl
-      << "\t</Log>\n"
-      << "\t</Test>" << std::endl;
+      << "\t</Log>\n";
+    this->WriteTestResultFooter(os, result);
     if ( current < cc )
       {
       cmCTestLog(this->CTest, HANDLER_OUTPUT, "#" << std::flush);
@@ -489,7 +462,7 @@ bool cmCTestMemCheckHandler::InitializeMemoryChecking()
     if ( !this->MemoryTesterOptions.size() )
       {
       this->MemoryTesterOptions = "-q --tool=memcheck --leak-check=yes "
-        "--show-reachable=yes --workaround-gcc296-bugs=yes --num-callers=100";
+        "--show-reachable=yes --workaround-gcc296-bugs=yes --num-callers=50";
       }
     if ( this->CTest->GetCTestConfiguration(
         "MemoryCheckSuppressionFile").size() )
@@ -515,6 +488,22 @@ bool cmCTestMemCheckHandler::InitializeMemoryChecking()
       cmSystemTools::EscapeSpaces(this->MemoryTesterOutputFile.c_str());
 
 #ifdef _WIN32
+    if( this->CTest->GetCTestConfiguration(
+          "MemoryCheckSuppressionFile").size() )
+      {
+      if( !cmSystemTools::FileExists(this->CTest->GetCTestConfiguration(
+                                       "MemoryCheckSuppressionFile").c_str()) )
+        {
+        cmCTestLog(this->CTest, ERROR_MESSAGE,
+                   "Cannot find memory checker suppression file: "
+                   << this->CTest->GetCTestConfiguration(
+                     "MemoryCheckSuppressionFile").c_str() << std::endl);
+        return false;
+        }
+      this->MemoryTesterOptions += " /FilterFiles=" +
+        cmSystemTools::EscapeSpaces(this->CTest->GetCTestConfiguration(
+                                      "MemoryCheckSuppressionFile").c_str());
+      }
     this->MemoryTesterOptions += " /SAVETEXTDATA=" + outputFile;
 #else
     this->MemoryTesterOptions += " -log-file=" + outputFile;
@@ -632,7 +621,7 @@ bool cmCTestMemCheckHandler::ProcessMemCheckPurifyOutput(
       results[failure] ++;
       defects ++;
       }
-    ostr << cmCTest::MakeXMLSafe(*i) << std::endl;
+    ostr << cmXMLSafe(*i) << std::endl;
     }
 
   log = ostr.str();
@@ -670,8 +659,12 @@ bool cmCTestMemCheckHandler::ProcessMemCheckValgrindOutput(
     "== .*Invalid free\\(\\) / delete / delete\\[\\]");
   cmsys::RegularExpression vgFMM(
     "== .*Mismatched free\\(\\) / delete / delete \\[\\]");
-  cmsys::RegularExpression vgMLK(
+  cmsys::RegularExpression vgMLK1(
     "== .*[0-9][0-9]* bytes in [0-9][0-9]* blocks are definitely lost"
+   " in loss record [0-9][0-9]* of [0-9]");
+  cmsys::RegularExpression vgMLK2(
+    "== .*[0-9][0-9]* \\([0-9]*,?[0-9]* direct, [0-9]*,?[0-9]* indirect\\)"
+        " bytes in [0-9][0-9]* blocks are definitely lost"
     " in loss record [0-9][0-9]* of [0-9]");
   cmsys::RegularExpression vgPAR(
     "== .*Syscall param .* contains unaddressable byte\\(s\\)");
@@ -716,7 +709,11 @@ bool cmCTestMemCheckHandler::ProcessMemCheckValgrindOutput(
         {
         failure = cmCTestMemCheckHandler::FMM;
         }
-      else if ( vgMLK.find(lines[cc]) )
+      else if ( vgMLK1.find(lines[cc]) )
+        {
+        failure = cmCTestMemCheckHandler::MLK;
+        }
+      else if ( vgMLK2.find(lines[cc]) )
         {
         failure = cmCTestMemCheckHandler::MLK;
         }
@@ -772,7 +769,7 @@ bool cmCTestMemCheckHandler::ProcessMemCheckValgrindOutput(
         defects ++;
         }
       totalOutputSize += lines[cc].size();
-      ostr << cmCTest::MakeXMLSafe(lines[cc]) << std::endl;
+      ostr << cmXMLSafe(lines[cc]) << std::endl;
       } 
     else
       {
@@ -789,9 +786,9 @@ bool cmCTestMemCheckHandler::ProcessMemCheckValgrindOutput(
       cmCTestLog(this->CTest, DEBUG, "before xml safe "
                  << lines[*i] << std::endl);
       cmCTestLog(this->CTest, DEBUG, "after  xml safe "
-                 <<  cmCTest::MakeXMLSafe(lines[*i]) << std::endl);
+                 <<  cmXMLSafe(lines[*i]) << std::endl);
 
-      ostr << cmCTest::MakeXMLSafe(lines[*i]) << std::endl;
+      ostr << cmXMLSafe(lines[*i]) << std::endl;
       if(!unlimitedOutput && totalOutputSize > 
          static_cast<size_t>(this->CustomMaximumFailedTestOutputSize))
         {
@@ -873,27 +870,6 @@ bool cmCTestMemCheckHandler::ProcessMemCheckBoundsCheckerOutput(
   return true;
 }
 
-void 
-cmCTestMemCheckHandler::ProcessOneTest(cmCTestTestProperties *props,
-                                       std::vector<cmStdString> &passed,
-                                       std::vector<cmStdString> &failed,
-                                       int count, int tmsize)
-{
-  // run parent test
-  cmCTestTestHandler::ProcessOneTest(props, passed, failed, count, tmsize);
-  cmCTestTestResult& res = this->TestResults[this->TestResults.size()-1];
-  cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, "process test output now: "
-             << props->Name.c_str() << " " << res.Name.c_str() << std::endl);
-  if( this->MemoryTesterStyle == cmCTestMemCheckHandler::BOUNDS_CHECKER)
-    {
-    this->PostProcessBoundsCheckerTest(res);
-    }
-  else if(this->MemoryTesterStyle == cmCTestMemCheckHandler::PURIFY )
-    {
-    this->PostProcessPurifyTest(res); 
-    }
-}
-
 // This method puts the bounds checker output file into the output
 // for the test
 void
@@ -962,5 +938,6 @@ cmCTestMemCheckHandler::PostProcessPurifyTest(cmCTestTestResult& res)
   while ( cmSystemTools::GetLineFromStream(ifs, line) )
     {
     res.Output += line;
+    res.Output += "\n";
     }
 }

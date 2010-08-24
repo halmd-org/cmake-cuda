@@ -1,25 +1,22 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmTarget.h,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:53 $
-  Version:   $Revision: 1.109.2.8 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmTarget_h
 #define cmTarget_h
 
 #include "cmCustomCommand.h"
 #include "cmPropertyMap.h"
 #include "cmPolicies.h"
+
+#include <cmsys/auto_ptr.hxx>
 
 class cmake;
 class cmMakefile;
@@ -37,24 +34,6 @@ struct cmTargetLinkInformationMap:
   ~cmTargetLinkInformationMap();
 };
 
-struct cmTargetLinkInterface
-{
-  // Libraries listed in the interface.
-  std::vector<std::string> Libraries;
-
-  // Shared library dependencies needed for linking on some platforms.
-  std::vector<std::string> SharedDeps;
-};
-
-struct cmTargetLinkInterfaceMap:
-  public std::map<cmStdString, cmTargetLinkInterface*>
-{
-  typedef std::map<cmStdString, cmTargetLinkInterface*> derived;
-  cmTargetLinkInterfaceMap() {}
-  cmTargetLinkInterfaceMap(cmTargetLinkInterfaceMap const& r);
-  ~cmTargetLinkInterfaceMap();
-};
-
 class cmTargetInternals;
 class cmTargetInternalPointer
 {
@@ -64,6 +43,7 @@ public:
   ~cmTargetInternalPointer();
   cmTargetInternalPointer& operator=(cmTargetInternalPointer const& r);
   cmTargetInternals* operator->() const { return this->Pointer; }
+  cmTargetInternals* Get() const { return this->Pointer; }
 private:
   cmTargetInternals* Pointer;
 };
@@ -135,9 +115,11 @@ public:
   /**
    * Get the list of the source files used by this target
    */
-  std::vector<cmSourceFile*> const &GetSourceFiles()
-    {return this->SourceFiles;}
-  void AddSourceFile(cmSourceFile* sf) { this->SourceFiles.push_back(sf); }
+  std::vector<cmSourceFile*> const& GetSourceFiles();
+  void AddSourceFile(cmSourceFile* sf);
+
+  /** Get sources that must be built before the given source.  */
+  std::vector<cmSourceFile*> const* GetSourceDepends(cmSourceFile* sf);
 
   /**
    * Flags for a given source file as used in this target. Typically assigned
@@ -201,9 +183,6 @@ public:
                       const char *target, const char* lib,
                       LinkLibraryType llt);
 
-  void AddLinkLibrary(const std::string& lib,
-                      LinkLibraryType llt);
-
   void MergeLinkLibraries( cmMakefile& mf, const char* selfname,
                            const LinkLibraryVectorType& libs );
 
@@ -240,7 +219,8 @@ public:
   ///! Get the utilities used by this target
   std::set<cmStdString>const& GetUtilities() const { return this->Utilities; }
 
-  void AnalyzeLibDependencies( const cmMakefile& mf );
+  /** Finalize the target at the end of the Configure step.  */
+  void FinishConfigure();
 
   ///! Set/Get a property of this target file
   void SetProperty(const char *prop, const char *value);
@@ -250,13 +230,69 @@ public:
   bool GetPropertyAsBool(const char *prop);
   void CheckProperty(const char* prop, cmMakefile* context);
 
+  const char* GetFeature(const char* feature, const char* config);
+
   bool IsImported() const {return this->IsImportedTarget;}
 
-  /** Get the library interface dependencies.  This is the set of
-      libraries from which something that links to this target may
-      also receive symbols.  Returns 0 if the user has not specified
-      such dependencies or for static libraries.  */
-  cmTargetLinkInterface const* GetLinkInterface(const char* config);
+  /** The link interface specifies transitive library dependencies and
+      other information needed by targets that link to this target.  */
+  struct LinkInterface
+  {
+    // Languages whose runtime libraries must be linked.
+    std::vector<std::string> Languages;
+
+    // Libraries listed in the interface.
+    std::vector<std::string> Libraries;
+
+    // Shared library dependencies needed for linking on some platforms.
+    std::vector<std::string> SharedDeps;
+
+    // Number of repetitions of a strongly connected component of two
+    // or more static libraries.
+    int Multiplicity;
+
+    // Libraries listed for other configurations.
+    // Needed only for OLD behavior of CMP0003.
+    std::vector<std::string> WrongConfigLibraries;
+
+    LinkInterface(): Multiplicity(0) {}
+  };
+
+  /** Get the link interface for the given configuration.  Returns 0
+      if the target cannot be linked.  */
+  LinkInterface const* GetLinkInterface(const char* config);
+
+  /** The link implementation specifies the direct library
+      dependencies needed by the object files of the target.  */
+  struct LinkImplementation
+  {
+    // Languages whose runtime libraries must be linked.
+    std::vector<std::string> Languages;
+
+    // Libraries linked directly in this configuration.
+    std::vector<std::string> Libraries;
+
+    // Libraries linked directly in other configurations.
+    // Needed only for OLD behavior of CMP0003.
+    std::vector<std::string> WrongConfigLibraries;
+  };
+  LinkImplementation const* GetLinkImplementation(const char* config);
+
+  /** Link information from the transitive closure of the link
+      implementation and the interfaces of its dependencies.  */
+  struct LinkClosure
+  {
+    // The preferred linker language.
+    std::string LinkerLanguage;
+
+    // Languages whose runtime libraries must be linked.
+    std::vector<std::string> Languages;
+  };
+  LinkClosure const* GetLinkClosure(const char* config);
+
+  /** Strip off leading and trailing whitespace from an item named in
+      the link dependencies of this target.  */
+  std::string CheckCMP0004(std::string const& item);
 
   /** Get the directory in which this target will be built.  If the
       configuration name is given then the generator will add its
@@ -291,7 +327,7 @@ public:
   bool FindSourceFiles();
 
   ///! Return the prefered linker language for this target
-  const char* GetLinkerLanguage(cmGlobalGenerator*);
+  const char* GetLinkerLanguage(const char* config = 0);
 
   ///! Return the rule variable used to create this type of target,
   //  need to add CMAKE_(LANG) for full name.
@@ -326,18 +362,6 @@ public:
                        std::string& realName, std::string& impName,
                        std::string& pdbName, const char* config);
 
-  /** Get the names of the library used to remove existing copies of
-      the library from the build tree either before linking or during
-      a clean step.  This should be called only on a library
-      target.  */
-  void GetLibraryCleanNames(std::string& staticName,
-                            std::string& sharedName,
-                            std::string& sharedSOName,
-                            std::string& sharedRealName,
-                            std::string& importName,
-                            std::string& pdbName,
-                            const char* config);
-
   /** Get the names of the executable needed to generate a build rule
       that takes into account executable version numbers.  This should
       be called only on an executable target.  */
@@ -345,27 +369,19 @@ public:
                           std::string& impName,
                           std::string& pdbName, const char* config);
 
-  /** Get the names of the executable used to remove existing copies
-      of the executable from the build tree either before linking or
-      during a clean step.  This should be called only on an
-      executable target.  */
-  void GetExecutableCleanNames(std::string& name, std::string& realName,
-                               std::string& impName,
-                               std::string& pdbName, const char* config);
-
   /** Add the target output files to the global generator manifest.  */
   void GenerateTargetManifest(const char* config);
 
   /**
    * Compute whether this target must be relinked before installing.
    */
-  bool NeedRelinkBeforeInstall();
+  bool NeedRelinkBeforeInstall(const char* config);
 
   bool HaveBuildTreeRPATH();
   bool HaveInstallTreeRPATH();
 
   /** Return true if builtin chrpath will work for this target */
-  bool IsChrpathUsed();
+  bool IsChrpathUsed(const char* config);
 
   std::string GetInstallNameDirForBuildTree(const char* config,
                                             bool for_xcode = false);
@@ -394,12 +410,21 @@ public:
   // until we have per-target object file properties.
   void GetLanguages(std::set<cmStdString>& languages) const;
 
+  /** Get the list of OS X target architectures to be built.  */
+  void GetAppleArchs(const char* config, std::vector<std::string>& archVec);
+
   /** Return whether this target is an executable with symbol exports
       enabled.  */
   bool IsExecutableWithExports();
 
   /** Return whether this target may be used to link another target.  */
   bool IsLinkable();
+
+  /** Return whether or not the target is for a DLL platform.  */
+  bool IsDLLPlatform() { return this->DLLPlatform; }
+
+  /** Return whether or not the target has a DLL import library.  */
+  bool HasImportLibrary();
 
   /** Return whether this target is a shared library Framework on
       Apple.  */
@@ -414,6 +439,9 @@ public:
 
   /** Get a backtrace from the creation of the target.  */
   cmListFileBacktrace const& GetBacktrace() const;
+
+  /** Get a build-tree directory in which to place target support files.  */
+  std::string GetSupportDirectory() const;
 
 private:
   /**
@@ -465,35 +493,24 @@ private:
                            const LibraryID& lib,
                            DependencyMap& dep_map);
 
-  const char* GetSuffixVariableInternal(TargetType type, bool implib);
-  const char* GetPrefixVariableInternal(TargetType type, bool implib);
-  std::string GetFullNameInternal(TargetType type, const char* config,
-                                  bool implib);
-  void GetFullNameInternal(TargetType type, const char* config, bool implib,
+  void AnalyzeLibDependencies( const cmMakefile& mf );
+
+  const char* GetSuffixVariableInternal(bool implib);
+  const char* GetPrefixVariableInternal(bool implib);
+  std::string GetFullNameInternal(const char* config, bool implib);
+  void GetFullNameInternal(const char* config, bool implib,
                            std::string& outPrefix, std::string& outBase,
                            std::string& outSuffix);
-
-  void GetLibraryNamesInternal(std::string& name,
-                               std::string& soName,
-                               std::string& realName,
-                               std::string& impName,
-                               std::string& pdbName,
-                               TargetType type,
-                               const char* config);
-  void GetExecutableNamesInternal(std::string& name,
-                                  std::string& realName,
-                                  std::string& impName,
-                                  std::string& pdbName,
-                                  TargetType type,
-                                  const char* config);
 
   // Use a makefile variable to set a default for the given property.
   // If the variable is not defined use the given default instead.
   void SetPropertyDefault(const char* property, const char* default_value);
 
-  // Get the full path to the target output directory.
-  std::string GetOutputDir(bool implib);
-  std::string const& ComputeBaseOutputDir(bool implib);
+  // Returns ARCHIVE, LIBRARY, or RUNTIME based on platform and type.
+  const char* GetOutputTargetType(bool implib);
+
+  // Get the target base name.
+  std::string GetOutputName(const char* config, bool implib);
 
   const char* ImportedGetLocation(const char* config);
   const char* NormalGetLocation(const char* config);
@@ -526,8 +543,6 @@ private:
   bool HaveInstallRule;
   std::string InstallPath;
   std::string RuntimeInstallPath;
-  std::string BaseOutputDir;
-  std::string BaseOutputDirImplib;
   std::string Location;
   std::string ExportMacro;
   std::set<cmStdString> Utilities;
@@ -537,25 +552,27 @@ private:
   bool DLLPlatform;
   bool IsImportedTarget;
 
+  // Cache target output paths for each configuration.
+  struct OutputInfo;
+  OutputInfo const* GetOutputInfo(const char* config);
+  void ComputeOutputDir(const char* config, bool implib, std::string& out);
+
   // Cache import information from properties for each configuration.
-  struct ImportInfo
-  {
-    bool NoSOName;
-    std::string Location;
-    std::string SOName;
-    std::string ImportLibrary;
-    cmTargetLinkInterface LinkInterface;
-  };
-  typedef std::map<cmStdString, ImportInfo> ImportInfoMapType;
-  ImportInfoMapType ImportInfoMap;
+  struct ImportInfo;
   ImportInfo const* GetImportInfo(const char* config);
   void ComputeImportInfo(std::string const& desired_config, ImportInfo& info);
 
   cmTargetLinkInformationMap LinkInformation;
 
-  // Link interface.
-  cmTargetLinkInterface* ComputeLinkInterface(const char* config);
-  cmTargetLinkInterfaceMap LinkInterface;
+  bool ComputeLinkInterface(const char* config, LinkInterface& iface);
+
+  void ComputeLinkImplementation(const char* config,
+                                 LinkImplementation& impl);
+  void ComputeLinkClosure(const char* config, LinkClosure& lc);
+
+  void ClearLinkMaps();
+
+  void MaybeInvalidatePropertyCache(const char* prop);
 
   // The cmMakefile instance that owns this target.  This should
   // always be set.

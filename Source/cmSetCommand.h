@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSetCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.20 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSetCommand_h
 #define cmSetCommand_h
 
@@ -66,8 +61,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  set(<variable> <value> [[CACHE <type> <docstring> [FORCE]] | "
-      "PARENT_SCOPE])\n"
+      "  set(<variable> <value>\n"
+      "      [[CACHE <type> <docstring> [FORCE]] | PARENT_SCOPE])\n"
       "Within CMake sets <variable> to the value <value>.  <value> is expanded"
       "  before <variable> is set to it.  If CACHE is present, then the "
       "<variable> is put in the cache. <type> and <docstring> are then "
@@ -87,8 +82,9 @@ public:
       "above the current scope. Each new directory or function creates a new "
       "scope. This command will set the value of a variable into the parent "
       "directory or calling function (whichever is applicable to the case at "
-      "hand) If VALUE is not specified then the variable is removed from the "
-      "parent scope.\n"
+      "hand).\n"
+      "If <value> is not specified then the variable is removed "
+      "instead of set.  See also: the unset() command.\n"
       "  set(<variable> <value1> ... <valueN>)\n"
       "In this case <variable> is set to a semicolon separated list of "
       "values.\n"

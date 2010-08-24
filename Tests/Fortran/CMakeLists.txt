@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project(testf Fortran C)
+project(testf C CXX Fortran)
 message("CTEST_FULL_OUTPUT ")
 set(CMAKE_VERBOSE_MAKEFILE 1)
 message("ENV_FLAGS = $ENV{FFLAGS}")
@@ -7,66 +7,94 @@ message("CMAKE_Fortran_COMPILER_INIT = ${CMAKE_Fortran_COMPILER_INIT}")
 message("CMAKE_Fortran_COMPILER_FULLPATH = ${CMAKE_Fortran_COMPILER_FULLPATH}")
 message("CMAKE_Fortran_COMPILER = ${CMAKE_Fortran_COMPILER}")
 message("CMAKE_Fortran_FLAGS = ${CMAKE_Fortran_FLAGS}")
-add_executable(testf hello.f)
 
+set(_SHARED SHARED)
+if("${CMAKE_Fortran_COMPILER_ID}" MATCHES "^(XL|VisualAge)$")
+  # We do not implement SHARED Fortran libs on AIX yet!
+  # Workaround: Set LINKER_LANGUAGE to C, which uses 'xlc' and Fortran implicits.
+  set(_SHARED STATIC)
+elseif("${CMAKE_Fortran_COMPILER_ID}" STREQUAL "GNU")
+  # g77 2.96 does not support shared libs on Itanium because g2c is not -fPIC
+  execute_process(COMMAND ${CMAKE_Fortran_COMPILER} --version
+                  OUTPUT_VARIABLE output ERROR_VARIABLE output)
+  if("${output}" MATCHES "Red Hat .* 2\\.96")
+    set(_SHARED STATIC)
+  endif()
+endif()
+
+add_library(hello STATIC hello.f)
+add_library(world ${_SHARED} world.f world.def)
+add_executable(testf testf.f)
+target_link_libraries(testf hello world)
 
 function(test_fortran_c_interface_module)
   message(STATUS "Testing FortranCInterface module")
   # test the C to Fortran interface module
   include(FortranCInterface)
+  FortranCInterface_VERIFY()
+  FortranCInterface_VERIFY(CXX)
   if(CMAKE_Fortran_COMPILER_SUPPORTS_F90)
-    if(FORTRAN_C_MODULE_MANGLING_FOUND)
+    if(NOT CMAKE_Fortran_COMPILER_ID MATCHES "SunPro|MIPSpro|PathScale")
+      set(module_expected 1)
+    endif()
+    if(FortranCInterface_MODULE_FOUND OR module_expected)
       set(srcs foo.f)
       set(FORTRAN_FUNCTIONS test_mod:sub)
-    else(FORTRAN_C_MODULE_MANGLING_FOUND)
-      if(CMAKE_Fortran_COMPILER_ID MATCHES "SunPro|MIPSpro")
-        message("${CMAKE_Fortran_COMPILER_ID} compilers do not support"
-          " linking Fortran module procedures from C")
-      else()
-        message("This will fail, but let the user see the error")
-        set(srcs foo.f)
-        set(FORTRAN_FUNCTIONS test_mod:sub)
-      endif()
-    endif(FORTRAN_C_MODULE_MANGLING_FOUND)
+      set(MYC_DEFS TEST_MOD)
+    else()
+      message("${CMAKE_Fortran_COMPILER_ID} compilers do not support"
+        " linking Fortran module procedures from C")
+    endif()
   endif()
-  set(FORTRAN_FUNCTIONS ${FORTRAN_FUNCTIONS} my_sub mysub )
-  set(srcs ${srcs} mysub.f foo.c)
-  create_fortran_c_interface("F_" FORTRAN_FUNCTIONS 
-    "${testf_BINARY_DIR}/foo.h")
+  list(APPEND FORTRAN_FUNCTIONS my_sub mysub)
+  FortranCInterface_HEADER(foo.h
+    MACRO_NAMESPACE "FC_"
+    SYMBOL_NAMESPACE "F_"
+    SYMBOLS ${FORTRAN_FUNCTIONS}
+    )
   include_directories("${testf_BINARY_DIR}")
-  
+
   # if the name mangling is not found for a F90 compiler
   # print out some diagnostic stuff for the dashboard
-  if(CMAKE_Fortran_COMPILER_SUPPORTS_F90)
-    if(NOT FORTRAN_C_MODULE_MANGLING_FOUND)
-      file(GLOB_RECURSE O_OBJFILES
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/CheckFortranLink/*.o"
-        "*.o" )
-      file(GLOB_RECURSE OBJ_OBJFILES 
-        "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/CheckFortranLink/*.obj")
-      find_program(DUMPBIN dumpbin)
-      find_program(NM nm)
-      foreach(ofile ${O_OBJFILES} ${OBJ_OBJFILES})
-        if(DEPENDS)
-          execute_process(COMMAND ${DUMPBIN} /symbols "${ofile}" 
-            OUTPUT_VARIABLE out)
-          message("symbols in ${ofile}:\n${out}")
-        endif()
-        if(NM)
-          execute_process(COMMAND ${NM} "${ofile}" OUTPUT_VARIABLE out)
-          message("symbols in ${ofile}:\n${out}")
-        endif()
-      endforeach()
+  if(NOT FortranCInterface_GLOBAL_FOUND OR
+      (NOT FortranCInterface_MODULE_FOUND AND module_expected) )
+    find_program(FortranCInterface_EXE
+      NAMES FortranCInterface
+      PATHS ${FortranCInterface_BINARY_DIR} ${FortranCInterface_BINARY_DIR}/Debug
+      NO_DEFAULT_PATH
+      )
+    find_program(DUMPBIN dumpbin)
+    find_program(NM nm)
+    if(FortranCInterface_EXE)
+      if(DEPENDS)
+        execute_process(COMMAND ${DUMPBIN} /symbols "${FortranCInterface_EXE}"
+                        OUTPUT_VARIABLE out)
+        message("symbols in ${FortranCInterface_EXE}:\n${out}")
+      endif()
+      if(NM)
+        execute_process(COMMAND ${NM} "${FortranCInterface_EXE}"
+                        OUTPUT_VARIABLE out)
+        message("symbols in ${FortranCInterface_EXE}:\n${out}")
+      endif()
     endif()
   endif()
   message("Fortran = ${CMAKE_Fortran_COMPILER_ID}")
   message("C = ${CMAKE_C_COMPILER_ID}")
-  add_executable(foo ${srcs})
-  if(NOT ("$ENV{EXTRA_FORTRAN_C_LIBS}" STREQUAL ""))
-    message(STATUS 
-      "linking in extra C to Fortran libs $ENV{EXTRA_FORTRAN_C_LIBS}")
-    target_link_libraries(foo $ENV{EXTRA_FORTRAN_C_LIBS})
-  endif()
+
+  add_library(myfort mysub.f ${srcs})
+
+  add_library(myc myc.c)
+  target_link_libraries(myc myfort)
+  set_property(TARGET myc PROPERTY COMPILE_DEFINITIONS ${MYC_DEFS})
+
+  add_library(mycxx mycxx.cxx)
+  target_link_libraries(mycxx myc)
+
+  add_executable(mainc mainc.c)
+  target_link_libraries(mainc myc)
+  add_executable(maincxx maincxx.c)
+  target_link_libraries(maincxx mycxx)
+
   # print out some stuff to help debug on machines via cdash
   file(READ "${testf_BINARY_DIR}/foo.h" fooh)
   message("foo.h contents:\n${fooh}")
@@ -138,16 +166,25 @@ if(TEST_MODULE_DEPENDS)
   # Make sure it uses the same build configuration as this test.
   if(CMAKE_CONFIGURATION_TYPES)
     set(External_CONFIG_TYPE -C "${CMAKE_CFG_INTDIR}")
+    set(External_BUILD_TYPE)
   else(CMAKE_CONFIGURATION_TYPES)
     set(External_CONFIG_TYPE)
+    set(External_BUILD_TYPE -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE})
   endif(CMAKE_CONFIGURATION_TYPES)
+  set(External_SOURCE_DIR "${testf_SOURCE_DIR}/External")
+  set(External_BINARY_DIR "${testf_BINARY_DIR}/External")
+  if("${testf_BINARY_DIR}" MATCHES " ")
+    # Our build tree has a space, so the build tool supports spaces.
+    # Test using modules from a path with spaces.
+    set(External_BINARY_DIR "${External_BINARY_DIR} Build")
+  endif()
   add_custom_command(
     OUTPUT ${testf_BINARY_DIR}/ExternalProject
     COMMAND ${CMAKE_CTEST_COMMAND}
     ARGS ${External_CONFIG_TYPE}
          --build-and-test
-         ${testf_SOURCE_DIR}/External
-         ${testf_BINARY_DIR}/External
+         ${External_SOURCE_DIR}
+         ${External_BINARY_DIR}
          --build-noclean
          --build-two-config
          --build-project ExtFort
@@ -159,6 +196,7 @@ if(TEST_MODULE_DEPENDS)
                          -DCMAKE_Fortran_FLAGS_RELEASE:STRING=${CMAKE_Fortran_FLAGS_RELEASE}
                          -DCMAKE_Fortran_FLAGS_MINSIZEREL:STRING=${CMAKE_Fortran_FLAGS_MINSIZEREL}
                          -DCMAKE_Fortran_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}
+                         ${External_BUILD_TYPE}
          )
   add_custom_target(ExternalTarget ALL DEPENDS ${testf_BINARY_DIR}/ExternalProject)
 

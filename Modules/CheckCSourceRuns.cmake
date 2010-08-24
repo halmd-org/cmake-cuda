@@ -1,9 +1,8 @@
-# - Check if the C source code provided in the SOURCE argument compiles and runs.
-# CHECK_C_SOURCE_RUNS(SOURCE VAR)
-#
-#  SOURCE   - source code to try to compile
-#  VAR      - variable to store the result, 1 for success, empty for failure
-#
+# - Check if the given C source code compiles and runs.
+# CHECK_C_SOURCE_RUNS(<code> <var>)
+#  <code>   - source code to try to compile
+#  <var>    - variable to store the result
+#             (1 for success, empty for failure)
 # The following variables may be set before calling this macro to
 # modify the way the check is run:
 #
@@ -11,6 +10,19 @@
 #  CMAKE_REQUIRED_DEFINITIONS = list of macros to define (-DFOO=bar)
 #  CMAKE_REQUIRED_INCLUDES = list of include directories
 #  CMAKE_REQUIRED_LIBRARIES = list of libraries to link
+
+#=============================================================================
+# Copyright 2006-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 MACRO(CHECK_C_SOURCE_RUNS SOURCE VAR)
   IF("${VAR}" MATCHES "^${VAR}$")

@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmOrderDirectories.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-12-31 15:14:30 $
-  Version:   $Revision: 1.4.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmOrderDirectories.h"
 
 #include "cmGlobalGenerator.h"
@@ -372,6 +367,15 @@ cmOrderDirectories
 //----------------------------------------------------------------------------
 void
 cmOrderDirectories
+::AddLanguageDirectories(std::vector<std::string> const& dirs)
+{
+  this->LanguageDirectories.insert(this->LanguageDirectories.end(),
+                                   dirs.begin(), dirs.end());
+}
+
+//----------------------------------------------------------------------------
+void
+cmOrderDirectories
 ::SetImplicitDirectories(std::set<cmStdString> const& implicitDirs)
 {
   this->ImplicitDirectories = implicitDirs;
@@ -393,32 +397,16 @@ void cmOrderDirectories::CollectOriginalDirectories()
   // Add user directories specified for inclusion.  These should be
   // indexed first so their original order is preserved as much as
   // possible subject to the constraints.
-  for(std::vector<std::string>::const_iterator
-        di = this->UserDirectories.begin();
-      di != this->UserDirectories.end(); ++di)
-    {
-    // We never explicitly specify implicit link directories.
-    if(this->ImplicitDirectories.find(*di) !=
-       this->ImplicitDirectories.end())
-      {
-      continue;
-      }
-
-    // Skip the empty string.
-    if(di->empty())
-      {
-      continue;
-      }
-
-    // Add this directory.
-    this->AddOriginalDirectory(*di);
-    }
+  this->AddOriginalDirectories(this->UserDirectories);
 
   // Add directories containing constraints.
   for(unsigned int i=0; i < this->ConstraintEntries.size(); ++i)
     {
     this->ConstraintEntries[i]->AddDirectory();
     }
+
+  // Add language runtime directories last.
+  this->AddOriginalDirectories(this->LanguageDirectories);
 }
 
 //----------------------------------------------------------------------------
@@ -436,6 +424,32 @@ int cmOrderDirectories::AddOriginalDirectory(std::string const& dir)
     }
 
   return i->second;
+}
+
+//----------------------------------------------------------------------------
+void
+cmOrderDirectories
+::AddOriginalDirectories(std::vector<std::string> const& dirs)
+{
+  for(std::vector<std::string>::const_iterator di = dirs.begin();
+      di != dirs.end(); ++di)
+    {
+    // We never explicitly specify implicit link directories.
+    if(this->ImplicitDirectories.find(*di) !=
+       this->ImplicitDirectories.end())
+      {
+      continue;
+      }
+
+    // Skip the empty string.
+    if(di->empty())
+      {
+      continue;
+      }
+
+    // Add this directory.
+    this->AddOriginalDirectory(*di);
+    }
 }
 
 //----------------------------------------------------------------------------

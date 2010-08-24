@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: QCMakeCacheView.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-03-31 14:29:18 $
-  Version:   $Revision: 1.26.2.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "QCMakeCacheView.h"
 
@@ -23,6 +18,8 @@
 #include <QStyle>
 #include <QKeyEvent>
 #include <QSortFilterProxyModel>
+#include <QMetaProperty>
+#include <QApplication>
 
 #include "QCMakeWidgets.h"
 
@@ -138,10 +135,9 @@ QCMakeCacheView::QCMakeCacheView(QWidget* p)
   QCMakeCacheModelDelegate* delegate = new QCMakeCacheModelDelegate(this);
   this->setItemDelegate(delegate);
   
-  this->setEditTriggers(QAbstractItemView::DoubleClicked |
-                        QAbstractItemView::SelectedClicked |
-                        QAbstractItemView::EditKeyPressed |
-                        QAbstractItemView::AnyKeyPressed);
+  this->setUniformRowHeights(true);
+ 
+  this->setEditTriggers(QAbstractItemView::AllEditTriggers);
 
   // tab, backtab doesn't step through items
   this->setTabKeyNavigation(false);
@@ -249,18 +245,18 @@ void QCMakeCacheModel::setProperties(const QCMakePropertyList& props)
     QCMakePropertyList newP2 = newProps2.toList();
     qSort(newP);
     qSort(newP2);
-    int rowCount = 0;
+    int row_count = 0;
     foreach(QCMakeProperty p, newP)
     {
-      this->insertRow(rowCount);
-      this->setPropertyData(this->index(rowCount, 0), p, true);
-      rowCount++;
+      this->insertRow(row_count);
+      this->setPropertyData(this->index(row_count, 0), p, true);
+      row_count++;
     }
     foreach(QCMakeProperty p, newP2)
     {
-      this->insertRow(rowCount);
-      this->setPropertyData(this->index(rowCount, 0), p, false);
-      rowCount++;
+      this->insertRow(row_count);
+      this->setPropertyData(this->index(row_count, 0), p, false);
+      row_count++;
     }
   }
   else if(this->View == GroupView)
@@ -274,7 +270,7 @@ void QCMakeCacheModel::setProperties(const QCMakePropertyList& props)
     
     foreach(QString key, newPropsTree.keys())
       {
-      QCMakePropertyList props = newPropsTree[key];
+      QCMakePropertyList props2 = newPropsTree[key];
 
       QList<QStandardItem*> parentItems;
       parentItems.append(
@@ -285,8 +281,10 @@ void QCMakeCacheModel::setProperties(const QCMakePropertyList& props)
       parentItems[1]->setData(QBrush(QColor(255,100,100)), Qt::BackgroundColorRole);
       root->appendRow(parentItems);
 
-      foreach(QCMakeProperty prop, props)
+      int num = props2.size();
+      for(int i=0; i<num; i++)
         {
+        QCMakeProperty prop = props2[i];
         QList<QStandardItem*> items;
         items.append(new QStandardItem());
         items.append(new QStandardItem());
@@ -297,14 +295,16 @@ void QCMakeCacheModel::setProperties(const QCMakePropertyList& props)
     
     foreach(QString key, newPropsTree2.keys())
       {
-      QCMakePropertyList props = newPropsTree2[key];
+      QCMakePropertyList props2 = newPropsTree2[key];
 
       QStandardItem* parentItem = 
         new QStandardItem(key.isEmpty() ? tr("Ungrouped Entries") : key);
       root->appendRow(parentItem);
 
-      foreach(QCMakeProperty prop, props)
+      int num = props2.size();
+      for(int i=0; i<num; i++)
         {
+        QCMakeProperty prop = props2[i];
         QList<QStandardItem*> items;
         items.append(new QStandardItem());
         items.append(new QStandardItem());
@@ -365,6 +365,11 @@ void QCMakeCacheModel::setPropertyData(const QModelIndex& idx1,
   }
   this->setData(idx2, prop.Help, QCMakeCacheModel::HelpRole);
 
+  if (!prop.Strings.isEmpty())
+  {
+    this->setData(idx1, prop.Strings, QCMakeCacheModel::StringsRole);
+  }
+
   if(isNew)
   {
     this->setData(idx1, QBrush(QColor(255,100,100)), Qt::BackgroundColorRole);
@@ -381,6 +386,7 @@ void QCMakeCacheModel::getPropertyData(const QModelIndex& idx1,
   prop.Help = this->data(idx1, HelpRole).toString();
   prop.Type = static_cast<QCMakeProperty::PropertyType>(this->data(idx1, TypeRole).toInt());
   prop.Advanced = this->data(idx1, AdvancedRole).toBool();
+  prop.Strings = this->data(idx1, QCMakeCacheModel::StringsRole).toStringList();
   if(prop.Type == QCMakeProperty::BOOL)
   {
     int check = this->data(idx2, Qt::CheckStateRole).toInt();
@@ -573,10 +579,20 @@ QWidget* QCMakeCacheModelDelegate::createEditor(QWidget* p,
         SLOT(setFileDialogFlag(bool)));
     return editor;
     }
+  else if(type == QCMakeProperty::STRING &&
+          var.data(QCMakeCacheModel::StringsRole).isValid())
+    {
+    QCMakeComboBox* editor = 
+      new QCMakeComboBox(p, var.data(QCMakeCacheModel::StringsRole).toStringList());
+    editor->setFrame(false);
+    return editor;
+    }
 
-  return new QLineEdit(p);
+  QLineEdit* editor = new QLineEdit(p);
+  editor->setFrame(false);
+  return editor;
 }
-  
+
 bool QCMakeCacheModelDelegate::editorEvent(QEvent* e, QAbstractItemModel* model, 
        const QStyleOptionViewItem& option, const QModelIndex& index)
 {
@@ -617,19 +633,83 @@ bool QCMakeCacheModelDelegate::editorEvent(QEvent* e, QAbstractItemModel* model,
 
   Qt::CheckState state = (static_cast<Qt::CheckState>(value.toInt()) == Qt::Checked
                           ? Qt::Unchecked : Qt::Checked);
-  return model->setData(index, state, Qt::CheckStateRole);
+  bool success = model->setData(index, state, Qt::CheckStateRole);
+  if(success)
+    {
+    this->recordChange(model, index);
+    }
+  return success;
 }
   
-bool QCMakeCacheModelDelegate::eventFilter(QObject* object, QEvent* event)
+// Issue 205903 fixed in Qt 4.5.0.
+// Can remove this function and FileDialogFlag when minimum Qt version is 4.5
+bool QCMakeCacheModelDelegate::eventFilter(QObject* object, QEvent* evt)
 {
   // workaround for what looks like a bug in Qt on Mac OS X
   // where it doesn't create a QWidget wrapper for the native file dialog
   // so the Qt library ends up assuming the focus was lost to something else
-  if(event->type() == QEvent::FocusOut && this->FileDialogFlag)
+
+  if(evt->type() == QEvent::FocusOut && this->FileDialogFlag)
     {
     return false;
     }
-  return QItemDelegate::eventFilter(object, event);
+  return QItemDelegate::eventFilter(object, evt);
 }
 
+void QCMakeCacheModelDelegate::setModelData(QWidget* editor,
+  QAbstractItemModel* model, const QModelIndex& index ) const
+{
+  QItemDelegate::setModelData(editor, model, index);
+  const_cast<QCMakeCacheModelDelegate*>(this)->recordChange(model, index);
+}
   
+QSize QCMakeCacheModelDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const
+{
+  QSize sz = QItemDelegate::sizeHint(option, index);
+  QStyle *style = QApplication::style();
+
+  // increase to checkbox size
+  QStyleOptionButton opt;
+  opt.QStyleOption::operator=(option);
+  sz = sz.expandedTo(style->subElementRect(QStyle::SE_ViewItemCheckIndicator, &opt, NULL).size());
+
+  return sz;
+}
+  
+QSet<QCMakeProperty> QCMakeCacheModelDelegate::changes() const
+{
+  return mChanges;
+}
+
+void QCMakeCacheModelDelegate::clearChanges()
+{
+  mChanges.clear();
+}
+
+void QCMakeCacheModelDelegate::recordChange(QAbstractItemModel* model, const QModelIndex& index)
+{
+  QModelIndex idx = index;
+  QAbstractItemModel* mymodel = model;
+  while(qobject_cast<QAbstractProxyModel*>(mymodel))
+    {
+    idx = static_cast<QAbstractProxyModel*>(mymodel)->mapToSource(idx);
+    mymodel = static_cast<QAbstractProxyModel*>(mymodel)->sourceModel();
+    }
+  QCMakeCacheModel* cache_model = qobject_cast<QCMakeCacheModel*>(mymodel);
+  if(cache_model && idx.isValid())
+    {
+    QCMakeProperty prop;
+    idx = idx.sibling(idx.row(), 0);
+    cache_model->getPropertyData(idx, prop);
+    
+    // clean out an old one
+    QSet<QCMakeProperty>::iterator iter = mChanges.find(prop);
+    if(iter != mChanges.end())
+      {
+      mChanges.erase(iter);
+      }
+    // now add the new item
+    mChanges.insert(prop);
+    }
+}
+

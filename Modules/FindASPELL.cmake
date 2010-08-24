@@ -6,16 +6,19 @@
 #  ASPELL_LIBRARIES - The libraries needed to use ASPELL
 #  ASPELL_DEFINITIONS - Compiler switches required for using ASPELL
 
-# Copyright (c) 2006, Alexander Neundorf, <neundorf@kde.org>
+#=============================================================================
+# Copyright 2006-2009 Kitware, Inc.
+# Copyright 2006 Alexander Neundorf <neundorf@kde.org>
 #
-# Redistribution and use is allowed according to the terms of the BSD license.
-# For details see the accompanying COPYING-CMAKE-SCRIPTS file.
-
-
-IF (ASPELL_INCLUDE_DIR AND ASPELL_LIBRARIES)
-  # Already in cache, be silent
-  SET(ASPELL_FIND_QUIETLY TRUE)
-ENDIF (ASPELL_INCLUDE_DIR AND ASPELL_LIBRARIES)
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 FIND_PATH(ASPELL_INCLUDE_DIR aspell.h )
 
@@ -25,6 +28,5 @@ FIND_LIBRARY(ASPELL_LIBRARIES NAMES aspell aspell-15 libaspell-15 libaspell)
 # all listed variables are TRUE
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(ASPELL DEFAULT_MSG ASPELL_LIBRARIES ASPELL_INCLUDE_DIR)
-
 
 MARK_AS_ADVANCED(ASPELL_INCLUDE_DIR ASPELL_LIBRARIES)

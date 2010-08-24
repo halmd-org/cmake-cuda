@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmake.h,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:54 $
-  Version:   $Revision: 1.109.2.7 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 // This class represents a cmake invocation. It is the top level class when
 // running cmake. Most cmake based GUIS should primarily create an instance
 // of this class and communicate with it.
@@ -126,12 +121,6 @@ class cmake
       return this->StartOutputDirectory.c_str();
     }
   //@}
-
-  /**
-   * Dump documentation to a file. If 0 is returned, the
-   * operation failed.
-   */
-  int DumpDocumentationToFile(std::ostream&);
 
   /**
    * Handle a command line invocation of cmake.
@@ -356,6 +345,12 @@ class cmake
   /** Display a message to the user.  */
   void IssueMessage(cmake::MessageType t, std::string const& text,
                     cmListFileBacktrace const& backtrace);
+  //  * run the --build option
+  int Build(const std::string& dir,
+            const std::string& target,
+            const std::string& config,
+            const std::vector<std::string>& nativeOptions,
+            bool clean);
 protected:
   void InitializeProperties();
   int HandleDeleteCacheVariables(const char* var);
@@ -392,8 +387,6 @@ protected:
   bool SuppressDevWarnings;
   bool DoSuppressDevWarnings;
 
-  ///! return true if the same cmake was used to make the cache.
-  bool CacheVersionMatches();
   ///! read in a cmake list file to initialize the cache
   void ReadListFile(const char *path);
 
@@ -415,6 +408,10 @@ protected:
 
   void GenerateGraphViz(const char* fileName) const;
 
+  static int SymlinkLibrary(std::vector<std::string>& args);
+  static int SymlinkExecutable(std::vector<std::string>& args);
+  static bool SymlinkInternal(std::string const& file,
+                              std::string const& link);
   static int ExecuteEchoColor(std::vector<std::string>& args);
   static int ExecuteLinkScript(std::vector<std::string>& args);
   static int VisualStudioLink(std::vector<std::string>& args, int type);

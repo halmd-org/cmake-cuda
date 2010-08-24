@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsFortranLexer.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-04-24 16:56:25 $
-  Version:   $Revision: 1.10.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #line 2 "cmDependsFortranLexer.cxx"
 
 #line 4 "cmDependsFortranLexer.cxx"
@@ -617,22 +612,17 @@ static yyconst flex_int16_t yy_chk[517] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "cmDependsFortranLexer.in.l"
 #line 2 "cmDependsFortranLexer.in.l"
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsFortranLexer.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-04-24 16:56:25 $
-  Version:   $Revision: 1.10.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 /*-------------------------------------------------------------------------
   Portions of this source have been derived from makedepf90 version 2.8.8,
 
@@ -655,6 +645,7 @@ Modify cmDependsFortranLexer.cxx:
   - remove TABs
   - remove "yyscanner" argument from these methods:
       yy_fatal_error, cmDependsFortran_yyalloc, cmDependsFortran_yyrealloc, cmDependsFortran_yyfree
+  - remove "yyscanner = NULL" from end of cmDependsFortran_yylex_destroy
   - remove all YY_BREAK lines occurring right after return statements
   - change while ( 1 ) to for(;;)
 
@@ -2332,7 +2323,6 @@ int cmDependsFortran_yylex_destroy  (yyscan_t yyscanner)
 
     /* Destroy the main struct (reentrant only). */
     cmDependsFortran_yyfree ( yyscanner , yyscanner );
-    yyscanner = NULL;
     return 0;
 }
 

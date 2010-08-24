@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmXMLParser.h,v $
-  Language:  C++
-  Date:      $Date: 2007-07-26 18:36:06 $
-  Version:   $Revision: 1.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmXMLParser_h
 #define cmXMLParser_h
 
@@ -91,6 +86,9 @@ protected:
   //! Called by Parse to report an XML syntax error.
   virtual void ReportXmlParseError();  
 
+  /** Called by ReportXmlParseError with basic error info.  */
+  virtual void ReportError(int line, int column, const char* msg);
+
   //! Utility for convenience of subclasses.  Wraps isspace C library
   // routine.
   static int IsSpace(char c);  
@@ -101,6 +99,9 @@ protected:
   
   //! Send the given c-style string to the XML parser.
   int ParseBuffer(const char* buffer);
+
+  /** Helps subclasses search for attributes on elements.  */
+  static const char* FindAttribute(const char** atts, const char* attribute);
 
   //! Callbacks for the expat
   friend void cmXMLParserStartElement(void*, const char*, const char**);

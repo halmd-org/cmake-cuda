@@ -29,6 +29,19 @@
 #     FLTK_FORMS_LIBRARY  = the full path to fltk_forms.lib
 #     FLTK_IMAGES_LIBRARY = the full path to fltk_images.lib
 
+#=============================================================================
+# Copyright 2001-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 IF(NOT FLTK_SKIP_OPENGL)
   FIND_PACKAGE(OpenGL)
 ENDIF()
@@ -45,7 +58,7 @@ IF(WIN32)
 ENDIF(WIN32)
 
 IF(UNIX)
-  INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
+  INCLUDE(FindX11)
   FIND_LIBRARY(FLTK_MATH_LIBRARY m)
   SET( FLTK_PLATFORM_DEPENDENT_LIBS ${X11_LIBRARIES} ${FLTK_MATH_LIBRARY})
 ENDIF(UNIX)

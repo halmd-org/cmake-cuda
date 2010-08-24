@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestStartCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:59 $
-  Version:   $Revision: 1.5.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestStartCommand_h
 #define cmCTestStartCommand_h
 
@@ -28,7 +23,7 @@ class cmCTestStartCommand : public cmCTestCommand
 {
 public:
 
-  cmCTestStartCommand() {}
+  cmCTestStartCommand();
 
   /**
    * This is a virtual constructor for the command.
@@ -38,6 +33,7 @@ public:
     cmCTestStartCommand* ni = new cmCTestStartCommand;
     ni->CTest = this->CTest;
     ni->CTestScriptHandler = this->CTestScriptHandler;
+    ni->CreateNewTag = this->CreateNewTag;
     return ni;
     }
 
@@ -47,6 +43,14 @@ public:
    */
   virtual bool InitialPass(std::vector<std::string> const& args,
                            cmExecutionStatus &status);
+
+  /**
+   * Will this invocation of ctest_start create a new TAG file?
+   */
+  bool ShouldCreateNewTag()
+    {
+    return this->CreateNewTag;
+    }
 
   /**
    * The name of the command as specified in CMakeList.txt.
@@ -67,16 +71,21 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ctest_start(Model [TRACK <track>] [source [binary]])\n"
+      "  ctest_start(Model [TRACK <track>] [APPEND] [source [binary]])\n"
       "Starts the testing for a given model. The command should be called "
       "after the binary directory is initialized. If the 'source' and "
       "'binary' directory are not specified, it reads the "
       "CTEST_SOURCE_DIRECTORY and CTEST_BINARY_DIRECTORY. If the track is "
-      "specified, the submissions will go to the specified track.";
+      "specified, the submissions will go to the specified track. "
+      "If APPEND is used, the existing TAG is used rather than "
+      "creating a new one based on the current time stamp.";
     }
 
   cmTypeMacro(cmCTestStartCommand, cmCTestCommand);
 
+private:
+  bool InitialCheckout(std::ostream& ofs, std::string const& sourceDir);
+  bool CreateNewTag;
 };
 
 

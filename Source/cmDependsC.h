@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsC.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:50 $
-  Version:   $Revision: 1.20.10.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmDependsC_h
 #define cmDependsC_h
 
@@ -30,7 +25,8 @@ public:
   /** Checking instances need to know the build directory name and the
       relative path from the build directory to the target file.  */
   cmDependsC();
-  cmDependsC(cmLocalGenerator* lg, const char* targetDir, const char* lang);
+  cmDependsC(cmLocalGenerator* lg, const char* targetDir, const char* lang,
+             const std::map<std::string, DependencyVector>* validDeps);
 
   /** Virtual destructor to cleanup subclasses properly.  */
   virtual ~cmDependsC();
@@ -83,6 +79,7 @@ public:
     bool Used;
   };
 protected:
+  const std::map<std::string, DependencyVector>* ValidDeps;
   std::set<cmStdString> Encountered;
   std::queue<UnscannedEntry> Unscanned;
   t_CharBuffer Buffer;

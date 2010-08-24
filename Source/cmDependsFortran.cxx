@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsFortran.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-03-23 17:58:40 $
-  Version:   $Revision: 1.46.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmDependsFortran.h"
 
 #include "cmSystemTools.h"
@@ -447,9 +442,11 @@ cmDependsFortran
   for(std::set<cmStdString>::const_iterator i = info.Includes.begin();
       i != info.Includes.end(); ++i)
     {
-    makeDepends << obj << ": "
-       << cmSystemTools::ConvertToOutputPath(i->c_str()).c_str()
-       << std::endl;
+    makeDepends << obj << ": " <<
+      this->LocalGenerator->Convert(i->c_str(),
+                                    cmLocalGenerator::HOME_OUTPUT,
+                                    cmLocalGenerator::MAKEFILE)
+                << std::endl;
     internalDepends << " " << i->c_str() << std::endl;
     }
   makeDepends << std::endl;
@@ -496,7 +493,7 @@ cmDependsFortran
       std::string stampFile =
         this->LocalGenerator->Convert(required->second.c_str(),
                                       cmLocalGenerator::HOME_OUTPUT,
-                                      cmLocalGenerator::SHELL);
+                                      cmLocalGenerator::MAKEFILE);
       makeDepends << obj << ": " << stampFile << "\n";
       }
     else
@@ -509,7 +506,7 @@ cmDependsFortran
         module =
           this->LocalGenerator->Convert(module.c_str(),
                                         cmLocalGenerator::HOME_OUTPUT,
-                                        cmLocalGenerator::SHELL);
+                                        cmLocalGenerator::MAKEFILE);
         makeDepends << obj << ": " << module << "\n";
         }
       }

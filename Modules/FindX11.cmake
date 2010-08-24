@@ -6,6 +6,7 @@
 #
 # and also the following more fine grained variables:
 # Include paths: X11_ICE_INCLUDE_PATH,          X11_ICE_LIB,        X11_ICE_FOUND
+#                X11_X11_INCLUDE_PATH,          X11_X11_LIB
 #                X11_Xaccessrules_INCLUDE_PATH,                     X11_Xaccess_FOUND
 #                X11_Xaccessstr_INCLUDE_PATH,                       X11_Xaccess_FOUND
 #                X11_Xau_INCLUDE_PATH,          X11_Xau_LIB,        X11_Xau_FOUND
@@ -21,6 +22,7 @@
 #                X11_xf86vmode_INCLUDE_PATH,                        X11_xf86vmode_FOUND
 #                X11_Xfixes_INCLUDE_PATH,       X11_Xfixes_LIB,     X11_Xfixes_FOUND
 #                X11_Xft_INCLUDE_PATH,          X11_Xft_LIB,        X11_Xft_FOUND
+#                X11_Xi_INCLUDE_PATH,           X11_Xi_LIB,         X11_Xi_FOUND
 #                X11_Xinerama_INCLUDE_PATH,     X11_Xinerama_LIB,   X11_Xinerama_FOUND
 #                X11_Xinput_INCLUDE_PATH,       X11_Xinput_LIB,     X11_Xinput_FOUND
 #                X11_Xkb_INCLUDE_PATH,                              X11_Xkb_FOUND
@@ -34,8 +36,18 @@
 #                X11_Xutil_INCLUDE_PATH,                            X11_Xutil_FOUND
 #                X11_Xv_INCLUDE_PATH,           X11_Xv_LIB,         X11_Xv_FOUND
 
-# Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-# See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
+#=============================================================================
+# Copyright 2001-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 IF (UNIX)
   SET(X11_FOUND 0)
@@ -80,6 +92,7 @@ IF (UNIX)
   FIND_PATH(X11_xf86vmode_INCLUDE_PATH X11/extensions/xf86vmode.h    ${X11_INC_SEARCH_PATH})
   FIND_PATH(X11_Xfixes_INCLUDE_PATH X11/extensions/Xfixes.h          ${X11_INC_SEARCH_PATH})
   FIND_PATH(X11_Xft_INCLUDE_PATH X11/Xft/Xft.h                       ${X11_INC_SEARCH_PATH})
+  FIND_PATH(X11_Xi_INCLUDE_PATH X11/extensions/XInput.h              ${X11_INC_SEARCH_PATH})
   FIND_PATH(X11_Xinerama_INCLUDE_PATH X11/extensions/Xinerama.h      ${X11_INC_SEARCH_PATH})
   FIND_PATH(X11_Xinput_INCLUDE_PATH X11/extensions/XInput.h          ${X11_INC_SEARCH_PATH})
   FIND_PATH(X11_Xkb_INCLUDE_PATH X11/extensions/XKB.h                ${X11_INC_SEARCH_PATH})
@@ -109,6 +122,7 @@ IF (UNIX)
   FIND_LIBRARY(X11_Xext_LIB Xext             ${X11_LIB_SEARCH_PATH})
   FIND_LIBRARY(X11_Xfixes_LIB Xfixes         ${X11_LIB_SEARCH_PATH})
   FIND_LIBRARY(X11_Xft_LIB Xft               ${X11_LIB_SEARCH_PATH})
+  FIND_LIBRARY(X11_Xi_LIB Xi                 ${X11_LIB_SEARCH_PATH})
   FIND_LIBRARY(X11_Xinerama_LIB Xinerama     ${X11_LIB_SEARCH_PATH})
   FIND_LIBRARY(X11_Xinput_LIB Xi             ${X11_LIB_SEARCH_PATH})
   FIND_LIBRARY(X11_Xpm_LIB Xpm               ${X11_LIB_SEARCH_PATH})
@@ -207,6 +221,11 @@ IF (UNIX)
       SET(X11_XTest_FOUND TRUE)
       SET(X11_INCLUDE_DIR ${X11_INCLUDE_DIR} ${X11_XTest_INCLUDE_PATH})
   ENDIF (X11_XTest_INCLUDE_PATH AND X11_XTest_LIB)
+
+  IF (X11_Xi_INCLUDE_PATH AND X11_Xi_LIB)
+     SET(X11_Xi_FOUND TRUE)
+     SET(X11_INCLUDE_DIR ${X11_INCLUDE_DIR} ${X11_Xi_INCLUDE_PATH})
+  ENDIF (X11_Xi_INCLUDE_PATH  AND X11_Xi_LIB)
 
   IF (X11_Xinerama_INCLUDE_PATH AND X11_Xinerama_LIB)
      SET(X11_Xinerama_FOUND TRUE)
@@ -385,6 +404,8 @@ IF (UNIX)
     X11_Xxf86misc_LIB
     X11_xf86misc_INCLUDE_PATH
     X11_xf86vmode_INCLUDE_PATH
+    X11_Xi_LIB
+    X11_Xi_INCLUDE_PATH
     X11_Xinerama_LIB
     X11_Xinerama_INCLUDE_PATH
     X11_XTest_LIB

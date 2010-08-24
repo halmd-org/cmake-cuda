@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSetCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:53 $
-  Version:   $Revision: 1.33.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmSetCommand.h"
 
 // cmSetCommand
@@ -79,7 +74,6 @@ bool cmSetCommand
   cmCacheManager::CacheEntryType type 
     = cmCacheManager::STRING; // required if cache
   const char* docstring = 0; // required if cache
-  std::string::size_type cacheStart = 0;
   
   unsigned int ignoreLastArgs = 0;
   // look for PARENT_SCOPE argument
@@ -135,9 +129,9 @@ bool cmSetCommand
   // we should be nice and try to catch some simple screwups if the last or
   // next to last args are CACHE then they screwed up.  If they used FORCE
   // without CACHE they screwed up
-  if (args[args.size() - 1] == "CACHE" ||
-      args.size() > 1 && args[args.size() - 2] == "CACHE" ||
-      force && !cache)
+  if ((args[args.size() - 1] == "CACHE") ||
+      (args.size() > 1 && args[args.size() - 2] == "CACHE") ||
+      (force && !cache))
     {
     this->SetError("given invalid arguments for CACHE mode.");
     return false;
@@ -145,7 +139,7 @@ bool cmSetCommand
   
   if(cache)
     {
-    cacheStart = args.size() - 3 - (force ? 1 : 0);
+    std::string::size_type cacheStart = args.size() - 3 - (force ? 1 : 0);
     type = cmCacheManager::StringToType(args[cacheStart+1].c_str());
     docstring = args[cacheStart+2].c_str();
     }

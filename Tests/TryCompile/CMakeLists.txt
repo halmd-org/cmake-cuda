@@ -106,6 +106,14 @@ ELSE(CMAKE_ANSI_FOR_SCOPE)
    MESSAGE("Compiler does not support ansi for scope")
 ENDIF(CMAKE_ANSI_FOR_SCOPE)
 
+MESSAGE("Testing try_compile project mode")
+TRY_COMPILE(TEST_INNER
+  ${TryCompile_BINARY_DIR}/CMakeFiles/Inner
+  ${TryCompile_SOURCE_DIR}/Inner
+  TryCompileInner innerexe
+  OUTPUT_VARIABLE output)
+TEST_ASSERT(TEST_INNER "try_compile project mode failed:\n${output}")
+
 ADD_EXECUTABLE(TryCompile pass.c)
 
 ######################################
@@ -134,6 +142,17 @@ IF(NOT "${TRY_OUT}" MATCHES "hello world")
   MESSAGE(SEND_ERROR " TRY_OUT didn't contain \"hello world\": \"${TRY_OUT}\"")
 ENDIF(NOT "${TRY_OUT}" MATCHES "hello world")
 
+TRY_RUN(ARG_TEST_RUN ARG_TEST_COMPILE
+    ${TryCompile_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp  
+    ${TryCompile_SOURCE_DIR}/expect_arg.c
+    OUTPUT_VARIABLE TRY_OUT
+    ARGS arg1 arg2)
+IF(NOT ARG_TEST_COMPILE)
+  MESSAGE(SEND_ERROR "expect_arg failed compiling: ${TRY_OUT}")
+ENDIF(NOT ARG_TEST_COMPILE)
+IF(NOT "${ARG_TEST_RUN}" STREQUAL "0")
+  MESSAGE(SEND_ERROR "expect_arg failed running with exit code ${ARG_TEST_RUN} ${TRY_OUT}")
+ENDIF(NOT "${ARG_TEST_RUN}" STREQUAL "0")
 
 # try to run a file that should compile and run, but return an error
 TRY_RUN(SHOULD_EXIT_WITH_ERROR SHOULD_COMPILE
@@ -192,4 +211,18 @@ TEST_ASSERT(CXX_BUILD_SHOULD_WORK "CHECK_CXX_SOURCE_COMPILES() failed")
 TEST_FAIL(CXX_RUN_SHOULD_FAIL "CHECK_CXX_SOURCE_RUNS() succeeded, but should have failed")
 TEST_ASSERT(CXX_RUN_SHOULD_WORK "CHECK_CXX_SOURCE_RUNS() failed")
 
+FOREACH(lang C CXX)
+  IF(NOT "${CMAKE_${lang}_COMPILER_ID}" MATCHES "^(PathScale)$")
+    SET(${lang}_DD --)
+  ENDIF()
+ENDFOREACH()
 
+UNSET(C_BOGUS_FLAG CACHE)
+INCLUDE(CheckCCompilerFlag)
+CHECK_C_COMPILER_FLAG(${C_DD}-_this_is_not_a_flag_ C_BOGUS_FLAG)
+TEST_FAIL(C_BOGUS_FLAG "CHECK_C_COMPILER_FLAG() succeeded, but should have failed")
+
+UNSET(CXX_BOGUS_FLAG CACHE)
+INCLUDE(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG(${CXX_DD}-_this_is_not_a_flag_ CXX_BOGUS_FLAG)
+TEST_FAIL(CXX_BOGUS_FLAG "CHECK_CXX_COMPILER_FLAG() succeeded, but should have failed")

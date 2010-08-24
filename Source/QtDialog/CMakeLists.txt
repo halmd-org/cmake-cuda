@@ -1,3 +1,14 @@
+#=============================================================================
+# CMake - Cross Platform Makefile Generator
+# Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
 PROJECT(QtDialog)
 SET(QT_MIN_VERSION "4.3.0")
 FIND_PACKAGE(Qt4 REQUIRED)
@@ -74,11 +85,6 @@ ELSE(NOT QT4_FOUND)
     ENDIF(APPLE)
     SET(CMAKE_INSTALL_DESTINATION_ARGS 
       BUNDLE DESTINATION "${CMAKE_BUNDLE_LOCATION}")
-  ELSE(${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
-    # Since the built CMake will install itself instead of the
-    # generating CMake, tell it that the install rules were generated
-    # by CMake 2.4.
-    INSTALL(CODE "SET(CMAKE_INSTALL_SELF_2_4 1)")
   ENDIF(${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
   # if qt is not static and we are on windows then skip the install
   # I don't want to distribute qt dlls
@@ -91,7 +97,7 @@ ELSE(NOT QT4_FOUND)
     # install a desktop file so CMake appears in the application start menu
     # with an icon
     INSTALL(FILES CMake.desktop DESTINATION share/applications )
-    INSTALL(FILES CMakeSetup.png DESTINATION share/pixmaps )
+    INSTALL(FILES CMakeSetup32.png DESTINATION share/pixmaps )
     INSTALL(FILES cmakecache.xml DESTINATION share/mime/packages )
   ENDIF(UNIX)
 

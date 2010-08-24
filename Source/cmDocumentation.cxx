@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDocumentation.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:46 $
-  Version:   $Revision: 1.69.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmDocumentation.h"
 
 #include "cmSystemTools.h"
@@ -164,7 +159,7 @@ static const char *cmDocumentationStandardSeeAlso[][3] =
 static const char *cmDocumentationCopyright[][3] =
 {
   {0,
-   "Copyright (c) 2002 Kitware, Inc., Insight Consortium.  "
+   "Copyright 2000-2009 Kitware, Inc., Insight Software Consortium.  "
    "All rights reserved.", 0},
   {0,
    "Redistribution and use in source and binary forms, with or without "
@@ -179,25 +174,23 @@ static const char *cmDocumentationCopyright[][3] =
    "documentation and/or other materials provided with the distribution.",
    0},
   {"",
-   "The names of Kitware, Inc., the Insight Consortium, or the names of "
-   "any consortium members, or of any contributors, may not be used to "
-   "endorse or promote products derived from this software without "
-   "specific prior written permission.", 0},
-  {"",
-   "Modified source versions must be plainly marked as such, and must "
-   "not be misrepresented as being the original software.", 0},
+   "Neither the names of Kitware, Inc., the Insight Software Consortium, "
+   "nor the names of their contributors may be used to endorse or promote "
+   "products derived from this software without specific prior written "
+   "permission.", 0},
   {0,
-   "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER AND CONTRIBUTORS "
-   "``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT "
+   "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "
+   "\"AS IS\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT "
    "LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR "
-   "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS OR "
-   "CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, "
-   "EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, "
-   "PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR "
-   "PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF "
-   "LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING "
-   "NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS "
-   "SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.", 0},
+   "A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT "
+   "HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, "
+   "SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT "
+   "LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, "
+   "DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY "
+   "THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT "
+   "(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE "
+   "OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
+   0},
   {0, 0, 0}
 };
 
@@ -267,12 +260,15 @@ cmDocumentation::cmDocumentation()
   this->PropertySections.push_back("Properties on Targets");
   this->PropertySections.push_back("Properties on Tests");
   this->PropertySections.push_back("Properties on Source Files");
+  this->PropertySections.push_back("Properties on Cache Entries");
 
   this->VariableSections.push_back("Variables that Provide Information");
   this->VariableSections.push_back("Variables That Change Behavior");
   this->VariableSections.push_back("Variables That Describe the System");
   this->VariableSections.push_back("Variables that Control the Build");
   this->VariableSections.push_back("Variables for Languages");
+
+  this->ShowGenerators = true;
 }
 
 //----------------------------------------------------------------------------
@@ -610,20 +606,22 @@ bool cmDocumentation::CreateSingleModule(const char* fname,
       }
     else
       {
-      if(text.length() < 2 && brief.length() == 1)
-        {
-        return false;
-        }
-      char* pname = strcpy(new char[strlen(moduleName)+1], moduleName);
-      char* ptext = strcpy(new char[text.length()+1], text.c_str());
-      this->ModuleStrings.push_back(pname);
-      this->ModuleStrings.push_back(ptext);
-      char* pbrief = strcpy(new char[brief.length()+1], brief.c_str());
-      this->ModuleStrings.push_back(pbrief);
-      moduleSection.Append(pname, pbrief, ptext);
-      return true;
+      break;
       }
     }
+
+  if(text.length() < 2 && brief.length() == 1)
+    {
+    return false;
+    }
+
+  char* pname = strcpy(new char[strlen(moduleName)+1], moduleName);
+  char* ptext = strcpy(new char[text.length()+1], text.c_str());
+  this->ModuleStrings.push_back(pname);
+  this->ModuleStrings.push_back(ptext);
+  char* pbrief = strcpy(new char[brief.length()+1], brief.c_str());
+  this->ModuleStrings.push_back(pbrief);
+  moduleSection.Append(pname, pbrief, ptext);
   return true;
 }
 
@@ -1181,11 +1179,18 @@ bool cmDocumentation::PrintDocumentationSingleModule(std::ostream& os)
                                  this->CurrentArgument.c_str(),
                                  *this->AllSections["Modules"]))
       {
-      this->PrintDocumentationCommand
-        (os,  this->AllSections["Modules"]->GetEntries()[0]);
-      os <<  "\n       Defined in: ";
-      os << moduleName << "\n";
-      return true;
+      if(this->AllSections["Modules"]->GetEntries().size())
+        {
+        this->PrintDocumentationCommand
+          (os,  this->AllSections["Modules"]->GetEntries()[0]);
+        os <<  "\n       Defined in: ";
+        os << moduleName << "\n";
+        return true;
+        }
+      else
+        {
+        return false;
+        }
       }
     }
 
@@ -1285,7 +1290,10 @@ bool cmDocumentation::PrintDocumentationUsage(std::ostream& os)
   this->ClearSections();
   this->AddSectionToPrint("Usage");
   this->AddSectionToPrint("Options");
-  this->AddSectionToPrint("Generators");
+  if(this->ShowGenerators)
+    {
+    this->AddSectionToPrint("Generators");
+    }
   this->Print(os);
   return true;
 }

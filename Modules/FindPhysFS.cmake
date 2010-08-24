@@ -10,6 +10,19 @@
 #
 # Created by Eric Wing. 
 
+#=============================================================================
+# Copyright 2005-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 FIND_PATH(PHYSFS_INCLUDE_DIR physfs.h
   HINTS
   $ENV{PHYSFSDIR}
@@ -41,8 +54,8 @@ FIND_LIBRARY(PHYSFS_LIBRARY
   /opt
 )
 
-SET(PHYSFS_FOUND "NO")
-IF(PHYSFS_LIBRARY AND PHYSFS_INCLUDE_DIR)
-  SET(PHYSFS_FOUND "YES")
-ENDIF(PHYSFS_LIBRARY AND PHYSFS_INCLUDE_DIR)
+# handle the QUIETLY and REQUIRED arguments and set PHYSFS_FOUND to TRUE if
+# all listed variables are TRUE
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(PhysFS DEFAULT_MSG PHYSFS_LIBRARY PHYSFS_INCLUDE_DIR)
 

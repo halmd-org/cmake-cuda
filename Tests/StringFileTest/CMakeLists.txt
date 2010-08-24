@@ -5,6 +5,15 @@ INCLUDE_DIRECTORIES(${StringFileTest_BINARY_DIR})
 # Read file test
 FILE(READ "${CMAKE_CURRENT_SOURCE_DIR}/InputFile.h.in" infile)
 
+# Test reading a binary file into hex representation
+FILE(READ "${CMAKE_CURRENT_SOURCE_DIR}/test.bin" hexContents HEX)
+
+IF("${hexContents}" STREQUAL "0001027700")
+  MESSAGE("FILE(READ HEX) correctly read [${hexContents}]")
+ELSE("${hexContents}" STREQUAL "0001027700")
+  MESSAGE(SEND_ERROR "FILE(READ HEX) incorrectly read [${hexContents}], but expected was [0001027700]")
+ENDIF("${hexContents}" STREQUAL "0001027700")
+
 # FILE(STRINGS) test
 FILE(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/InputFile.h.in" infile_strings
   LIMIT_COUNT 1 LIMIT_INPUT 1024 LIMIT_OUTPUT 1024
@@ -184,12 +193,23 @@ SET(infile "${infile+-/out}")
 
 # Write include file to a file
 STRING(REGEX REPLACE "includefile" "${file}" outfile "${infile}")
-FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/OutputFile.h" "${outfile}")
+FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/OutputFile.h-tmp" "${outfile}")
+FILE(RENAME "${CMAKE_CURRENT_BINARY_DIR}/OutputFile.h-tmp"
+            "${CMAKE_CURRENT_BINARY_DIR}/OutputFile.h")
+
+# Test file copy with relative paths
+FILE(COPY .
+  DESTINATION src
+  FILE_PERMISSIONS OWNER_READ # test no OWNER_WRITE
+  DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+  FILES_MATCHING PATTERN *.cxx # Only copy the main source file
+  REGEX /src$ EXCLUDE # Block recursion for in-source build
+  )
 
 # Test file glob
 FILE(GLOB_RECURSE src_files "${CMAKE_CURRENT_SOURCE_DIR}/*")
 MESSAGE("Files in ${CMAKE_CURRENT_SOURCE_DIR} are ${src_files}")
-SET(expr "${CMAKE_CURRENT_SOURCE_DIR}/[sS][!a-su-zA-Z0-9][^a-qs-zA-Z0-9]ing?ile*.cxx")
+SET(expr "${CMAKE_CURRENT_BINARY_DIR}/src/[sS][!a-su-zA-Z0-9][^a-qs-zA-Z0-9]ing?ile*.cxx")
 MESSAGE("Glob expression is [${expr}].")
 FILE(GLOB src_files "${expr}")
 MESSAGE("Globbed files [${src_files}].")
@@ -217,3 +237,22 @@ TEST_RANGE("3;5" "3;4;5")
 TEST_RANGE("5;3" "5;4;3")
 TEST_RANGE("3;10;2" "3;5;7;9")
 TEST_RANGE("10;0;-3" "10;7;4;1")
+
+# Test FOREACH IN signature
+set(list1 "" a "")
+set(list2 a "" b)
+set(var_)
+set(var_a)
+set(var_b)
+foreach(item IN LISTS list1 list2 ITEMS "" a "")
+  set(var_${item} "${var_${item}}x")
+endforeach(item)
+if(NOT "${var_}" STREQUAL "xxxxx")
+  message(FATAL_ERROR "count incorrect for \"\": [${var_}]")
+endif()
+if(NOT "${var_a}" STREQUAL "xxx")
+  message(FATAL_ERROR "count incorrect for \"a\": [${var_a}]")
+endif()
+if(NOT "${var_b}" STREQUAL "x")
+  message(FATAL_ERROR "count incorrect \"b\": [${var_b}]")
+endif()

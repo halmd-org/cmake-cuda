@@ -23,19 +23,15 @@ ENDIF(NOT CMAKE_NO_BUILD_TYPE AND CMAKE_GENERATOR MATCHES "Visual Studio")
 IF(CMAKE_GENERATOR MATCHES  "Visual Studio 8")
   SET(CMAKE_COMPILER_2005 1)
 ENDIF(CMAKE_GENERATOR MATCHES  "Visual Studio 8")
-IF(CMAKE_GENERATOR MATCHES  "Visual Studio 9")
-  SET(CMAKE_COMPILER_2005 1)
-ENDIF(CMAKE_GENERATOR MATCHES  "Visual Studio 9")
-
 
 # make sure to enable languages after setting configuration types
 ENABLE_LANGUAGE(RC)
 SET(CMAKE_COMPILE_RESOURCE "rc <FLAGS> /fo<OBJECT> <SOURCE>")
 
-# for nmake we need to compute some information about the compiler 
+# for nmake we need to compute some information about the compiler
 # that is being used.
 # the compiler may be free command line, 6, 7, or 71, and
-# each have properties that must be determined.  
+# each have properties that must be determined.
 # to avoid running these tests with each cmake run, the
 # test results are saved in CMakeCPlatform.cmake, a file
 # that is automatically copied into try_compile directories
@@ -87,22 +83,12 @@ IF(CMAKE_GENERATOR MATCHES "Makefiles")
         SET(MSVC80 1)
         SET(CMAKE_COMPILER_2005 1)
       ENDIF("${compilerVersion}" EQUAL 1400)
-      IF("${compilerVersion}" GREATER 1400)
-        SET(MSVC80 1)
-        SET(CMAKE_COMPILER_2005 1)
-      ENDIF("${compilerVersion}" GREATER 1400)
-      IF("${compilerVersion}" GREATER 1400)
-        SET(MSVC80 1)
-        SET(CMAKE_COMPILER_2005 1)
-      ENDIF("${compilerVersion}" GREATER 1400)
       IF("${compilerVersion}" EQUAL 1500)
         SET(MSVC90 1)
-        SET(MSVC80 0)
       ENDIF("${compilerVersion}" EQUAL 1500)
-      IF("${compilerVersion}" GREATER 1500)
-        SET(MSVC90 1)
-        SET(MSVC80 0)
-      ENDIF("${compilerVersion}" GREATER 1500)
+      IF("${compilerVersion}" EQUAL 1600)
+        SET(MSVC10 1)
+      ENDIF("${compilerVersion}" EQUAL 1600)
       SET(MSVC_VERSION "${compilerVersion}")
     ELSE(NOT CMAKE_COMPILER_RETURN)
       MESSAGE(STATUS "Check for CL compiler version - failed")
@@ -138,36 +124,21 @@ IF(CMAKE_GENERATOR MATCHES "Makefiles")
       SET(CMAKE_USING_VC_FREE_TOOLS 0)
     ENDIF(CMAKE_COMPILER_RETURN)
     MAKE_DIRECTORY("${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp3")
-    MESSAGE(STATUS "Check CL platform")
-    EXEC_PROGRAM(${CMAKE_TEST_COMPILER} ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp3
-      ARGS /nologo
-      \"${testForFreeVCFile}\"
-      /link /machine:i386
-      OUTPUT_VARIABLE CMAKE_COMPILER_OUTPUT 
-      RETURN_VALUE CMAKE_COMPILER_RETURN
-      )
-    # if there was an error assume it is a 64bit system
-    IF(CMAKE_COMPILER_RETURN)
-      FILE(APPEND 
-        ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log 
-        "Determining if this is a 64 bit system passed:\n"
-        "${CMAKE_COMPILER_OUTPUT}\n\n")
-      MESSAGE(STATUS "Check CL platform - 64 bit")
-      SET(CMAKE_CL_64 1)
-    ELSE(CMAKE_COMPILER_RETURN)
-      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log 
-        "Determining if this is a 32 bit system passed:\n"
-        "${CMAKE_COMPILER_OUTPUT}\n\n")
-      MESSAGE(STATUS "Check CL platform - 32 bit")
-      SET(CMAKE_CL_64 0)
-    ENDIF(CMAKE_COMPILER_RETURN)
   ENDIF(NOT CMAKE_VC_COMPILER_TESTS_RUN)
 ENDIF(CMAKE_GENERATOR MATCHES "Makefiles")
 
+IF(MSVC_C_ARCHITECTURE_ID MATCHES 64)
+  SET(CMAKE_CL_64 1)
+ELSE(MSVC_C_ARCHITECTURE_ID MATCHES 64)
+  SET(CMAKE_CL_64 0)
+ENDIF(MSVC_C_ARCHITECTURE_ID MATCHES 64)
 IF(CMAKE_FORCE_WIN64)
   SET(CMAKE_CL_64 1)
 ENDIF(CMAKE_FORCE_WIN64)
 
+IF("${MSVC_VERSION}" GREATER 1599)
+  SET(MSVC_INCREMENTAL_DEFAULT ON)
+ENDIF()
 
 # default to Debug builds
 IF(MSVC_VERSION GREATER 1310)
@@ -193,7 +164,7 @@ IF(MSVC_VERSION GREATER 1310)
   SET (CMAKE_C_FLAGS_RELEASE_INIT "/MD /O2 /Ob2 /D NDEBUG")
   SET (CMAKE_C_FLAGS_RELWITHDEBINFO_INIT "/MD /Zi /O2 /Ob1 /D NDEBUG")
   SET (CMAKE_C_STANDARD_LIBRARIES_INIT "kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib ")
-  SET (CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} /MANIFEST")
+  SET (CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT}")
 ELSE(MSVC_VERSION GREATER 1310)
   IF(CMAKE_USING_VC_FREE_TOOLS)
     MESSAGE(STATUS "Using FREE VC TOOLS, NO DEBUG available")
@@ -229,22 +200,26 @@ SET(CMAKE_CXX_STANDARD_LIBRARIES_INIT "${CMAKE_C_STANDARD_LIBRARIES_INIT}")
 # executable linker flags
 SET (CMAKE_LINK_DEF_FILE_FLAG "/DEF:")
 # set the stack size and the machine type
-IF(CMAKE_CL_64)
-  SET (CMAKE_EXE_LINKER_FLAGS_INIT
-    "${CMAKE_EXE_LINKER_FLAGS_INIT} /STACK:10000000 /machine:x64")
-ELSE(CMAKE_CL_64)
-  SET (CMAKE_EXE_LINKER_FLAGS_INIT
-    "${CMAKE_EXE_LINKER_FLAGS_INIT} /STACK:10000000 /machine:I386")
-ENDIF(CMAKE_CL_64)
+SET(_MACHINE_ARCH_FLAG ${MSVC_C_ARCHITECTURE_ID})
+IF(NOT _MACHINE_ARCH_FLAG)
+  SET(_MACHINE_ARCH_FLAG ${MSVC_CXX_ARCHITECTURE_ID})
+ENDIF(NOT _MACHINE_ARCH_FLAG)
+SET (CMAKE_EXE_LINKER_FLAGS_INIT
+    "${CMAKE_EXE_LINKER_FLAGS_INIT} /STACK:10000000 /machine:${_MACHINE_ARCH_FLAG}")
 
-# add /debug and /INCREMENTAL:YES to DEBUG and RELWITHDEBINFO also add pdbtyp
+# add /debug and /INCREMENTAL:YES to DEBUG and RELWITHDEBINFO also add pdbtype
 # on versions that support it
+SET( MSVC_INCREMENTAL_YES_FLAG "")
+IF(NOT MSVC_INCREMENTAL_DEFAULT)
+  SET( MSVC_INCREMENTAL_YES_FLAG "/INCREMENTAL:YES")
+ENDIF()
+
 IF (CMAKE_COMPILER_SUPPORTS_PDBTYPE)
-  SET (CMAKE_EXE_LINKER_FLAGS_DEBUG_INIT "/debug /pdbtype:sept /INCREMENTAL:YES")
-  SET (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO_INIT "/debug /pdbtype:sept /INCREMENTAL:YES")
+  SET (CMAKE_EXE_LINKER_FLAGS_DEBUG_INIT "/debug /pdbtype:sept ${MSVC_INCREMENTAL_YES_FLAG}")
+  SET (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO_INIT "/debug /pdbtype:sept ${MSVC_INCREMENTAL_YES_FLAG}")
 ELSE (CMAKE_COMPILER_SUPPORTS_PDBTYPE)
-  SET (CMAKE_EXE_LINKER_FLAGS_DEBUG_INIT "/debug /INCREMENTAL:YES")
-  SET (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO_INIT "/debug /INCREMENTAL:YES")
+  SET (CMAKE_EXE_LINKER_FLAGS_DEBUG_INIT "/debug ${MSVC_INCREMENTAL_YES_FLAG}")
+  SET (CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO_INIT "/debug ${MSVC_INCREMENTAL_YES_FLAG}")
 ENDIF (CMAKE_COMPILER_SUPPORTS_PDBTYPE)
 # for release and minsize release default to no incremental linking
 SET(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL_INIT "/INCREMENTAL:NO")
@@ -264,7 +239,6 @@ SET (CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO_INIT ${CMAKE_EXE_LINKER_FLAGS_RELW
 SET (CMAKE_MODULE_LINKER_FLAGS_RELEASE_INIT ${CMAKE_EXE_LINKER_FLAGS_RELEASE_INIT})
 SET (CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL_INIT ${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL_INIT})
 
-
 # save computed information for this platform
 IF(NOT EXISTS "${CMAKE_PLATFORM_ROOT_BIN}/CMakeCPlatform.cmake")
   CONFIGURE_FILE(${CMAKE_ROOT}/Modules/Platform/Windows-cl.cmake.in 
@@ -275,4 +249,3 @@ IF(NOT EXISTS "${CMAKE_PLATFORM_ROOT_BIN}/CMakeCXXPlatform.cmake")
   CONFIGURE_FILE(${CMAKE_ROOT}/Modules/Platform/Windows-cl.cmake.in 
                ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeCXXPlatform.cmake IMMEDIATE)
 ENDIF(NOT EXISTS "${CMAKE_PLATFORM_ROOT_BIN}/CMakeCXXPlatform.cmake")
-

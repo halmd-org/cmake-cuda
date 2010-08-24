@@ -1,3 +1,14 @@
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
+
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
+
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 // Setup for tests that use result of stl namespace test.
 #if defined(KWSYS_STL_HAVE_STD)
 # if KWSYS_STL_HAVE_STD
@@ -91,10 +102,24 @@ bool f(const kwsys_stl::string& s) { return s != ""; }
 int main() { return 0; }
 #endif
 
+#ifdef TEST_KWSYS_CXX_HAS_CSTDIO
+#include <cstdio>
+int main() { return 0; }
+#endif
+
 #ifdef TEST_KWSYS_CXX_HAS_CSTDDEF
 #include <cstddef>
 void f(size_t) {}
 int main() { return 0; }
+#endif
+
+#ifdef TEST_KWSYS_CXX_HAS_LONG_LONG
+long long f(long long n) { return n; }
+int main()
+{
+  long long n = 0;
+  return static_cast<int>(f(n));
+}
 #endif
 
 #ifdef TEST_KWSYS_CXX_HAS_NULL_TEMPLATE_ARGS
@@ -289,6 +314,17 @@ int main()
 }
 #endif
 
+#ifdef TEST_KWSYS_IOS_HAVE_BINARY
+int test_binary(int, ...)
+{
+  return 0;
+}
+int main()
+{
+  return test_binary(1, kwsys_ios::ios::binary);
+}
+#endif
+
 #ifdef TEST_KWSYS_IOS_HAS_ISTREAM_LONG_LONG
 int test_istream(kwsys_ios::istream& is, long long& x)
 {
@@ -331,6 +367,9 @@ int main()
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
+#if KWSYS_CXX_HAS_CSTDIO
+# include <cstdio>
+#endif
 #include <stdio.h>
 
 int main(int, char **argv)

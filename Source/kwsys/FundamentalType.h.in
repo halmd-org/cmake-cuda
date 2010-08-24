@@ -1,16 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   KWSys - Kitware System Library
-  Module:    $RCSfile: FundamentalType.h.in,v $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef @KWSYS_NAMESPACE@_FundamentalType_h
 #define @KWSYS_NAMESPACE@_FundamentalType_h
 
@@ -24,23 +22,26 @@
 # define kwsys_ns(x) @KWSYS_NAMESPACE@##x
 # define kwsysEXPORT @KWSYS_NAMESPACE@_EXPORT
 #endif
-#define kwsysFundamentalType        kwsys_ns(FundamentalType)
-#define kwsysFundamentalType_Int8   kwsys_ns(FundamentalType_Int8)
-#define kwsysFundamentalType_UInt8  kwsys_ns(FundamentalType_UInt8)
-#define kwsysFundamentalType_Int16  kwsys_ns(FundamentalType_Int16)
-#define kwsysFundamentalType_UInt16 kwsys_ns(FundamentalType_UInt16)
-#define kwsysFundamentalType_Int32  kwsys_ns(FundamentalType_Int32)
-#define kwsysFundamentalType_UInt32 kwsys_ns(FundamentalType_UInt32)
-#define kwsysFundamentalType_Int64  kwsys_ns(FundamentalType_Int64)
-#define kwsysFundamentalType_UInt64 kwsys_ns(FundamentalType_UInt64)
+
+#if !@KWSYS_NAMESPACE@_NAME_IS_KWSYS
+# define kwsysFundamentalType        kwsys_ns(FundamentalType)
+# define kwsysFundamentalType_Int8   kwsys_ns(FundamentalType_Int8)
+# define kwsysFundamentalType_UInt8  kwsys_ns(FundamentalType_UInt8)
+# define kwsysFundamentalType_Int16  kwsys_ns(FundamentalType_Int16)
+# define kwsysFundamentalType_UInt16 kwsys_ns(FundamentalType_UInt16)
+# define kwsysFundamentalType_Int32  kwsys_ns(FundamentalType_Int32)
+# define kwsysFundamentalType_UInt32 kwsys_ns(FundamentalType_UInt32)
+# define kwsysFundamentalType_Int64  kwsys_ns(FundamentalType_Int64)
+# define kwsysFundamentalType_UInt64 kwsys_ns(FundamentalType_UInt64)
+#endif
 
 /* The size of fundamental types.  Types that do not exist have size 0.  */
-#define @KWSYS_NAMESPACE@_SIZEOF_CHAR @KWSYS_SIZEOF_CHAR@
-#define @KWSYS_NAMESPACE@_SIZEOF_SHORT @KWSYS_SIZEOF_SHORT@
-#define @KWSYS_NAMESPACE@_SIZEOF_INT @KWSYS_SIZEOF_INT@
-#define @KWSYS_NAMESPACE@_SIZEOF_LONG @KWSYS_SIZEOF_LONG@
-#define @KWSYS_NAMESPACE@_SIZEOF_LONG_LONG @KWSYS_SIZEOF_LONG_LONG@
-#define @KWSYS_NAMESPACE@_SIZEOF___INT64 @KWSYS_SIZEOF___INT64@
+@KWSYS_C_CODE_SIZEOF_CHAR@
+@KWSYS_C_CODE_SIZEOF_SHORT@
+@KWSYS_C_CODE_SIZEOF_INT@
+@KWSYS_C_CODE_SIZEOF_LONG@
+@KWSYS_C_CODE_SIZEOF_LONG_LONG@
+@KWSYS_C_CODE_SIZEOF___INT64@
 
 /* Whether types "long long" and "__int64" are enabled.  If a type is
    enabled then it is a unique fundamental type.  */
@@ -114,15 +115,17 @@ typedef unsigned __int64 kwsysFundamentalType_UInt64;
 #if !defined(KWSYS_NAMESPACE)
 # undef kwsys_ns
 # undef kwsysEXPORT
-# undef kwsysFundamentalType
-# undef kwsysFundamentalType_Int8
-# undef kwsysFundamentalType_UInt8
-# undef kwsysFundamentalType_Int16
-# undef kwsysFundamentalType_UInt16
-# undef kwsysFundamentalType_Int32
-# undef kwsysFundamentalType_UInt32
-# undef kwsysFundamentalType_Int64
-# undef kwsysFundamentalType_UInt64
+# if !defined(KWSYS_NAMESPACE) && !@KWSYS_NAMESPACE@_NAME_IS_KWSYS
+#  undef kwsysFundamentalType
+#  undef kwsysFundamentalType_Int8
+#  undef kwsysFundamentalType_UInt8
+#  undef kwsysFundamentalType_Int16
+#  undef kwsysFundamentalType_UInt16
+#  undef kwsysFundamentalType_Int32
+#  undef kwsysFundamentalType_UInt32
+#  undef kwsysFundamentalType_Int64
+#  undef kwsysFundamentalType_UInt64
+# endif
 #endif
 
 /* If building a C or C++ file in kwsys itself, give the source file

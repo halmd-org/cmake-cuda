@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCursesMainForm.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:55 $
-  Version:   $Revision: 1.73.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "../cmCacheManager.h"
 #include "../cmSystemTools.h"
 #include "../cmVersion.h"
@@ -231,7 +226,8 @@ void cmCursesMainForm::RePost()
       {
       cmCacheManager::CacheIterator mit = 
         this->CMakeInstance->GetCacheManager()->GetCacheIterator((*it)->GetValue());
-      if (mit.IsAtEnd() || !this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED"))
+      if (mit.IsAtEnd() ||
+          (!this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED")))
         {
         continue;
         }
@@ -259,7 +255,8 @@ void cmCursesMainForm::RePost()
     {
     cmCacheManager::CacheIterator mit = 
       this->CMakeInstance->GetCacheManager()->GetCacheIterator((*it)->GetValue());
-    if (mit.IsAtEnd() || !this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED"))
+    if (mit.IsAtEnd() ||
+        (!this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED")))
       {
       continue;
       }
@@ -327,7 +324,8 @@ void cmCursesMainForm::Render(int left, int top, int width, int height)
       {
       cmCacheManager::CacheIterator mit = 
         this->CMakeInstance->GetCacheManager()->GetCacheIterator((*it)->GetValue());
-      if (mit.IsAtEnd() || !this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED"))
+      if (mit.IsAtEnd() ||
+          (!this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED")))
         {
         continue;
         }
@@ -344,7 +342,8 @@ void cmCursesMainForm::Render(int left, int top, int width, int height)
     {
     cmCacheManager::CacheIterator mit = 
       this->CMakeInstance->GetCacheManager()->GetCacheIterator((*it)->GetValue());
-    if (mit.IsAtEnd() || !this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED"))
+    if (mit.IsAtEnd() ||
+        (!this->AdvancedMode && mit.GetPropertyAsBool("ADVANCED")))
       {
       continue;
       }
@@ -592,8 +591,7 @@ void cmCursesMainForm::UpdateStatusBar(const char* message)
   // We want to display this on the right
   char version[cmCursesMainForm::MAX_WIDTH];
   char vertmp[128];
-  sprintf(vertmp,"CMake Version %d.%d - %s", cmVersion::GetMajorVersion(),
-          cmVersion::GetMinorVersion(),cmVersion::GetReleaseVersion().c_str());
+  sprintf(vertmp,"CMake Version %s", cmVersion::GetCMakeVersion());
   int sideSpace = (width-strlen(vertmp));
   for(i=0; i<sideSpace; i++) { version[i] = ' '; }
   sprintf(version+sideSpace, "%s", vertmp);
@@ -915,14 +913,14 @@ void cmCursesMainForm::HandleInput()
         this->SearchMode = false;
         }
       */
-      else if ( key >= 'a' && key <= 'z' || 
-                key >= 'A' && key <= 'Z' ||
-                key >= '0' && key <= '9' ||
-                key == '_' )
+      else if ((key >= 'a' && key <= 'z') ||
+               (key >= 'A' && key <= 'Z') ||
+               (key >= '0' && key <= '9') ||
+               (key == '_' ))
         {
         if ( this->SearchString.size() < static_cast<std::string::size_type>(x-10) )
           {
-          this->SearchString += key;
+          this->SearchString += static_cast<char>(key);
           }
         }
       else if ( key == ctrl('h') || key == KEY_BACKSPACE || key == KEY_DC )

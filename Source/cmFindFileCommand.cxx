@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmFindFileCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2007-10-10 15:47:43 $
-  Version:   $Revision: 1.30 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmFindFileCommand.h"
 #include "cmSystemTools.h"
 
@@ -21,7 +16,7 @@ cmFindFileCommand::cmFindFileCommand()
 {
   this->IncludeFileInPath = true;
   cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "FIND_PATH", "find_file");
+                               "find_path", "find_file");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "directory containing the named file", 
                                "full path to named file");

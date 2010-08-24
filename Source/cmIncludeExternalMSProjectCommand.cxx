@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmIncludeExternalMSProjectCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-28 13:38:35 $
-  Version:   $Revision: 1.23 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmIncludeExternalMSProjectCommand.h"
 
 // cmIncludeExternalMSProjectCommand
@@ -30,37 +25,19 @@ bool cmIncludeExternalMSProjectCommand
 #ifdef _WIN32
   if(this->Makefile->GetDefinition("WIN32"))
     {
-    std::string location = args[1];
-    
-    std::vector<std::string> depends;
-    if (args.size() > 2)
-      {
-      for (unsigned int i=2; i<args.size(); ++i) 
-        {
-        depends.push_back(args[i]); 
-        }
-      }
-
-    // Hack together a utility target storing enough information
-    // to reproduce the target inclusion.
-    std::string utility_name("INCLUDE_EXTERNAL_MSPROJECT");
-    utility_name += "_";
-    utility_name += args[0];
     std::string path = args[1];
     cmSystemTools::ConvertToUnixSlashes(path);
 
     // Create a target instance for this utility.
     cmTarget* target=this->Makefile->AddNewTarget(cmTarget::UTILITY, 
-                                                  utility_name.c_str());
-    target->SetProperty("EXCLUDE_FROM_ALL","FALSE");
-    std::vector<std::string> no_outputs;
-    cmCustomCommandLines commandLines;
-    cmCustomCommandLine commandLine;
-    commandLine.push_back(args[0]);
-    commandLine.push_back(path);
-    commandLines.push_back(commandLine);
-    cmCustomCommand cc(no_outputs, depends, commandLines, 0, 0);
-    target->GetPostBuildCommands().push_back(cc);
+                                                  args[0].c_str());
+    target->SetProperty("EXTERNAL_MSPROJECT", path.c_str());
+    target->SetProperty("EXCLUDE_FROM_ALL","FALSE"); 
+    target->SetProperty("GENERATOR_FILE_NAME", args[0].c_str());
+    for (unsigned int i=2; i<args.size(); ++i) 
+      {
+      target->AddUtility(args[i].c_str());
+      }
     }
 #endif
   return true;

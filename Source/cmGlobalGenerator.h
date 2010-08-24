@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2009-03-23 17:58:40 $
-  Version:   $Revision: 1.107.2.7 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmGlobalGenerator_h
 #define cmGlobalGenerator_h
@@ -91,7 +86,7 @@ public:
    */
   virtual int TryCompile(const char *srcdir, const char *bindir,
                          const char *projectName, const char *targetName,
-                         std::string *output, cmMakefile* mf);
+                         bool fast, std::string *output, cmMakefile* mf);
 
   
   /**
@@ -100,18 +95,22 @@ public:
    * empty then all is assumed. clean indicates if a "make clean" should be
    * done first.
    */
-  virtual int Build(const char *srcdir, const char *bindir,
-                    const char *projectName, const char *targetName,
-                    std::string *output, 
-                    const char *makeProgram, const char *config,
-                    bool clean, bool fast,
-                    double timeout);
-  virtual std::string GenerateBuildCommand
-  (const char* makeProgram,
-   const char *projectName, const char* additionalOptions, 
-   const char *targetName,
-   const char* config, bool ignoreErrors, bool fast);
-
+  int Build(const char *srcdir, const char *bindir,
+            const char *projectName, const char *targetName,
+            std::string *output,
+            const char *makeProgram, const char *config,
+            bool clean, bool fast,
+            double timeout, bool verbose=false,
+            const char* extraOptions = 0,
+            std::vector<std::string> const& nativeOptions =
+            std::vector<std::string>());
+  
+  virtual std::string GenerateBuildCommand(
+    const char* makeProgram,
+    const char *projectName, const char* additionalOptions, 
+    const char *targetName,
+    const char* config, bool ignoreErrors, bool fast);
+  
 
   ///! Set the CMake instance
   void SetCMakeInstance(cmake *cm);
@@ -119,7 +118,7 @@ public:
   ///! Get the CMake instance
   cmake *GetCMakeInstance() { return this->CMakeInstance; };
 
-  void SetConfiguredFilesPath(const char* s){this->ConfiguredFilesPath = s;}
+  void SetConfiguredFilesPath(cmGlobalGenerator* gen);
   const std::vector<cmLocalGenerator *>& GetLocalGenerators() const { 
     return this->LocalGenerators;}
 
@@ -249,25 +248,29 @@ public:
   void GetFilesReplacedDuringGenerate(std::vector<std::string>& filenames);
 
   void AddRuleHash(const std::vector<std::string>& outputs,
-                   std::vector<std::string>::const_iterator first,
-                   std::vector<std::string>::const_iterator last);
+                   std::string const& content);
 
   /** Return whether the given binary directory is unused.  */
   bool BinaryDirectoryIsNew(const char* dir)
     {
     return this->BinaryDirectories.insert(dir).second;
-    }
+    } 
+  /** Supported systems creates a GUID for the given name */
+  virtual void CreateGUID(const char*) {}
+
+  /** Return true if the generated build tree may contain multiple builds.
+      i.e. "Can I build Debug and Release in the same tree?" */
+  virtual bool IsMultiConfig() { return false; }
 
 protected:
+  typedef std::vector<cmLocalGenerator*> GeneratorVector;
   // for a project collect all its targets by following depend
   // information, and also collect all the targets
-  void GetTargetSets(cmGlobalGenerator::TargetDependSet& projectTargets,
-                     cmGlobalGenerator::TargetDependSet& originalTargets,
-                     cmLocalGenerator* root,
-                     std::vector<cmLocalGenerator*> const& generators);
-  void AddTargetDepends(cmTarget* target,
-                        cmGlobalGenerator::TargetDependSet&
-                        projectTargets);
+  virtual void GetTargetSets(TargetDependSet& projectTargets,
+                             TargetDependSet& originalTargets,
+                             cmLocalGenerator* root, GeneratorVector const&);
+  virtual bool IsRootOnlyTarget(cmTarget* target);
+  void AddTargetDepends(cmTarget* target, TargetDependSet& projectTargets);
   void SetLanguageEnabledFlag(const char* l, cmMakefile* mf);
   void SetLanguageEnabledMaps(const char* l, cmMakefile* mf);
   void FillExtensionToLanguageMap(const char* l, cmMakefile* mf);
@@ -314,6 +317,9 @@ protected:
   // This is computed just before local generators generate.
   cmTargetManifest TargetManifest;
 
+  // All targets in the entire project.
+  std::map<cmStdString,cmTarget *> TotalTargets;
+
 private:
   float FirstTimeProgress;
   // If you add a new map here, make sure it is copied
@@ -325,13 +331,15 @@ private:
   std::map<cmStdString, cmStdString> ExtensionToLanguage;
   std::map<cmStdString, int> LanguageToLinkerPreference; 
 
-  // this is used to improve performance
-  std::map<cmStdString,cmTarget *> TotalTargets;
-
   // Record hashes for rules and outputs.
   struct RuleHash { char Data[32]; };
   std::map<cmStdString, RuleHash> RuleHashes;
   void CheckRuleHashes();
+  void CheckRuleHashes(std::string const& pfile, std::string const& home);
+  void WriteRuleHashes(std::string const& pfile);
+
+  void WriteSummary();
+  void WriteSummary(cmTarget* target);
 
   cmExternalMakefileProjectGenerator* ExtraGenerator;
 

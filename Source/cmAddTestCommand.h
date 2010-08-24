@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmAddTestCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.16 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmAddTestCommand_h
 #define cmAddTestCommand_h
 
@@ -61,7 +56,7 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  add_test(testname Exename arg1 arg2 ...)\n"
+      "  add_test(testname Exename arg1 arg2 ... )\n"
       "If the ENABLE_TESTING command has been run, this command adds a "
       "test target to the current directory. If ENABLE_TESTING has not "
       "been run, this command does nothing.  "
@@ -70,11 +65,44 @@ public:
       "built by this project or an arbitrary executable on the "
       "system (like tclsh).  The test will be run with the current working "
       "directory set to the CMakeList.txt files corresponding directory "
-      "in the binary tree.";
+      "in the binary tree.\n"
+      "\n"
+      "  add_test(NAME <name> [CONFIGURATIONS [Debug|Release|...]]\n"
+      "           COMMAND <command> [arg1 [arg2 ...]])\n"
+      "If COMMAND specifies an executable target (created by "
+      "add_executable) it will automatically be replaced by the location "
+      "of the executable created at build time.  "
+      "If a CONFIGURATIONS option is given then the test will be executed "
+      "only when testing under one of the named configurations."
+      "\n"
+      "Arguments after COMMAND may use \"generator expressions\" with the "
+      "syntax \"$<...>\".  "
+      "These expressions are evaluted during build system generation and "
+      "produce information specific to each generated build configuration.  "
+      "Valid expressions are:\n"
+      "  $<CONFIGURATION>          = configuration name\n"
+      "  $<TARGET_FILE:tgt>        = main file (.exe, .so.1.2, .a)\n"
+      "  $<TARGET_LINKER_FILE:tgt> = file used to link (.a, .lib, .so)\n"
+      "  $<TARGET_SONAME_FILE:tgt> = file with soname (.so.3)\n"
+      "where \"tgt\" is the name of a target.  "
+      "Target file expressions produce a full path, but _DIR and _NAME "
+      "versions can produce the directory and file name components:\n"
+      "  $<TARGET_FILE_DIR:tgt>/$<TARGET_FILE_NAME:tgt>\n"
+      "  $<TARGET_LINKER_FILE_DIR:tgt>/$<TARGET_LINKER_FILE_NAME:tgt>\n"
+      "  $<TARGET_SONAME_FILE_DIR:tgt>/$<TARGET_SONAME_FILE_NAME:tgt>\n"
+      "Example usage:\n"
+      "  add_test(NAME mytest\n"
+      "           COMMAND testDriver --config $<CONFIGURATION>\n"
+      "                              --exe $<TARGET_FILE:myexe>)\n"
+      "This creates a test \"mytest\" whose command runs a testDriver "
+      "tool passing the configuration name and the full path to the "
+      "executable file produced by target \"myexe\"."
+      ;
     }
   
   cmTypeMacro(cmAddTestCommand, cmCommand);
-
+private:
+  bool HandleNameMode(std::vector<std::string> const& args);
 };
 
 

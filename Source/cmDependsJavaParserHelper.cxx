@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsJavaParserHelper.cxx,v $
-  Language:  C++
-  Date:      $Date: 2006-05-10 19:01:22 $
-  Version:   $Revision: 1.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmDependsJavaParserHelper.h"
 
 #include "cmSystemTools.h"
@@ -52,8 +47,8 @@ void cmDependsJavaParserHelper::CurrentClass
   rname += this->Name;
   files->push_back(rname);
   std::vector<CurrentClass>::iterator it;
-  for ( it = this->NestedClasses.begin();
-    it != this->NestedClasses.end();
+  for ( it = this->NestedClasses->begin();
+    it != this->NestedClasses->end();
     ++ it )
     {
     it->AddFileNamesForPrinting(files, rname.c_str(), sep);
@@ -249,7 +244,7 @@ void cmDependsJavaParserHelper::EndClass()
     abort();
     }
   this->CurrentDepth --;
-  parent->NestedClasses.push_back(*current);
+  parent->NestedClasses->push_back(*current);
   this->ClassStack.erase(this->ClassStack.end()-1, this->ClassStack.end());
 }
 
@@ -275,8 +270,8 @@ std::vector<cmStdString> cmDependsJavaParserHelper::GetFilesProduced()
   std::vector<cmStdString> files;
   CurrentClass* toplevel = &(*(this->ClassStack.begin()));
   std::vector<CurrentClass>::iterator it;
-  for ( it = toplevel->NestedClasses.begin(); 
-    it != toplevel->NestedClasses.end();
+  for ( it = toplevel->NestedClasses->begin(); 
+    it != toplevel->NestedClasses->end();
     ++ it )
     {
     it->AddFileNamesForPrinting(&files, 0, "$");

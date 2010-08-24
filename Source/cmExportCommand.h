@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmExportCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-30 22:25:52 $
-  Version:   $Revision: 1.9 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmExportCommand_h
 #define cmExportCommand_h
 
@@ -84,7 +79,19 @@ public:
       "The file created by this command is specific to the build tree and "
       "should never be installed.  "
       "See the install(EXPORT) command to export targets from an "
-      "installation tree.";
+      "installation tree."
+      "\n"
+      "  export(PACKAGE <name>)\n"
+      "Store the current build directory in the CMake user package registry "
+      "for package <name>.  "
+      "The find_package command may consider the directory while searching "
+      "for package <name>.  "
+      "This helps dependent projects find and use a package from the "
+      "current project's build tree without help from the user.  "
+      "Note that the entry in the package registry that this command "
+      "creates works only in conjunction with a package configuration "
+      "file (<name>Config.cmake) that works with the build tree."
+      ;
     }
 
   cmTypeMacro(cmExportCommand, cmCommand);
@@ -98,6 +105,14 @@ private:
 
   friend class cmExportBuildFileGenerator;
   std::string ErrorMessage;
+
+  bool HandlePackage(std::vector<std::string> const& args);
+  void StorePackageRegistryWin(std::string const& package,
+                               const char* content, const char* hash);
+  void StorePackageRegistryDir(std::string const& package,
+                               const char* content, const char* hash);
+  void ReportRegistryError(std::string const& msg, std::string const& key,
+                           long err);
 };
 
 

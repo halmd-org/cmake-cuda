@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestCoverageCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:58 $
-  Version:   $Revision: 1.4.12.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestCoverageCommand_h
 #define cmCTestCoverageCommand_h
 
@@ -28,7 +23,7 @@ class cmCTestCoverageCommand : public cmCTestHandlerCommand
 {
 public:
 
-  cmCTestCoverageCommand() {}
+  cmCTestCoverageCommand();
 
   /**
    * This is a virtual constructor for the command.
@@ -51,7 +46,7 @@ public:
    */
   virtual const char* GetTerseDocumentation()
     {
-    return "Tests the repository.";
+    return "Collect coverage tool results.";
     }
 
   /**
@@ -60,16 +55,34 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ctest_coverage([BUILD build_dir] [RETURN_VALUE res])\n"
+      "  ctest_coverage([BUILD build_dir] [RETURN_VALUE res] [APPEND]\n"
+      "                 [LABELS label1 [label2 [...]]])\n"
       "Perform the coverage of the given build directory and stores results "
       "in Coverage.xml. The second argument is a variable that will hold "
-      "value.";
+      "value."
+      "\n"
+      "The LABELS option filters the coverage report to include only "
+      "source files labeled with at least one of the labels specified."
+      "\n"
+      CTEST_COMMAND_APPEND_OPTION_DOCS;
     }
 
   cmTypeMacro(cmCTestCoverageCommand, cmCTestHandlerCommand);
 
 protected:
   cmCTestGenericHandler* InitializeHandler();
+
+  virtual bool CheckArgumentKeyword(std::string const& arg);
+  virtual bool CheckArgumentValue(std::string const& arg);
+
+  enum
+  {
+    ArgumentDoingLabels = Superclass::ArgumentDoingLast1,
+    ArgumentDoingLast2
+  };
+
+  bool LabelsMentioned;
+  std::set<cmStdString> Labels;
 };
 
 

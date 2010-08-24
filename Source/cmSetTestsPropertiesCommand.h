@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSetTestsPropertiesCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.8 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSetTestsPropertiesCommand_h
 #define cmSetTestsPropertiesCommand_h
 
@@ -68,7 +63,9 @@ public:
       "specified regular expressions, the test will fail.\n"
       "  Example: PASS_REGULAR_EXPRESSION \"[^a-z]Error;ERROR;Failed\"\n"
       "Both PASS_REGULAR_EXPRESSION and FAIL_REGULAR_EXPRESSION expect a "
-      "list of regular expressions.\n";
+      "list of regular expressions.\n"
+      "TIMEOUT: Setting this will limit the test runtime to the number of "
+      "seconds specified.\n";
     }
 
   cmTypeMacro(cmSetTestsPropertiesCommand, cmCommand);

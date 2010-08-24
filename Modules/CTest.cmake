@@ -1,13 +1,62 @@
 # - Configure a project for testing with CTest/CDash
-# This file configures a project to use the CTest/CDash/Dart
-# testing/dashboard process.  This module should be included
-# in the CMakeLists.txt file at the top of a project.  Typical usage:
-#  INCLUDE(CTest)
-#  IF(BUILD_TESTING)
-#    # ... testing related CMake code ...
-#  ENDIF(BUILD_TESTING)
-# The BUILD_TESTING option is created by the CTest module to determine
-# whether testing support should be enabled.  The default is ON.
+# Include this module in the top CMakeLists.txt file of a project to
+# enable testing with CTest and dashboard submissions to CDash:
+#   project(MyProject)
+#   ...
+#   include(CTest)
+# The module automatically creates a BUILD_TESTING option that selects
+# whether to enable testing support (ON by default).  After including
+# the module, use code like
+#   if(BUILD_TESTING)
+#     # ... CMake code to create tests ...
+#   endif()
+# to creating tests when testing is enabled.
+#
+# To enable submissions to a CDash server, create a CTestConfig.cmake
+# file at the top of the project with content such as
+#   set(CTEST_PROJECT_NAME "MyProject")
+#   set(CTEST_NIGHTLY_START_TIME "01:00:00 UTC")
+#   set(CTEST_DROP_METHOD "http")
+#   set(CTEST_DROP_SITE "my.cdash.org")
+#   set(CTEST_DROP_LOCATION "/submit.php?project=MyProject")
+#   set(CTEST_DROP_SITE_CDASH TRUE)
+# (the CDash server can provide the file to a project administrator
+# who configures 'MyProject').
+# Settings in the config file are shared by both this CTest module and
+# the CTest command-line tool's dashboard script mode (ctest -S).
+#
+# While building a project for submission to CDash, CTest scans the
+# build output for errors and warnings and reports them with
+# surrounding context from the build log.  This generic approach works
+# for all build tools, but does not give details about the command
+# invocation that produced a given problem.  One may get more detailed
+# reports by adding
+#   set(CTEST_USE_LAUNCHERS 1)
+# to the CTestConfig.cmake file.  When this option is enabled, the
+# CTest module tells CMake's Makefile generators to invoke every
+# command in the generated build system through a CTest launcher
+# program.  (Currently the CTEST_USE_LAUNCHERS option is ignored on
+# non-Makefile generators.)  During a manual build each launcher
+# transparently runs the command it wraps.  During a CTest-driven
+# build for submission to CDash each launcher reports detailed
+# information when its command fails or warns.
+# (Setting CTEST_USE_LAUNCHERS in CTestConfig.cmake is convenient, but
+# also adds the launcher overhead even for manual builds.  One may
+# instead set it in a CTest dashboard script and add it to the CMake
+# cache for the build tree.)
+
+#=============================================================================
+# Copyright 2005-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 OPTION(BUILD_TESTING "Build the testing tree." ON)
 
@@ -63,74 +112,53 @@ IF(BUILD_TESTING)
   IF(EXISTS "${PROJECT_SOURCE_DIR}/DartConfig.cmake")
     INCLUDE("${PROJECT_SOURCE_DIR}/DartConfig.cmake")
   ELSE(EXISTS "${PROJECT_SOURCE_DIR}/DartConfig.cmake")
-
     # Dashboard is opened for submissions for a 24 hour period starting at
     # the specified NIGHTLY_START_TIME. Time is specified in 24 hour format.
     SET_IF_NOT_SET (NIGHTLY_START_TIME "00:00:00 EDT")
     SET_IF_NOT_SET(DROP_METHOD "http")
-
-    # Dart server to submit results (used by client)
-    # There should be an option to specify submit method, but I will leave it
-    # commented until we decide what to do with it.
-    # SET(DROP_METHOD "http" CACHE STRING "Set the CTest submit method. Valid options are http and ftp")
-    IF(DROP_METHOD MATCHES http)
-      SET_IF_NOT_SET (DROP_SITE "public.kitware.com")
-      SET_IF_NOT_SET (DROP_LOCATION "/cgi-bin/HTTPUploadDartFile.cgi")
-    ELSE(DROP_METHOD MATCHES http)
-      SET_IF_NOT_SET (DROP_SITE "public.kitware.com")
-      SET_IF_NOT_SET (DROP_LOCATION "/incoming")
-      SET_IF_NOT_SET (DROP_SITE_USER "anonymous")
-      SET_IF_NOT_SET (DROP_SITE_PASSWORD "random@someplace.com")
-      SET_IF_NOT_SET (DROP_SITE_MODE "active")
-    ENDIF(DROP_METHOD MATCHES http)
-    SET_IF_NOT_SET (TRIGGER_SITE "http://${DROP_SITE}/cgi-bin/Submit-Random-TestingResults.cgi")
     SET_IF_NOT_SET (COMPRESS_SUBMISSION ON)
-
-    # Dart server configuration 
-    SET (ROLLUP_URL "http://${DROP_SITE}/cgi-bin/random-rollup-dashboard.sh")
-    #SET (CVS_WEB_URL "")
-    #SET (CVS_WEB_CVSROOT "")
-
-    #SET (USE_DOXYGEN "Off")
-    #SET (DOXYGEN_URL "" )
   ENDIF(EXISTS "${PROJECT_SOURCE_DIR}/DartConfig.cmake")
   SET_IF_NOT_SET (NIGHTLY_START_TIME "00:00:00 EDT")
-
-  # make program just needs to use CMAKE_MAKE_PROGRAM which is required
-  # to be defined by cmake 
-  SET(MAKEPROGRAM ${CMAKE_MAKE_PROGRAM})
 
   FIND_PROGRAM(CVSCOMMAND cvs )
   SET(CVS_UPDATE_OPTIONS "-d -A -P" CACHE STRING 
     "Options passed to the cvs update command.")
   FIND_PROGRAM(SVNCOMMAND svn)
+  FIND_PROGRAM(BZRCOMMAND bzr)
+  FIND_PROGRAM(HGCOMMAND hg)
+  FIND_PROGRAM(GITCOMMAND git)
 
   IF(NOT UPDATE_TYPE)
     IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CVS")
       SET(UPDATE_TYPE cvs)
-    ELSE(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CVS")
-      IF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.svn")
-        SET(UPDATE_TYPE svn)
-      ENDIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.svn")
-    ENDIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/CVS")
+    ELSEIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.svn")
+      SET(UPDATE_TYPE svn)
+    ELSEIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.bzr")
+      SET(UPDATE_TYPE bzr)
+    ELSEIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.hg")
+      SET(UPDATE_TYPE hg)
+    ELSEIF(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+      SET(UPDATE_TYPE git)
+    ENDIF()
   ENDIF(NOT UPDATE_TYPE)
 
-  IF(NOT UPDATE_TYPE)
-    IF(NOT __CTEST_UPDATE_TYPE_COMPLAINED)
-      SET(__CTEST_UPDATE_TYPE_COMPLAINED 1 CACHE INTERNAL "Already complained about update type.")
-      MESSAGE(STATUS "CTest cannot determine repository type. Please set UPDATE_TYPE to 'cvs' or 'svn'. CTest update will not work.")
-    ENDIF(NOT __CTEST_UPDATE_TYPE_COMPLAINED)
-  ENDIF(NOT UPDATE_TYPE)
-
-  IF(UPDATE_TYPE MATCHES "[Cc][Vv][Ss]")
+  STRING(TOLOWER "${UPDATE_TYPE}" _update_type)
+  IF("${_update_type}" STREQUAL "cvs")
     SET(UPDATE_COMMAND "${CVSCOMMAND}")
     SET(UPDATE_OPTIONS "${CVS_UPDATE_OPTIONS}")
-  ELSE(UPDATE_TYPE MATCHES "[Cc][Vv][Ss]")
-    IF(UPDATE_TYPE MATCHES "[Ss][Vv][Nn]")
-      SET(UPDATE_COMMAND "${SVNCOMMAND}")
-      SET(UPDATE_OPTIONS "${SVN_UPDATE_OPTIONS}")
-    ENDIF(UPDATE_TYPE MATCHES "[Ss][Vv][Nn]")
-  ENDIF(UPDATE_TYPE MATCHES "[Cc][Vv][Ss]")
+  ELSEIF("${_update_type}" STREQUAL "svn")
+    SET(UPDATE_COMMAND "${SVNCOMMAND}")
+    SET(UPDATE_OPTIONS "${SVN_UPDATE_OPTIONS}")
+  ELSEIF("${_update_type}" STREQUAL "bzr")
+    SET(UPDATE_COMMAND "${BZRCOMMAND}")
+    SET(UPDATE_OPTIONS "${BZR_UPDATE_OPTIONS}")
+  ELSEIF("${_update_type}" STREQUAL "hg")
+    SET(UPDATE_COMMAND "${HGCOMMAND}")
+    SET(UPDATE_OPTIONS "${HG_UPDATE_OPTIONS}")
+  ELSEIF("${_update_type}" STREQUAL "git")
+    SET(UPDATE_COMMAND "${GITCOMMAND}")
+    SET(UPDATE_OPTIONS "${GIT_UPDATE_OPTIONS}")
+  ENDIF()
 
   SET(DART_TESTING_TIMEOUT 1500 CACHE STRING 
     "Maximum time allowed before CTest will kill the test.")
@@ -140,6 +168,12 @@ IF(BUILD_TESTING)
     PATHS
     "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Rational Software\\Purify\\Setup;InstallFolder]"
     DOC "Path to the memory checking command, used for memory error detection."
+    )
+  FIND_PROGRAM(SLURM_SBATCH_COMMAND sbatch DOC
+    "Path to the SLURM sbatch executable"
+    )
+  FIND_PROGRAM(SLURM_SRUN_COMMAND srun DOC
+    "Path to the SLURM srun executable"
     )
   SET(MEMORYCHECK_SUPPRESSIONS_FILE "" CACHE FILEPATH 
     "File that contains suppressions for the memory checker")
@@ -187,20 +221,47 @@ IF(BUILD_TESTING)
     ENDIF(DART_CXX_NAME MATCHES "devenv")
     SET(BUILDNAME "${BUILD_NAME_SYSTEM_NAME}-${DART_CXX_NAME}")
   ENDIF(NOT BUILDNAME)
-  # set the build command
-  BUILD_COMMAND(MAKECOMMAND ${MAKEPROGRAM} )
+
+  # the build command
+  BUILD_COMMAND(MAKECOMMAND CONFIGURATION "\${CTEST_CONFIGURATION_TYPE}")
+  SET(MAKECOMMAND ${MAKECOMMAND} CACHE STRING "Command to build the project")
+
+  # the default build configuration the ctest build handler will use
+  # if there is no -C arg given to ctest:
+  SET(DEFAULT_CTEST_CONFIGURATION_TYPE "$ENV{CMAKE_CONFIG_TYPE}")
+  IF(DEFAULT_CTEST_CONFIGURATION_TYPE STREQUAL "")
+    SET(DEFAULT_CTEST_CONFIGURATION_TYPE "Release")
+  ENDIF(DEFAULT_CTEST_CONFIGURATION_TYPE STREQUAL "")
+
+  IF(NOT "${CMAKE_GENERATOR}" MATCHES "Make")
+    SET(CTEST_USE_LAUNCHERS 0)
+  ENDIF(NOT "${CMAKE_GENERATOR}" MATCHES "Make")
+  IF(CTEST_USE_LAUNCHERS)
+    SET(CTEST_LAUNCH_COMPILE "\"${CMAKE_CTEST_COMMAND}\" --launch --target-name <TARGET_NAME> --build-dir <CMAKE_CURRENT_BINARY_DIR> --output <OBJECT> --source <SOURCE> --language <LANGUAGE> --")
+    SET(CTEST_LAUNCH_LINK    "\"${CMAKE_CTEST_COMMAND}\" --launch --target-name <TARGET_NAME> --build-dir <CMAKE_CURRENT_BINARY_DIR> --output <TARGET> --target-type <TARGET_TYPE> --language <LANGUAGE> --")
+    SET(CTEST_LAUNCH_CUSTOM  "\"${CMAKE_CTEST_COMMAND}\" --launch --target-name <TARGET_NAME> --build-dir <CMAKE_CURRENT_BINARY_DIR> --output <OUTPUT> --")
+    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CTEST_LAUNCH_COMPILE}")
+    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_LINK "${CTEST_LAUNCH_LINK}")
+    SET_PROPERTY(GLOBAL PROPERTY RULE_LAUNCH_CUSTOM "${CTEST_LAUNCH_CUSTOM}")
+  ENDIF(CTEST_USE_LAUNCHERS)
 
   MARK_AS_ADVANCED(
     COVERAGE_COMMAND
     CVSCOMMAND
     SVNCOMMAND
+    BZRCOMMAND
+    HGCOMMAND
+    GITCOMMAND
     CVS_UPDATE_OPTIONS
     SVN_UPDATE_OPTIONS
+    BZR_UPDATE_OPTIONS
     MAKECOMMAND 
     MEMORYCHECK_COMMAND
     MEMORYCHECK_SUPPRESSIONS_FILE
     PURIFYCOMMAND
     SCPCOMMAND
+    SLURM_SBATCH_COMMAND
+    SLURM_SRUN_COMMAND
     SITE 
     )
   #  BUILDNAME 

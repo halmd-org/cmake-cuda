@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-Program:   CMake - Cross-Platform Makefile Generator
-Module:    $RCSfile: cmGlobalVisualStudio9Win64Generator.cxx,v $
-Language:  C++
-Date:      $Date: 2007-12-17 19:43:11 $
-Version:   $Revision: 1.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-This software is distributed WITHOUT ANY WARRANTY; without even 
-the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGlobalVisualStudio9Win64Generator.h"
 #include "cmLocalVisualStudio7Generator.h"
 #include "cmMakefile.h"
@@ -44,10 +39,12 @@ void cmGlobalVisualStudio9Win64Generator
   entry.Full = "";
 }
 
+//----------------------------------------------------------------------------
 void cmGlobalVisualStudio9Win64Generator
-::EnableLanguage(std::vector<std::string>const &  lang, 
-                 cmMakefile *mf, bool optional)
+::AddPlatformDefinitions(cmMakefile* mf)
 {
+  cmGlobalVisualStudio9Generator::AddPlatformDefinitions(mf);
   mf->AddDefinition("CMAKE_FORCE_WIN64", "TRUE");
-  cmGlobalVisualStudio9Generator::EnableLanguage(lang, mf, optional);
+  mf->AddDefinition("MSVC_C_ARCHITECTURE_ID", "x64");
+  mf->AddDefinition("MSVC_CXX_ARCHITECTURE_ID", "x64");
 }

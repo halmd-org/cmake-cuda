@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudio6Generator.h,v $
-  Language:  C++
-  Date:      $Date: 2007-06-28 13:09:26 $
-  Version:   $Revision: 1.29 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGlobalVisualStudio6Generator_h
 #define cmGlobalVisualStudio6Generator_h
 
@@ -88,6 +83,9 @@ public:
 
   ///! What is the configurations directory variable called?
   virtual const char* GetCMakeCFGInitDirectory()  { return "$(IntDir)"; }
+
+protected:
+  virtual const char* GetIDEVersion() { return "6.0"; }
 private:
   void GenerateConfigurations(cmMakefile* mf);
   void WriteDSWFile(std::ostream& fout);
@@ -96,7 +94,7 @@ private:
                     const char* name, const char* path, cmTarget &t);
   void WriteExternalProject(std::ostream& fout, 
                             const char* name, const char* path,
-                            const std::vector<std::string>& dependencies);
+                            const std::set<cmStdString>& dependencies);
   void WriteDSWFooter(std::ostream& fout);
 };
 

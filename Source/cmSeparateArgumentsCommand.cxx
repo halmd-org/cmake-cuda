@@ -1,38 +1,109 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSeparateArgumentsCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.6 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmSeparateArgumentsCommand.h"
 
 // cmSeparateArgumentsCommand
 bool cmSeparateArgumentsCommand
 ::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
-  if(args.size() != 1 )
+  if(args.empty())
     {
-    this->SetError("called with incorrect number of arguments");
+    this->SetError("must be given at least one argument.");
     return false;
     }
-  const char* cacheValue = this->Makefile->GetDefinition(args[0].c_str());
-  if(!cacheValue)
+
+  std::string var;
+  std::string command;
+  enum Mode { ModeOld, ModeUnix, ModeWindows };
+  Mode mode = ModeOld;
+  enum Doing { DoingNone, DoingVariable, DoingMode, DoingCommand };
+  Doing doing = DoingVariable;
+  for(unsigned int i=0; i < args.size(); ++i)
     {
-    return true;
+    if(doing == DoingVariable)
+      {
+      var = args[i];
+      doing = DoingMode;
+      }
+    else if(doing == DoingMode && args[i] == "UNIX_COMMAND")
+      {
+      mode = ModeUnix;
+      doing = DoingCommand;
+      }
+    else if(doing == DoingMode && args[i] == "WINDOWS_COMMAND")
+      {
+      mode = ModeWindows;
+      doing = DoingCommand;
+      }
+    else if(doing == DoingCommand)
+      {
+      command = args[i];
+      doing = DoingNone;
+      }
+    else
+      {
+      cmOStringStream e;
+      e << "given unknown argument " << args[i];
+      this->SetError(e.str().c_str());
+      return false;
+      }
     }
-  std::string value = cacheValue;
-  cmSystemTools::ReplaceString(value," ", ";");
-  this->Makefile->AddDefinition(args[0].c_str(), value.c_str());
+
+  if(mode == ModeOld)
+    {
+    // Original space-replacement version of command.
+    if(const char* def = this->Makefile->GetDefinition(var.c_str()))
+      {
+      std::string value = def;
+      cmSystemTools::ReplaceString(value, " ", ";");
+      this->Makefile->AddDefinition(var.c_str(), value.c_str());
+      }
+    }
+  else
+    {
+    // Parse the command line.
+    std::vector<std::string> vec;
+    if(mode == ModeUnix)
+      {
+      cmSystemTools::ParseUnixCommandLine(command.c_str(), vec);
+      }
+    else // if(mode == ModeWindows)
+      {
+      cmSystemTools::ParseWindowsCommandLine(command.c_str(), vec);
+      }
+
+    // Construct the result list value.
+    std::string value;
+    const char* sep = "";
+    for(std::vector<std::string>::const_iterator vi = vec.begin();
+        vi != vec.end(); ++vi)
+      {
+      // Separate from the previous argument.
+      value += sep;
+      sep = ";";
+
+      // Preserve semicolons.
+      for(std::string::const_iterator si = vi->begin();
+          si != vi->end(); ++si)
+        {
+        if(*si == ';')
+          {
+          value += '\\';
+          }
+        value += *si;
+        }
+      }
+    this->Makefile->AddDefinition(var.c_str(), value.c_str());
+    }
+
   return true;
 }
-

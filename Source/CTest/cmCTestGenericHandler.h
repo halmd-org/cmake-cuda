@@ -1,27 +1,22 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestGenericHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2006-04-28 15:59:31 $
-  Version:   $Revision: 1.11 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestGenericHandler_h
 #define cmCTestGenericHandler_h
 
 
 #include "cmObject.h"
+#include "cmCTest.h"
 
-class cmCTest;
 class cmMakefile;
 class cmCTestCommand;
 class cmGeneratedFileStream;
@@ -88,10 +83,14 @@ public:
   void SetSubmitIndex(int idx) { this->SubmitIndex = idx; }
   int GetSubmitIndex() { return this->SubmitIndex; }
 
+  void SetAppendXML(bool b) { this->AppendXML = b; }
+
 protected:
-  bool StartResultingXML(const char* name, cmGeneratedFileStream& xofs);
+  bool StartResultingXML(cmCTest::Part part,
+                         const char* name, cmGeneratedFileStream& xofs);
   bool StartLogFile(const char* name, cmGeneratedFileStream& xofs);
 
+  bool AppendXML;
   bool HandlerVerbose;
   cmCTest *CTest;
   t_StringToString Options;

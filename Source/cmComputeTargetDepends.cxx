@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmComputeTargetDepends.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.2.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmComputeTargetDepends.h"
 
 #include "cmComputeComponentGraph.h"
@@ -103,6 +98,7 @@ cmComputeTargetDepends::cmComputeTargetDepends(cmGlobalGenerator* gg)
   this->GlobalGenerator = gg;
   cmake* cm = this->GlobalGenerator->GetCMakeInstance();
   this->DebugMode = cm->GetPropertyAsBool("GLOBAL_DEPENDS_DEBUG_MODE");
+  this->NoCycles = cm->GetPropertyAsBool("GLOBAL_DEPENDS_NO_CYCLES");
 }
 
 //----------------------------------------------------------------------------
@@ -344,6 +340,13 @@ cmComputeTargetDepends
       continue;
       }
 
+    // Immediately complain if no cycles are allowed at all.
+    if(this->NoCycles)
+      {
+      this->ComplainAboutBadComponent(ccg, c);
+      return false;
+      }
+
     // Make sure the component is all STATIC_LIBRARY targets.
     for(NodeList::const_iterator ni = nl.begin(); ni != nl.end(); ++ni)
       {
@@ -391,8 +394,16 @@ cmComputeTargetDepends
         }
       }
     }
-  e << "At least one of these targets is not a STATIC_LIBRARY.  "
-    << "Cyclic dependencies are allowed only among static libraries.";
+  if(this->NoCycles)
+    {
+    e << "The GLOBAL_DEPENDS_NO_CYCLES global property is enabled, so "
+      << "cyclic dependencies are not allowed even among static libraries.";
+    }
+  else
+    {
+    e << "At least one of these targets is not a STATIC_LIBRARY.  "
+      << "Cyclic dependencies are allowed only among static libraries.";
+    }
   cmSystemTools::Error(e.str().c_str());
 }
 

@@ -1,23 +1,23 @@
-/*=========================================================================
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   KWSys - Kitware System Library
-  Module:    $RCSfile: ProcessUNIX.c,v $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "kwsysPrivate.h"
 #include KWSYS_HEADER(Process.h)
+#include KWSYS_HEADER(System.h)
 
 /* Work-around CMake dependency scanning limitation.  This must
    duplicate the above list of headers.  */
 #if 0
 # include "Process.h.in"
+# include "System.h.in"
 #endif
 
 /*
@@ -67,6 +67,12 @@ do.
 #undef __BEOS__
 #endif
 
+#if defined(__VMS)
+# define KWSYSPE_VMS_NONBLOCK , O_NONBLOCK
+#else
+# define KWSYSPE_VMS_NONBLOCK
+#endif
+
 #if defined(KWSYS_C_HAS_PTRDIFF_T) && KWSYS_C_HAS_PTRDIFF_T
 typedef ptrdiff_t kwsysProcess_ptrdiff_t;
 #else
@@ -100,7 +106,7 @@ static inline void kwsysProcess_usleep(unsigned int msec)
  * pipes' file handles to be non-blocking and just poll them directly
  * without select().
  */
-#if !defined(__BEOS__)
+#if !defined(__BEOS__) && !defined(__VMS)
 # define KWSYSPE_USE_SELECT 1
 #endif
 
@@ -156,7 +162,8 @@ static int kwsysProcessGetTimeoutTime(kwsysProcess* cp, double* userTimeout,
                                       kwsysProcessTime* timeoutTime);
 static int kwsysProcessGetTimeoutLeft(kwsysProcessTime* timeoutTime,
                                       double* userTimeout,
-                                      kwsysProcessTimeNative* timeoutLength);
+                                      kwsysProcessTimeNative* timeoutLength,
+                                      int zeroIsExpired);
 static kwsysProcessTime kwsysProcessTimeGetCurrent(void);
 static double kwsysProcessTimeToDouble(kwsysProcessTime t);
 static kwsysProcessTime kwsysProcessTimeFromDouble(double d);
@@ -169,6 +176,9 @@ static void kwsysProcessRestoreDefaultSignalHandlers(void);
 static pid_t kwsysProcessFork(kwsysProcess* cp,
                               kwsysProcessCreateInformation* si);
 static void kwsysProcessKill(pid_t process_id);
+#if defined(__VMS)
+static int kwsysProcessSetVMSFeature(const char* name, int value);
+#endif
 static int kwsysProcessesAdd(kwsysProcess* cp);
 static void kwsysProcessesRemove(kwsysProcess* cp);
 #if KWSYSPE_USE_SIGINFO
@@ -177,7 +187,6 @@ static void kwsysProcessesSignalHandler(int signum, siginfo_t* info,
 #else
 static void kwsysProcessesSignalHandler(int signum);
 #endif
-static char** kwsysProcessParseVerbatimCommand(const char* command);
 
 /*--------------------------------------------------------------------------*/
 /* Structure containing data used to implement the child's execution.  */
@@ -390,7 +399,8 @@ int kwsysProcess_AddCommand(kwsysProcess* cp, char const* const* command)
 
   /* Allocate a new array for command pointers.  */
   newNumberOfCommands = cp->NumberOfCommands + 1;
-  if(!(newCommands = (char***)malloc(sizeof(char**) * newNumberOfCommands)))
+  if(!(newCommands =
+       (char***)malloc(sizeof(char**) *(size_t)(newNumberOfCommands))))
     {
     /* Out of memory.  */
     return 0;
@@ -411,7 +421,7 @@ int kwsysProcess_AddCommand(kwsysProcess* cp, char const* const* command)
     /* In order to run the given command line verbatim we need to
        parse it.  */
     newCommands[cp->NumberOfCommands] =
-      kwsysProcessParseVerbatimCommand(*command);
+      kwsysSystem_Parse_CommandForUnix(*command, 0);
     if(!newCommands[cp->NumberOfCommands])
       {
       /* Out of memory.  */
@@ -427,7 +437,8 @@ int kwsysProcess_AddCommand(kwsysProcess* cp, char const* const* command)
     kwsysProcess_ptrdiff_t i = 0;
     while(*c++);
     n = c - command - 1;
-    newCommands[cp->NumberOfCommands] = (char**)malloc((n+1)*sizeof(char*));
+    newCommands[cp->NumberOfCommands] =
+      (char**)malloc((size_t)(n+1)*sizeof(char*));
     if(!newCommands[cp->NumberOfCommands])
       {
       /* Out of memory.  */
@@ -709,6 +720,14 @@ void kwsysProcess_Execute(kwsysProcess* cp)
     return;
     }
 
+  /* Make sure we have something to run.  */
+  if(cp->NumberOfCommands < 1)
+    {
+    strcpy(cp->ErrorMessage, "No command");
+    cp->State = kwsysProcess_State_Error;
+    return;
+    }
+
   /* Initialize the control structure for a new process.  */
   if(!kwsysProcessInitialize(cp))
     {
@@ -716,6 +735,15 @@ void kwsysProcess_Execute(kwsysProcess* cp)
     cp->State = kwsysProcess_State_Error;
     return;
     }
+
+#if defined(__VMS)
+  /* Make sure pipes behave like streams on VMS.  */
+  if(!kwsysProcessSetVMSFeature("DECC$STREAM_PIPE", 1))
+    {
+    kwsysProcessCleanup(cp, 1);
+    return;
+    }
+#endif
 
   /* Save the real working directory of this process and change to
      the working directory for the child processes.  This is needed
@@ -756,7 +784,7 @@ void kwsysProcess_Execute(kwsysProcess* cp)
   {
   /* Create the pipe.  */
   int p[2];
-  if(pipe(p) < 0)
+  if(pipe(p KWSYSPE_VMS_NONBLOCK) < 0)
     {
     kwsysProcessCleanup(cp, 1);
     return;
@@ -1049,7 +1077,7 @@ static int kwsysProcessWaitForPipe(kwsysProcess* cp, char** data, int* length,
           {
           /* Report this data.  */
           *data = cp->PipeBuffer;
-          *length = n;
+          *length = (int)(n);
           switch(i)
             {
             case KWSYSPE_PIPE_STDOUT:
@@ -1095,7 +1123,7 @@ static int kwsysProcessWaitForPipe(kwsysProcess* cp, char** data, int* length,
     }
   if(kwsysProcessGetTimeoutLeft(&wd->TimeoutTime,
                                 wd->User?wd->UserTimeout:0,
-                                &timeoutLength))
+                                &timeoutLength, 0))
     {
     /* Timeout has already expired.  */
     wd->Expired = 1;
@@ -1182,11 +1210,24 @@ static int kwsysProcessWaitForPipe(kwsysProcess* cp, char** data, int* length,
       else if (n == 0)  /* EOF */
         {
         /* We are done reading from this pipe.  */
-        kwsysProcessCleanupDescriptor(&cp->PipeReadEnds[i]);
-        --cp->PipesLeft;
+#if defined(__VMS)
+        if(!cp->CommandsLeft)
+#endif
+          {
+          kwsysProcessCleanupDescriptor(&cp->PipeReadEnds[i]);
+          --cp->PipesLeft;
+          }
         }
       else if (n < 0)  /* error */
         {
+#if defined(__VMS)
+        if(!cp->CommandsLeft)
+          {
+          kwsysProcessCleanupDescriptor(&cp->PipeReadEnds[i]);
+          --cp->PipesLeft;
+          }
+        else
+#endif
         if((errno != EINTR) && (errno != EAGAIN))
           {
           strncpy(cp->ErrorMessage,strerror(errno),
@@ -1208,14 +1249,7 @@ static int kwsysProcessWaitForPipe(kwsysProcess* cp, char** data, int* length,
     }
 
   if(kwsysProcessGetTimeoutLeft(&wd->TimeoutTime, wd->User?wd->UserTimeout:0,
-                                &timeoutLength))
-    {
-    /* Timeout has already expired.  */
-    wd->Expired = 1;
-    return 1;
-    }
-
-  if((timeoutLength.tv_sec == 0) && (timeoutLength.tv_usec == 0))
+                                &timeoutLength, 1))
     {
     /* Timeout has already expired.  */
     wd->Expired = 1;
@@ -1399,23 +1433,24 @@ static int kwsysProcessInitialize(kwsysProcess* cp)
     {
     free(cp->ForkPIDs);
     }
-  cp->ForkPIDs = (pid_t*)malloc(sizeof(pid_t)*cp->NumberOfCommands);
+  cp->ForkPIDs = (pid_t*)malloc(sizeof(pid_t)*(size_t)(cp->NumberOfCommands));
   if(!cp->ForkPIDs)
     {
     return 0;
     }
-  memset(cp->ForkPIDs, 0, sizeof(pid_t)*cp->NumberOfCommands);
+  memset(cp->ForkPIDs, 0, sizeof(pid_t)*(size_t)(cp->NumberOfCommands));
 
   if(cp->CommandExitCodes)
     {
     free(cp->CommandExitCodes);
     }
-  cp->CommandExitCodes = (int*)malloc(sizeof(int)*cp->NumberOfCommands);
+  cp->CommandExitCodes = (int*)malloc(sizeof(int)*
+                                      (size_t)(cp->NumberOfCommands));
   if(!cp->CommandExitCodes)
     {
     return 0;
     }
-  memset(cp->CommandExitCodes, 0, sizeof(int)*cp->NumberOfCommands);
+  memset(cp->CommandExitCodes, 0, sizeof(int)*(size_t)(cp->NumberOfCommands));
 
   /* Allocate memory to save the real working directory.  */
   if ( cp->WorkingDirectory )
@@ -1427,7 +1462,8 @@ static int kwsysProcessInitialize(kwsysProcess* cp)
 #else
     cp->RealWorkingDirectoryLength = 4096;
 #endif
-    cp->RealWorkingDirectory = malloc(cp->RealWorkingDirectoryLength);
+    cp->RealWorkingDirectory =
+      malloc((size_t)(cp->RealWorkingDirectoryLength));
     if(!cp->RealWorkingDirectory)
       {
       return 0;
@@ -1568,6 +1604,11 @@ static int kwsysProcessSetNonBlocking(int fd)
 }
 
 /*--------------------------------------------------------------------------*/
+#if defined(__VMS)
+int decc$set_child_standard_streams(int fd1, int fd2, int fd3);
+#endif
+
+/*--------------------------------------------------------------------------*/
 static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
                               kwsysProcessCreateInformation* si, int* readEnd)
 {
@@ -1618,7 +1659,7 @@ static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
   {
   /* Create the pipe.  */
   int p[2];
-  if(pipe(p) < 0)
+  if(pipe(p KWSYSPE_VMS_NONBLOCK) < 0)
     {
     return 0;
     }
@@ -1676,7 +1717,14 @@ static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
     }
 
   /* Fork off a child process.  */
+#if defined(__VMS)
+  /* VMS needs vfork and execvp to be in the same function because
+     they use setjmp/longjmp to run the child startup code in the
+     parent!  TODO: OptionDetach.  */
+  cp->ForkPIDs[prIndex] = vfork();
+#else
   cp->ForkPIDs[prIndex] = kwsysProcessFork(cp, si);
+#endif
   if(cp->ForkPIDs[prIndex] < 0)
     {
     return 0;
@@ -1684,6 +1732,10 @@ static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
 
   if(cp->ForkPIDs[prIndex] == 0)
     {
+#if defined(__VMS)
+    /* Specify standard pipes for child process.  */
+    decc$set_child_standard_streams(si->StdIn, si->StdOut, si->StdErr);
+#else
     /* Close the read end of the error reporting pipe.  */
     close(si->ErrorPipe[0]);
 
@@ -1713,13 +1765,20 @@ static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
 
     /* Restore all default signal handlers. */
     kwsysProcessRestoreDefaultSignalHandlers();
+#endif
 
     /* Execute the real process.  If successful, this does not return.  */
     execvp(cp->Commands[prIndex][0], cp->Commands[prIndex]);
+    /* TODO: What does VMS do if the child fails to start?  */
 
     /* Failure.  Report error to parent and terminate.  */
     kwsysProcessChildErrorExit(si->ErrorPipe[1]);
     }
+
+#if defined(__VMS)
+  /* Restore the standard pipes of this process.  */
+  decc$set_child_standard_streams(0, 1, 2);
+#endif
 
   /* A child has been created.  */
   ++cp->CommandsLeft;
@@ -1737,7 +1796,7 @@ static int kwsysProcessCreate(kwsysProcess* cp, int prIndex,
     {
     /* Keep trying to read until the operation is not interrupted.  */
     while(((n = read(si->ErrorPipe[0], cp->ErrorMessage+total,
-                     KWSYSPE_PIPE_BUFFER_SIZE-total)) < 0) &&
+                     (size_t)(KWSYSPE_PIPE_BUFFER_SIZE-total))) < 0) &&
           (errno == EINTR));
     if(n > 0)
       {
@@ -1824,9 +1883,8 @@ static int kwsysProcessSetupOutputPipeFile(int* p, const char* name)
   /* Close the existing descriptor.  */
   kwsysProcessCleanupDescriptor(p);
 
-  /* Open a file for the pipe to write (permissions 644).  */
-  if((fout = open(name, O_WRONLY | O_CREAT | O_TRUNC,
-                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0)
+  /* Open a file for the pipe to write.  */
+  if((fout = open(name, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
     {
     return 0;
     }
@@ -1870,7 +1928,7 @@ static int kwsysProcessGetTimeoutTime(kwsysProcess* cp, double* userTimeout,
 {
   /* The first time this is called, we need to calculate the time at
      which the child will timeout.  */
-  if(cp->Timeout && cp->TimeoutTime.tv_sec < 0)
+  if(cp->Timeout > 0 && cp->TimeoutTime.tv_sec < 0)
     {
     kwsysProcessTime length = kwsysProcessTimeFromDouble(cp->Timeout);
     cp->TimeoutTime = kwsysProcessTimeAdd(cp->StartTime, length);
@@ -1901,7 +1959,8 @@ static int kwsysProcessGetTimeoutTime(kwsysProcess* cp, double* userTimeout,
    Returns 1 if the time has already arrived, and 0 otherwise.  */
 static int kwsysProcessGetTimeoutLeft(kwsysProcessTime* timeoutTime,
                                       double* userTimeout,
-                                      kwsysProcessTimeNative* timeoutLength)
+                                      kwsysProcessTimeNative* timeoutLength,
+                                      int zeroIsExpired)
 {
   if(timeoutTime->tv_sec < 0)
     {
@@ -1921,7 +1980,8 @@ static int kwsysProcessGetTimeoutLeft(kwsysProcessTime* timeoutTime,
       timeLeft.tv_usec = 0;
       }
 
-    if(timeLeft.tv_sec < 0)
+    if(timeLeft.tv_sec < 0 ||
+       (timeLeft.tv_sec == 0 && timeLeft.tv_usec == 0 && zeroIsExpired))
       {
       /* Timeout has already expired.  */
       return 1;
@@ -1950,7 +2010,7 @@ static kwsysProcessTime kwsysProcessTimeGetCurrent(void)
 /*--------------------------------------------------------------------------*/
 static double kwsysProcessTimeToDouble(kwsysProcessTime t)
 {
-  return (double)t.tv_sec + t.tv_usec*0.000001;
+  return (double)t.tv_sec + (double)(t.tv_usec)*0.000001;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -1958,7 +2018,7 @@ static kwsysProcessTime kwsysProcessTimeFromDouble(double d)
 {
   kwsysProcessTime t;
   t.tv_sec = (long)d;
-  t.tv_usec = (long)((d-t.tv_sec)*1000000);
+  t.tv_usec = (long)((d-(double)(t.tv_sec))*1000000);
   return t;
 }
 
@@ -2133,10 +2193,12 @@ static void kwsysProcessChildErrorExit(int errorPipe)
 {
   /* Construct the error message.  */
   char buffer[KWSYSPE_PIPE_BUFFER_SIZE];
+  kwsysProcess_ssize_t result;
   strncpy(buffer, strerror(errno), KWSYSPE_PIPE_BUFFER_SIZE);
 
   /* Report the error to the parent through the special pipe.  */
-  write(errorPipe, buffer, strlen(buffer));
+  result=write(errorPipe, buffer, strlen(buffer));
+  (void)result;
 
   /* Terminate without cleanup.  */
   _exit(1);
@@ -2257,6 +2319,7 @@ static void kwsysProcessExit(void)
 }
 
 /*--------------------------------------------------------------------------*/
+#if !defined(__VMS)
 static pid_t kwsysProcessFork(kwsysProcess* cp,
                               kwsysProcessCreateInformation* si)
 {
@@ -2311,18 +2374,27 @@ static pid_t kwsysProcessFork(kwsysProcess* cp,
     return fork();
     }
 }
+#endif
 
 /*--------------------------------------------------------------------------*/
 /* We try to obtain process information by invoking the ps command.
    Here we define the command to call on each platform and the
    corresponding parsing format string.  The parsing format should
    have two integers to store: the pid and then the ppid.  */
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) \
+   || defined(__OpenBSD__) || defined(__GLIBC__) || defined(__GNU__)
 # define KWSYSPE_PS_COMMAND "ps axo pid,ppid"
 # define KWSYSPE_PS_FORMAT  "%d %d\n"
-#elif defined(__hpux) || defined(__sparc) || defined(__sgi) || defined(_AIX)
+#elif defined(__sun) && (defined(__SVR4) || defined(__svr4__)) /* Solaris */
+# define KWSYSPE_PS_COMMAND "ps -e -o pid,ppid"
+# define KWSYSPE_PS_FORMAT  "%d %d\n"
+#elif defined(__hpux) || defined(__sun__) || defined(__sgi) || defined(_AIX) \
+   || defined(__sparc)
 # define KWSYSPE_PS_COMMAND "ps -ef"
 # define KWSYSPE_PS_FORMAT  "%*s %d %d %*[^\n]\n"
+#elif defined(__QNX__)
+# define KWSYSPE_PS_COMMAND "ps -Af"
+# define KWSYSPE_PS_FORMAT  "%*d %d %d %*[^\n]\n"
 #elif defined(__CYGWIN__)
 # define KWSYSPE_PS_COMMAND "ps aux"
 # define KWSYSPE_PS_FORMAT  "%d %d %*[^\n]\n"
@@ -2335,13 +2407,8 @@ static void kwsysProcessKill(pid_t process_id)
   DIR* procdir;
 #endif
 
-  /* Kill the process now to make sure it does not create more
-     children.  Do not reap it yet so we can identify its existing
-     children.  There is a small race condition here.  If the child
-     forks after we begin looking for children below but before it
-     receives this kill signal we might miss a child.  Also we might
-     not be able to catch up to a fork bomb.  */
-  kill(process_id, SIGKILL);
+  /* Suspend the process to be sure it will not create more children.  */
+  kill(process_id, SIGSTOP);
 
   /* Kill all children if we can find them.  */
 #if defined(__linux__) || defined(__CYGWIN__)
@@ -2378,7 +2445,7 @@ static void kwsysProcessKill(pid_t process_id)
           FILE* f = fopen(fname, "r");
           if(f)
             {
-            int nread = fread(buffer, 1, KWSYSPE_PIPE_BUFFER_SIZE, f);
+            size_t nread = fread(buffer, 1, KWSYSPE_PIPE_BUFFER_SIZE, f);
             buffer[nread] = '\0';
             if(nread > 0)
               {
@@ -2429,7 +2496,33 @@ static void kwsysProcessKill(pid_t process_id)
       }
 #endif
     }
+
+  /* Kill the process.  */
+  kill(process_id, SIGKILL);
+
+#if defined(__APPLE__)
+  /* On OS X 10.3 the above SIGSTOP occasionally prevents the SIGKILL
+     from working.  Just in case, we resume the child and kill it
+     again.  There is a small race condition in this obscure case.  If
+     the child manages to fork again between these two signals, we
+     will not catch its children.  */
+  kill(process_id, SIGCONT);
+  kill(process_id, SIGKILL);
+#endif
 }
+
+/*--------------------------------------------------------------------------*/
+#if defined(__VMS)
+int decc$feature_get_index(const char* name);
+int decc$feature_set_value(int index, int mode, int value);
+static int kwsysProcessSetVMSFeature(const char* name, int value)
+{
+  int i;
+  errno = 0;
+  i = decc$feature_get_index(name);
+  return i >= 0 && (decc$feature_set_value(i, 1, value) >= 0 || errno == 0);
+}
+#endif
 
 /*--------------------------------------------------------------------------*/
 /* Global set of executing processes for use by the signal handler.
@@ -2472,7 +2565,7 @@ static int kwsysProcessesAdd(kwsysProcess* cp)
   {
   /* Create the pipe.  */
   int p[2];
-  if(pipe(p) < 0)
+  if(pipe(p KWSYSPE_VMS_NONBLOCK) < 0)
     {
     return 0;
     }
@@ -2512,14 +2605,14 @@ static int kwsysProcessesAdd(kwsysProcess* cp)
 
     /* Try allocating the new block of memory.  */
     if((newProcesses.Processes = ((kwsysProcess**)
-                                  malloc(newProcesses.Size*
+                                  malloc((size_t)(newProcesses.Size)*
                                          sizeof(kwsysProcess*)))))
       {
       /* Copy the old pipe set to the new memory.  */
       if(oldProcesses.Count > 0)
         {
         memcpy(newProcesses.Processes, oldProcesses.Processes,
-               (oldProcesses.Count * sizeof(kwsysProcess*)));
+               ((size_t)(oldProcesses.Count) * sizeof(kwsysProcess*)));
         }
       }
     else
@@ -2637,8 +2730,10 @@ static void kwsysProcessesSignalHandler(int signum
     /* Set the pipe in a signalled state.  */
     char buf = 1;
     kwsysProcess* cp = kwsysProcesses.Processes[i];
-    read(cp->PipeReadEnds[KWSYSPE_PIPE_SIGNAL], &buf, 1);
-    write(cp->SignalPipe, &buf, 1);
+    kwsysProcess_ssize_t status=
+      read(cp->PipeReadEnds[KWSYSPE_PIPE_SIGNAL], &buf, 1);
+    status=write(cp->SignalPipe, &buf, 1);
+    (void)status;
     }
   }
 
@@ -2656,257 +2751,3 @@ static void kwsysProcessesSignalHandler(int signum
   }
 #endif
 }
-
-/*--------------------------------------------------------------------------*/
-static int kwsysProcessAppendByte(char* local,
-                                  char** begin, char** end,
-                                  int* size, char c)
-{
-  /* Allocate space for the character.  */
-  if((*end - *begin) >= *size)
-    {
-    kwsysProcess_ptrdiff_t length = *end - *begin;
-    char* newBuffer = (char*)malloc(*size*2);
-    if(!newBuffer)
-      {
-      return 0;
-      }
-    memcpy(newBuffer, *begin, length*sizeof(char));
-    if(*begin != local)
-      {
-      free(*begin);
-      }
-    *begin = newBuffer;
-    *end = *begin + length;
-    *size *= 2;
-    }
-
-  /* Store the character.  */
-  *(*end)++ = c;
-  return 1;
-}
-
-/*--------------------------------------------------------------------------*/
-static int kwsysProcessAppendArgument(char** local,
-                                      char*** begin, char*** end,
-                                      int* size,
-                                      char* arg_local,
-                                      char** arg_begin, char** arg_end,
-                                      int* arg_size)
-{
-  /* Append a null-terminator to the argument string.  */
-  if(!kwsysProcessAppendByte(arg_local, arg_begin, arg_end, arg_size, '\0'))
-    {
-    return 0;
-    }
-
-  /* Allocate space for the argument pointer.  */
-  if((*end - *begin) >= *size)
-    {
-    kwsysProcess_ptrdiff_t length = *end - *begin;
-    char** newPointers = (char**)malloc(*size*2*sizeof(char*));
-    if(!newPointers)
-      {
-      return 0;
-      }
-    memcpy(newPointers, *begin, length*sizeof(char*));
-    if(*begin != local)
-      {
-      free(*begin);
-      }
-    *begin = newPointers;
-    *end = *begin + length;
-    *size *= 2;
-    }
-
-  /* Allocate space for the argument string.  */
-  **end = (char*)malloc(*arg_end - *arg_begin);
-  if(!**end)
-    {
-    return 0;
-    }
-
-  /* Store the argument in the command array.  */
-  memcpy(**end, *arg_begin, *arg_end - *arg_begin);
-  ++(*end);
-
-  /* Reset the argument to be empty.  */
-  *arg_end = *arg_begin;
-
-  return 1;
-}
-
-/*--------------------------------------------------------------------------*/
-#define KWSYSPE_LOCAL_BYTE_COUNT 1024
-#define KWSYSPE_LOCAL_ARGS_COUNT 32
-static char** kwsysProcessParseVerbatimCommand(const char* command)
-{
-  /* Create a buffer for argument pointers during parsing.  */
-  char* local_pointers[KWSYSPE_LOCAL_ARGS_COUNT];
-  int pointers_size = KWSYSPE_LOCAL_ARGS_COUNT;
-  char** pointer_begin = local_pointers;
-  char** pointer_end = pointer_begin;
-
-  /* Create a buffer for argument strings during parsing.  */
-  char local_buffer[KWSYSPE_LOCAL_BYTE_COUNT];
-  int buffer_size = KWSYSPE_LOCAL_BYTE_COUNT;
-  char* buffer_begin = local_buffer;
-  char* buffer_end = buffer_begin;
-
-  /* Parse the command string.  Try to behave like a UNIX shell.  */
-  char** newCommand = 0;
-  const char* c = command;
-  int in_argument = 0;
-  int in_escape = 0;
-  int in_single = 0;
-  int in_double = 0;
-  int failed = 0;
-  for(;*c; ++c)
-    {
-    if(in_escape)
-      {
-      /* This character is escaped so do no special handling.  */
-      if(!in_argument)
-        {
-        in_argument = 1;
-        }
-      if(!kwsysProcessAppendByte(local_buffer, &buffer_begin,
-                                 &buffer_end, &buffer_size, *c))
-        {
-        failed = 1;
-        break;
-        }
-      in_escape = 0;
-      }
-    else if(*c == '\\' && !in_single)
-      {
-      /* The next character should be escaped.  */
-      in_escape = 1;
-      }
-    else if(*c == '\'' && !in_double)
-      {
-      /* Enter or exit single-quote state.  */
-      if(in_single)
-        {
-        in_single = 0;
-        }
-      else
-        {
-        in_single = 1;
-        if(!in_argument)
-          {
-          in_argument = 1;
-          }
-        }
-      }
-    else if(*c == '"' && !in_single)
-      {
-      /* Enter or exit double-quote state.  */
-      if(in_double)
-        {
-        in_double = 0;
-        }
-      else
-        {
-        in_double = 1;
-        if(!in_argument)
-          {
-          in_argument = 1;
-          }
-        }
-      }
-    else if(isspace((unsigned char) *c))
-      {
-      if(in_argument)
-        {
-        if(in_single || in_double)
-          {
-          /* This space belongs to a quoted argument.  */
-          if(!kwsysProcessAppendByte(local_buffer, &buffer_begin,
-                                     &buffer_end, &buffer_size, *c))
-            {
-            failed = 1;
-            break;
-            }
-          }
-        else
-          {
-          /* This argument has been terminated by whitespace.  */
-          if(!kwsysProcessAppendArgument(local_pointers, &pointer_begin,
-                                         &pointer_end, &pointers_size,
-                                         local_buffer, &buffer_begin,
-                                         &buffer_end, &buffer_size))
-            {
-            failed = 1;
-            break;
-            }
-          in_argument = 0;
-          }
-        }
-      }
-    else
-      {
-      /* This character belong to an argument.  */
-      if(!in_argument)
-        {
-        in_argument = 1;
-        }
-      if(!kwsysProcessAppendByte(local_buffer, &buffer_begin,
-                                 &buffer_end, &buffer_size, *c))
-        {
-        failed = 1;
-        break;
-        }
-      }
-    }
-
-  /* Finish the last argument.  */
-  if(in_argument)
-    {
-    if(!kwsysProcessAppendArgument(local_pointers, &pointer_begin,
-                                   &pointer_end, &pointers_size,
-                                   local_buffer, &buffer_begin,
-                                   &buffer_end, &buffer_size))
-      {
-      failed = 1;
-      }
-    }
-
-  /* If we still have memory allocate space for the new command
-     buffer.  */
-  if(!failed)
-    {
-    kwsysProcess_ptrdiff_t n = pointer_end - pointer_begin;
-    newCommand = (char**)malloc((n+1)*sizeof(char*));
-    }
-
-  if(newCommand)
-    {
-    /* Copy the arguments into the new command buffer.  */
-    kwsysProcess_ptrdiff_t n = pointer_end - pointer_begin;
-    memcpy(newCommand, pointer_begin, sizeof(char*)*n);
-    newCommand[n] = 0;
-    }
-  else
-    {
-    /* Free arguments already allocated.  */
-    while(pointer_end != pointer_begin)
-      {
-      free(*(--pointer_end));
-      }
-    }
-
-  /* Free temporary buffers.  */
-  if(pointer_begin != local_pointers)
-    {
-    free(pointer_begin);
-    }
-  if(buffer_begin != local_buffer)
-    {
-    free(buffer_begin);
-    }
-
-  /* Return the final command buffer.  */
-  return newCommand;
-}
-

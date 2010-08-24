@@ -18,6 +18,10 @@
 #                            (e.g., C:/wxWidgets-2.6.3/lib/vc_lib).
 #  wxWidgets_CONFIGURATION - Configuration to use
 #                            (e.g., msw, mswd, mswu, mswunivud, etc.)
+#  wxWidgets_EXCLUDE_COMMON_LIBRARIES
+#                          - Set to TRUE to exclude linking of
+#                            commonly required libs (e.g., png tiff
+#                            jpeg zlib regex expat).
 # 
 # For unix style it uses the wx-config utility. You can select between
 # debug/release, unicode/ansi, universal/non-universal, and
@@ -41,9 +45,11 @@
 #                               rpath on UNIX. Typically an empty string
 #                               in WIN32 environment.
 #  wxWidgets_DEFINITIONS      - Contains defines required to compile/link
-#                               against WX, e.g. -DWXUSINGDLL
-#  wxWidgets_CXX_FLAGS        - Include dirs and ompiler flags for
-#                               unices, empty on WIN32. Esentially
+#                               against WX, e.g. WXUSINGDLL
+#  wxWidgets_DEFINITIONS_DEBUG- Contains defines required to compile/link
+#                               against WX debug builds, e.g. __WXDEBUG__
+#  wxWidgets_CXX_FLAGS        - Include dirs and compiler flags for
+#                               unices, empty on WIN32. Essentially
 #                               "`wx-config --cxxflags`".
 #  wxWidgets_USE_FILE         - Convenience include file.
 #
@@ -61,6 +67,20 @@
 #   # and for each of your dependant executable/library targets:
 #   TARGET_LINK_LIBRARIES(<YourTarget> ${wxWidgets_LIBRARIES})
 
+#=============================================================================
+# Copyright 2004-2009 Kitware, Inc.
+# Copyright 2007-2009 Miguel A. Figueroa-Villanueva <miguelf at ieee dot org>
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 #
 # FIXME: check this and provide a correct sample usage...
 #        Remember to connect back to the upper text.
@@ -68,7 +88,6 @@
 #
 #   FIND_PACKAGE(wxWidgets COMPONENTS mono)
 #   ...
-
 
 # NOTES
 #
@@ -198,8 +217,12 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
     ENDIF(wxWidgets_USE_MONOLITHIC)
   ENDIF(NOT wxWidgets_FIND_COMPONENTS)
 
-  # Always add the common required libs.
-  LIST(APPEND wxWidgets_FIND_COMPONENTS ${wxWidgets_COMMON_LIBRARIES})
+  # Add the common (usually required libs) unless
+  # wxWidgets_EXCLUDE_COMMON_LIBRARIES has been set.
+  IF(NOT wxWidgets_EXCLUDE_COMMON_LIBRARIES)
+    LIST(APPEND wxWidgets_FIND_COMPONENTS
+      ${wxWidgets_COMMON_LIBRARIES})
+  ENDIF(NOT wxWidgets_EXCLUDE_COMMON_LIBRARIES)
 
   #-------------------------------------------------------------------
   # WIN32: Helper MACROS
@@ -413,7 +436,7 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
       wxWidgets-2.7.4
       wxWidgets-2.7.3
       wxWidgets-2.7.2
-      wxWidgest-2.7.1
+      wxWidgets-2.7.1
       wxWidgets-2.7.0
       wxWidgets-2.7.0-1
       wxWidgets-2.6.4
@@ -491,7 +514,7 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
     IF(WX_LIB_DIR)
       # If building shared libs, define WXUSINGDLL to use dllimport.
       IF(WX_LIB_DIR MATCHES ".*[dD][lL][lL].*")
-        SET(wxWidgets_DEFINITIONS "-DWXUSINGDLL")
+        SET(wxWidgets_DEFINITIONS WXUSINGDLL)
         DBG_MSG_V("detected SHARED/DLL tree WX_LIB_DIR=${WX_LIB_DIR}")
       ENDIF(WX_LIB_DIR MATCHES ".*[dD][lL][lL].*")
 
@@ -563,6 +586,14 @@ IF(wxWidgets_FIND_STYLE STREQUAL "win32")
 
         # Settings for requested libs (i.e., include dir, libraries, etc.).
         WX_SET_LIBRARIES(wxWidgets_FIND_COMPONENTS "${DBG}")
+
+        # Add necessary definitions for unicode builds
+        IF("${UCD}" STREQUAL "u")
+          LIST(APPEND wxWidgets_DEFINITIONS UNICODE _UNICODE)
+        ENDIF("${UCD}" STREQUAL "u")
+
+        # Add necessary definitions for debug builds
+        SET(wxWidgets_DEFINITIONS_DEBUG _DEBUG __WXDEBUG__)
 
       ENDIF(WX_CONFIGURATION)
     ENDIF(WX_LIB_DIR)
@@ -692,11 +723,16 @@ ELSE(wxWidgets_FIND_STYLE STREQUAL "win32")
 
         DBG_MSG_V("wxWidgets_CXX_FLAGS=${wxWidgets_CXX_FLAGS}")
 
-        # parse definitions from cxxflags; drop -D* from CXXFLAGS
+        # parse definitions from cxxflags;
+        #   drop -D* from CXXFLAGS and the -D prefix
         STRING(REGEX MATCHALL "-D[^;]+"
           wxWidgets_DEFINITIONS  "${wxWidgets_CXX_FLAGS}")
-        STRING(REGEX REPLACE "-D[^;]+;" ""
+        STRING(REGEX REPLACE "-D[^;]+(;|$)" ""
           wxWidgets_CXX_FLAGS "${wxWidgets_CXX_FLAGS}")
+        STRING(REGEX REPLACE ";$" ""
+          wxWidgets_CXX_FLAGS "${wxWidgets_CXX_FLAGS}")
+        STRING(REPLACE "-D" ""
+          wxWidgets_DEFINITIONS "${wxWidgets_DEFINITIONS}")
 
         # parse include dirs from cxxflags; drop -I prefix
         STRING(REGEX MATCHALL "-I[^;]+"

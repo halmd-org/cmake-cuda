@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmAddExecutableCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-02-11 18:35:39 $
-  Version:   $Revision: 1.21 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmExecutablesCommand_h
 #define cmExecutablesCommand_h
 
@@ -63,7 +58,8 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  add_executable(<name> [WIN32] [MACOSX_BUNDLE] [EXCLUDE_FROM_ALL]\n"
+      "  add_executable(<name> [WIN32] [MACOSX_BUNDLE]\n"
+      "                 [EXCLUDE_FROM_ALL]\n"
       "                 source1 source2 ... sourceN)\n"
       "Adds an executable target called <name> to be built from the "
       "source files listed in the command invocation.  "

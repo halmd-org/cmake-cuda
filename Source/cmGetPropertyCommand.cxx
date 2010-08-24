@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGetPropertyCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-04-02 13:16:03 $
-  Version:   $Revision: 1.7.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGetPropertyCommand.h"
 
 #include "cmake.h"
@@ -65,12 +60,16 @@ bool cmGetPropertyCommand
     {
     scope = cmProperty::VARIABLE;
     }
+  else if(args[1] == "CACHE")
+    {
+    scope = cmProperty::CACHE;
+    }
   else
     {
     cmOStringStream e;
     e << "given invalid scope " << args[1] << ".  "
       << "Valid scopes are "
-      << "GLOBAL, DIRECTORY, TARGET, SOURCE, TEST, VARIABLE.";
+      << "GLOBAL, DIRECTORY, TARGET, SOURCE, TEST, VARIABLE, CACHE.";
     this->SetError(e.str().c_str());
     return false;
     }
@@ -187,6 +186,7 @@ bool cmGetPropertyCommand
       case cmProperty::SOURCE_FILE: return this->HandleSourceMode();
       case cmProperty::TEST:        return this->HandleTestMode();
       case cmProperty::VARIABLE:    return this->HandleVariableMode();
+      case cmProperty::CACHE:       return this->HandleCacheMode();
 
       case cmProperty::CACHED_VARIABLE:
         break; // should never happen
@@ -205,7 +205,14 @@ bool cmGetPropertyCommand::StoreResult(const char* value)
     }
   else // if(this->InfoType == OutValue)
     {
-    this->Makefile->AddDefinition(this->Variable.c_str(), value);
+    if(value)
+      {
+      this->Makefile->AddDefinition(this->Variable.c_str(), value);
+      }
+    else
+      {
+      this->Makefile->RemoveDefinition(this->Variable.c_str());
+      }
     }
   return true;
 }
@@ -328,15 +335,9 @@ bool cmGetPropertyCommand::HandleTestMode()
     }
 
   // Loop over all tests looking for matching names.
-  std::vector<cmTest*> const& tests = *this->Makefile->GetTests();
-  for(std::vector<cmTest*>::const_iterator ti = tests.begin();
-      ti != tests.end(); ++ti)
+  if(cmTest* test = this->Makefile->GetTest(this->Name.c_str()))
     {
-    cmTest* test = *ti;
-    if(test->GetName() == this->Name)
-      {
-      return this->StoreResult(test->GetProperty(this->PropertyName.c_str()));
-      }
+    return this->StoreResult(test->GetProperty(this->PropertyName.c_str()));
     }
 
   // If not found it is an error.
@@ -357,4 +358,24 @@ bool cmGetPropertyCommand::HandleVariableMode()
 
   return this->StoreResult
     (this->Makefile->GetDefinition(this->PropertyName.c_str()));
+}
+
+//----------------------------------------------------------------------------
+bool cmGetPropertyCommand::HandleCacheMode()
+{
+  if(this->Name.empty())
+    {
+    this->SetError("not given name for CACHE scope.");
+    return false;
+    }
+
+  const char* value = 0;
+  cmCacheManager::CacheIterator it =
+    this->Makefile->GetCacheManager()->GetCacheIterator(this->Name.c_str());
+  if(!it.IsAtEnd())
+    {
+    value = it.GetProperty(this->PropertyName.c_str());
+    }
+  this->StoreResult(value);
+  return true;
 }

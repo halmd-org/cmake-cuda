@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmFindPackageCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.19.2.6 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmFindPackageCommand_h
 #define cmFindPackageCommand_h
 
@@ -78,7 +73,7 @@ private:
   void AddFindDefinition(const char* var, const char* val);
   void RestoreFindDefinitions();
   bool HandlePackageMode();
-  void FindConfig();
+  bool FindConfig();
   bool FindPrefixedConfig();
   bool FindFrameworkConfig();
   bool FindAppBundleConfig();
@@ -90,11 +85,15 @@ private:
   void AddPrefixesCMakeEnvironment();
   void AddPrefixesCMakeVariable();
   void AddPrefixesSystemEnvironment();
+  void AddPrefixesRegistry();
   void AddPrefixesBuilds();
   void AddPrefixesCMakeSystemVariable();
   void AddPrefixesUserGuess();
   void AddPrefixesUserHints();
   void ComputeFinalPrefixes();
+  void LoadPackageRegistryDir(std::string const& dir);
+  void LoadPackageRegistryWin();
+  bool CheckPackageRegistryEntry(std::istream& is);
   bool SearchDirectory(std::string const& dir);
   bool CheckDirectory(std::string const& dir);
   bool FindConfigFile(std::string const& dir, std::string& file);
@@ -130,6 +129,7 @@ private:
   bool Required;
   bool Compatibility_1_6;
   bool NoModule;
+  bool NoRegistry;
   bool NoBuilds;
   bool DebugMode;
   bool UseLib64Paths;

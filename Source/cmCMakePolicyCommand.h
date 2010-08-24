@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCMakePolicyCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:16 $
-  Version:   $Revision: 1.4.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCMakePolicyCommand_h
 #define cmCMakePolicyCommand_h
 
@@ -85,13 +80,12 @@ public:
       "behavior.  "
       "While setting policies individually is supported, we encourage "
       "projects to set policies based on CMake versions.\n"
-      "  cmake_policy(VERSION major.minor[.patch])\n"
+      "  cmake_policy(VERSION major.minor[.patch[.tweak]])\n"
       "Specify that the current CMake list file is written for the "
       "given version of CMake.  "
       "All policies introduced in the specified version or earlier "
       "will be set to use NEW behavior.  "
-      "All policies introduced after the specified version will be reset "
-      "to use OLD behavior with a warning.  "
+      "All policies introduced after the specified version will be unset.  "
       "This effectively requests behavior preferred as of a given CMake "
       "version and tells newer CMake versions to warn about their new "
       "policies.  "

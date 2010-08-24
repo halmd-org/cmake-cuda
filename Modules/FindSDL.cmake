@@ -52,29 +52,34 @@
 # is #include "SDL.h", not <SDL/SDL.h>. This is done for portability
 # reasons because not all systems place things in SDL/ (see FreeBSD).
 
+#=============================================================================
+# Copyright 2003-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 FIND_PATH(SDL_INCLUDE_DIR SDL.h
   HINTS
   $ENV{SDLDIR}
-  PATH_SUFFIXES include
+  PATH_SUFFIXES include/SDL include
   PATHS
   ~/Library/Frameworks
   /Library/Frameworks
-  /usr/local/include/SDL
-  /usr/include/SDL
   /usr/local/include/SDL12
   /usr/local/include/SDL11 # FreeBSD ports
   /usr/include/SDL12
   /usr/include/SDL11
-  /usr/local/include
-  /usr/include
-  /sw/include/SDL # Fink
-  /sw/include
-  /opt/local/include/SDL # DarwinPorts
-  /opt/local/include
-  /opt/csw/include/SDL # Blastwave
-  /opt/csw/include 
-  /opt/include/SDL
-  /opt/include
+  /sw # Fink
+  /opt/local # DarwinPorts
+  /opt/csw # Blastwave
+  /opt
 )
 #MESSAGE("SDL_INCLUDE_DIR is ${SDL_INCLUDE_DIR}")
 
@@ -86,8 +91,6 @@ FIND_LIBRARY(SDL_LIBRARY_TEMP
   $ENV{SDLDIR}
   PATH_SUFFIXES lib64 lib
   PATHS
-  /usr/local
-  /usr
   /sw
   /opt/local
   /opt/csw
@@ -108,8 +111,6 @@ IF(NOT SDL_BUILDING_LIBRARY)
       $ENV{SDLDIR}
       PATH_SUFFIXES lib64 lib
       PATHS
-      /usr/local
-      /usr
       /sw
       /opt/local
       /opt/csw

@@ -1,3 +1,17 @@
+
+#=============================================================================
+# Copyright 2004-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 SET(CMAKE_SHARED_LIBRARY_C_FLAGS "")            # -pic 
 SET(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS "-shared")       # -shared
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")         # +s, flag for exe link to use shared lib
@@ -33,6 +47,9 @@ IF(CMAKE_GENERATOR MATCHES "Makefiles")
     "Enable/Disable color output during build."
     )
   MARK_AS_ADVANCED(CMAKE_COLOR_MAKEFILE)
+  IF(DEFINED CMAKE_RULE_MESSAGES)
+    SET_PROPERTY(GLOBAL PROPERTY RULE_MESSAGES ${CMAKE_RULE_MESSAGES})
+  ENDIF(DEFINED CMAKE_RULE_MESSAGES)
 ENDIF(CMAKE_GENERATOR MATCHES "Makefiles")
 
 # Set a variable to indicate whether the value of CMAKE_INSTALL_PREFIX
@@ -71,6 +88,3 @@ MARK_AS_ADVANCED(
   CMAKE_SKIP_RPATH
   CMAKE_VERBOSE_MAKEFILE
 )
-
-# always include the gcc compiler information
-INCLUDE(Platform/gcc)

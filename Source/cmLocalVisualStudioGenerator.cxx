@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmLocalVisualStudioGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-15 19:00:52 $
-  Version:   $Revision: 1.16 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmLocalVisualStudioGenerator.h"
 #include "cmGlobalGenerator.h"
 #include "cmMakefile.h"
@@ -31,6 +26,36 @@ cmLocalVisualStudioGenerator::cmLocalVisualStudioGenerator()
 //----------------------------------------------------------------------------
 cmLocalVisualStudioGenerator::~cmLocalVisualStudioGenerator()
 {
+}
+
+//----------------------------------------------------------------------------
+cmsys::auto_ptr<cmCustomCommand>
+cmLocalVisualStudioGenerator::MaybeCreateImplibDir(cmTarget& target,
+                                                   const char* config)
+{
+  cmsys::auto_ptr<cmCustomCommand> pcc;
+
+  // If an executable exports symbols then VS wants to create an
+  // import library but forgets to create the output directory.
+  if(target.GetType() != cmTarget::EXECUTABLE) { return pcc; }
+  std::string outDir = target.GetDirectory(config, false);
+  std::string impDir = target.GetDirectory(config, true);
+  if(impDir == outDir) { return pcc; }
+
+  // Add a pre-build event to create the directory.
+  cmCustomCommandLine command;
+  command.push_back(this->Makefile->GetRequiredDefinition("CMAKE_COMMAND"));
+  command.push_back("-E");
+  command.push_back("make_directory");
+  command.push_back(impDir);
+  std::vector<std::string> no_output;
+  std::vector<std::string> no_depends;
+  cmCustomCommandLines commands;
+  commands.push_back(command);
+  pcc.reset(new cmCustomCommand(no_output, no_depends, commands, 0, 0));
+  pcc->SetEscapeOldStyle(false);
+  pcc->SetEscapeAllowMakeVars(true);
+  return pcc;
 }
 
 //----------------------------------------------------------------------------
@@ -144,7 +169,7 @@ cmLocalVisualStudioGenerator
     script += newline;
     newline = newline_text;
     script += "cd ";
-    script += this->Convert(workingDirectory, START_OUTPUT, SHELL);
+    script += this->Convert(workingDirectory, FULL, SHELL);
 
     // Change the working drive.
     if(workingDirectory[0] && workingDirectory[1] == ':')
@@ -205,7 +230,15 @@ cmLocalVisualStudioGenerator
                                        escapeAllowMakeVars);
         }
       }
+
+    // After each custom command, check for an error result.
+    // If there was an error, jump to the VCReportError label,
+    // skipping the run of any subsequent commands in this
+    // sequence.
+    //
+    script += newline_text;
+    script += "if errorlevel 1 goto VCReportError";
     }
+
   return script;
 }
-

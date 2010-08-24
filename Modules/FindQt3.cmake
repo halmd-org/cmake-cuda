@@ -20,6 +20,19 @@
 #  QT_WRAP_CPP, set true if QT_MOC_EXECUTABLE is found
 #  QT_WRAP_UI set true if QT_UIC_EXECUTABLE is found
 
+#=============================================================================
+# Copyright 2005-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # If Qt4 has already been found, fail.
 IF(QT4_FOUND)
   IF(Qt3_FIND_REQUIRED)
@@ -125,7 +138,7 @@ FIND_LIBRARY(QT_QASSISTANTCLIENT_LIBRARY
 
 # qt 3 should prefer QTDIR over the PATH
 FIND_PROGRAM(QT_MOC_EXECUTABLE
-  NAMES moc moc-qt3
+  NAMES moc-qt3 moc
   HINTS
   $ENV{QTDIR}/bin
   PATHS
@@ -147,7 +160,8 @@ IF(QT_MOC_EXECUTABLE)
 ENDIF(QT_MOC_EXECUTABLE)
 
 # qt 3 should prefer QTDIR over the PATH
-FIND_PROGRAM(QT_UIC_EXECUTABLE uic
+FIND_PROGRAM(QT_UIC_EXECUTABLE
+  NAMES uic-qt3 uic
   HINTS
   $ENV{QTDIR}/bin
   PATHS

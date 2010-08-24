@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestRunScriptCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:59 $
-  Version:   $Revision: 1.4.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestRunScriptCommand_h
 #define cmCTestRunScriptCommand_h
 
@@ -69,15 +64,16 @@ public:
     {
     return
       "  ctest_run_script([NEW_PROCESS] script_file_name script_file_name1 \n"
-      "              script_file_name2 ...)\n"
+      "              script_file_name2 ... [RETURN_VALUE var])\n"
       "Runs a script or scripts much like if it was run from ctest -S. "
       "If no argument is provided then the current script is run using "
       "the current settings of the variables. If NEW_PROCESS is specified "
-      "then each script will be run in a seperate process.";
+      "then each script will be run in a seperate process."
+      "If RETURN_VALUE is specified the return value of the last script "
+      "run will be put into var.";
     }
 
   cmTypeMacro(cmCTestRunScriptCommand, cmCTestCommand);
-
 };
 
 

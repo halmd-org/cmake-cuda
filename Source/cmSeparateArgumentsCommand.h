@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSeparateArgumentsCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.9 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSeparateArgumentsCommand_h
 #define cmSeparateArgumentsCommand_h
 
@@ -58,7 +53,7 @@ public:
   virtual const char* GetTerseDocumentation() 
     {
     return 
-      "Split space separated arguments into a semi-colon separated list.";
+      "Parse space-separated arguments into a semicolon-separated list.";
     }
   
   /**
@@ -67,6 +62,22 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
+      "  separate_arguments(<var> <UNIX|WINDOWS>_COMMAND \"<args>\")\n"
+      "Parses a unix- or windows-style command-line string \"<args>\" and "
+      "stores a semicolon-separated list of the arguments in <var>.  "
+      "The entire command line must be given in one \"<args>\" argument."
+      "\n"
+      "The UNIX_COMMAND mode separates arguments by unquoted whitespace.  "
+      "It recognizes both single-quote and double-quote pairs.  "
+      "A backslash escapes the next literal character (\\\" is \"); "
+      "there are no special escapes (\\n is just n)."
+      "\n"
+      "The WINDOWS_COMMAND mode parses a windows command-line using the "
+      "same syntax the runtime library uses to construct argv at startup.  "
+      "It separates arguments by whitespace that is not double-quoted.  "
+      "Backslashes are literal unless they precede double-quotes.  "
+      "See the MSDN article \"Parsing C Command-Line Arguments\" for details."
+      "\n"
       "  separate_arguments(VARIABLE)\n"
       "Convert the value of VARIABLE to a semi-colon separated list.  "
       "All spaces are replaced with ';'.  This helps with generating "

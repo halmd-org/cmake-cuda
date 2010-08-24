@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmWriteFileCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-05-01 16:35:40 $
-  Version:   $Revision: 1.16.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmWriteFileCommand.h"
 
 #include <sys/types.h>
@@ -59,26 +54,18 @@ bool cmWriteFileCommand
   std::string dir = cmSystemTools::GetFilenamePath(fileName);
   cmSystemTools::MakeDirectory(dir.c_str());
 
-  mode_t mode =
-#if defined( _MSC_VER ) || defined( __MINGW32__ )
-    S_IREAD | S_IWRITE
-#elif defined( __BORLANDC__ )
-    S_IRUSR | S_IWUSR
-#else
-    S_IRUSR | S_IWUSR |
-    S_IRGRP |
-    S_IROTH
-#endif
-    ;
+  mode_t mode = 0;
 
   // Set permissions to writable
   if ( cmSystemTools::GetPermissions(fileName.c_str(), mode) )
     {
     cmSystemTools::SetPermissions(fileName.c_str(),
 #if defined( _MSC_VER ) || defined( __MINGW32__ )
-      S_IREAD | S_IWRITE
+      mode | S_IWRITE
+#elif defined( __BORLANDC__ )
+      mode | S_IWUSR
 #else
-      S_IRUSR | S_IWUSR
+      mode | S_IWUSR | S_IWGRP
 #endif
     );
     }
@@ -96,7 +83,10 @@ bool cmWriteFileCommand
     }
   file << message << std::endl;
   file.close();
-  cmSystemTools::SetPermissions(fileName.c_str(), mode);
+  if(mode)
+    {
+    cmSystemTools::SetPermissions(fileName.c_str(), mode);
+    }
 
   return true;
 }

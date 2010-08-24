@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmWhileCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.12.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmWhileCommand.h"
 #include "cmIfCommand.h"
 
@@ -41,11 +36,35 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
     
       std::vector<std::string> expandedArguments;
       mf.ExpandArguments(this->Args, expandedArguments);
+      cmake::MessageType messageType;
       bool isTrue = 
-        cmIfCommand::IsTrue(expandedArguments,errorString,&mf);
+        cmIfCommand::IsTrue(expandedArguments,errorString,
+                            &mf, messageType);
 
       while (isTrue)
         {      
+        if (errorString.size())
+          {
+          std::string err = "had incorrect arguments: ";
+          unsigned int i;
+          for(i =0; i < this->Args.size(); ++i)
+            {
+            err += (this->Args[i].Quoted?"\"":"");
+            err += this->Args[i].Value;
+            err += (this->Args[i].Quoted?"\"":"");
+            err += " ";
+            }
+          err += "(";
+          err += errorString;
+          err += ").";
+          mf.IssueMessage(messageType, err);
+          if (messageType == cmake::FATAL_ERROR)
+            {
+            cmSystemTools::SetFatalErrorOccured();
+            return true;
+            }
+          }
+
         // Invoke all the functions that were collected in the block.
         for(unsigned int c = 0; c < this->Functions.size(); ++c)
           {
@@ -60,11 +79,16 @@ IsFunctionBlocked(const cmListFileFunction& lff, cmMakefile &mf,
             {
             return true;
             }
+          if(cmSystemTools::GetFatalErrorOccured() )
+            {
+            return true;
+            }
           }
         expandedArguments.clear();
         mf.ExpandArguments(this->Args, expandedArguments);
         isTrue = 
-          cmIfCommand::IsTrue(expandedArguments,errorString,&mf);
+          cmIfCommand::IsTrue(expandedArguments,errorString,
+                              &mf, messageType);
         }
       return true;
       }

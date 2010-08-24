@@ -1,14 +1,16 @@
 # - a pkg-config module for CMake
 #
 # Usage:
-#   pkg_check_modules(<PREFIX> [REQUIRED] <MODULE> [<MODULE>]*)
+#   pkg_check_modules(<PREFIX> [REQUIRED] [QUIET] <MODULE> [<MODULE>]*)
 #     checks for all the given modules
 #
-#   pkg_search_module(<PREFIX> [REQUIRED] <MODULE> [<MODULE>]*)
+#   pkg_search_module(<PREFIX> [REQUIRED] [QUIET] <MODULE> [<MODULE>]*)
 #     checks for given modules and uses the first working one
 #
 # When the 'REQUIRED' argument was set, macros will fail with an error
 # when module(s) could not be found
+#
+# When the 'QUIET' argument is set, no status messages will be printed.
 #
 # It sets the following variables:
 #   PKG_CONFIG_FOUND         ... true if pkg-config works on the system
@@ -67,30 +69,19 @@
 #
 #   pkg_search_module (BAR     libxml-2.0 libxml2 libxml>=2)
 
-
-# Copyright (C) 2006 Enrico Scholz <enrico.scholz@informatik.tu-chemnitz.de>
+#=============================================================================
+# Copyright 2006-2009 Kitware, Inc.
+# Copyright 2006 Enrico Scholz <enrico.scholz@informatik.tu-chemnitz.de>
 #
-# Redistribution and use, with or without modification, are permitted
-# provided that the following conditions are met:
-# 
-#    1. Redistributions must retain the above copyright notice, this
-#       list of conditions and the following disclaimer.
-#    2. The name of the author may not be used to endorse or promote
-#       products derived from this software without specific prior
-#       written permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
-# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 ### Common stuff ####
 set(PKG_CONFIG_VERSION 1)
@@ -149,17 +140,22 @@ macro(_pkgconfig_invoke_dyn _pkglist _prefix _varname cleanup_regexp)
 endmacro(_pkgconfig_invoke_dyn)
 
 # Splits given arguments into options and a package list
-macro(_pkgconfig_parse_options _result _is_req)
+macro(_pkgconfig_parse_options _result _is_req _is_silent)
   set(${_is_req} 0)
+  set(${_is_silent} 0)
   
   foreach(_pkg ${ARGN})
     if (_pkg STREQUAL "REQUIRED")
       set(${_is_req} 1)
     endif (_pkg STREQUAL "REQUIRED")
+    if (_pkg STREQUAL "QUIET")
+      set(${_is_silent} 1)
+    endif (_pkg STREQUAL "QUIET")
   endforeach(_pkg ${ARGN})
 
   set(${_result} ${ARGN})
   list(REMOVE_ITEM ${_result} "REQUIRED")
+  list(REMOVE_ITEM ${_result} "QUIET")
 endmacro(_pkgconfig_parse_options)
 
 ###
@@ -290,7 +286,9 @@ macro(_pkg_check_modules_internal _is_required _is_silent _prefix)
         _pkgconfig_invoke(${_pkg_check_modules_pkg} "${_pkg_check_prefix}" INCLUDEDIR ""   --variable=includedir )
         _pkgconfig_invoke(${_pkg_check_modules_pkg} "${_pkg_check_prefix}" LIBDIR     ""   --variable=libdir )
 
-        message(STATUS "  found ${_pkg_check_modules_pkg}, version ${_pkgconfig_VERSION}")
+        if (NOT ${_is_silent})
+          message(STATUS "  found ${_pkg_check_modules_pkg}, version ${_pkgconfig_VERSION}")
+        endif (NOT ${_is_silent})
       endforeach(_pkg_check_modules_pkg)
 
       # set variables which are combined for multiple modules
@@ -318,8 +316,8 @@ endmacro(_pkg_check_modules_internal)
 macro(pkg_check_modules _prefix _module0)
   # check cached value
   if (NOT DEFINED __pkg_config_checked_${_prefix} OR __pkg_config_checked_${_prefix} LESS ${PKG_CONFIG_VERSION} OR NOT ${_prefix}_FOUND)
-    _pkgconfig_parse_options   (_pkg_modules _pkg_is_required "${_module0}" ${ARGN})
-    _pkg_check_modules_internal("${_pkg_is_required}" 0 "${_prefix}" ${_pkg_modules})
+    _pkgconfig_parse_options   (_pkg_modules _pkg_is_required _pkg_is_silent "${_module0}" ${ARGN})
+    _pkg_check_modules_internal("${_pkg_is_required}" "${_pkg_is_silent}" "${_prefix}" ${_pkg_modules})
 
     _pkgconfig_set(__pkg_config_checked_${_prefix} ${PKG_CONFIG_VERSION})
   endif(NOT DEFINED __pkg_config_checked_${_prefix} OR __pkg_config_checked_${_prefix} LESS ${PKG_CONFIG_VERSION} OR NOT ${_prefix}_FOUND)
@@ -330,9 +328,11 @@ macro(pkg_search_module _prefix _module0)
   # check cached value
   if (NOT DEFINED __pkg_config_checked_${_prefix} OR __pkg_config_checked_${_prefix} LESS ${PKG_CONFIG_VERSION} OR NOT ${_prefix}_FOUND)
     set(_pkg_modules_found 0)
-    _pkgconfig_parse_options(_pkg_modules_alt _pkg_is_required "${_module0}" ${ARGN})
+    _pkgconfig_parse_options(_pkg_modules_alt _pkg_is_required _pkg_is_silent "${_module0}" ${ARGN})
 
-    message(STATUS "checking for one of the modules '${_pkg_modules_alt}'")
+    if (NOT ${_pkg_is_silent})
+      message(STATUS "checking for one of the modules '${_pkg_modules_alt}'")
+    endif (NOT ${_pkg_is_silent})
 
     # iterate through all modules and stop at the first working one.
     foreach(_pkg_alt ${_pkg_modules_alt})

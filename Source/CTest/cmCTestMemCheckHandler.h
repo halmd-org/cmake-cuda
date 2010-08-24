@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestMemCheckHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2007-07-24 18:43:31 $
-  Version:   $Revision: 1.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestMemCheckHandler_h
 #define cmCTestMemCheckHandler_h
@@ -30,6 +25,7 @@ class cmMakefile;
  */
 class cmCTestMemCheckHandler : public cmCTestTestHandler
 {
+  friend class cmCTestRunTest;
 public:
   cmTypeMacro(cmCTestMemCheckHandler, cmCTestTestHandler);
 
@@ -41,7 +37,7 @@ public:
 protected:
   virtual int PreProcessHandler();
   virtual int PostProcessHandler();
-  virtual void GenerateTestCommand(std::vector<const char*>& args);
+  virtual void GenerateTestCommand(std::vector<std::string>& args);
 
 private:
 
@@ -121,13 +117,7 @@ private:
                                    std::string& log, int* results);
   bool ProcessMemCheckBoundsCheckerOutput(const std::string& str, 
                                           std::string& log, int* results);
-  /**
-   *  Run one test
-   */
-  virtual void ProcessOneTest(cmCTestTestProperties *props,
-                              std::vector<cmStdString> &passed,
-                              std::vector<cmStdString> &failed,
-                              int count, int tmsize);
+
   void PostProcessPurifyTest(cmCTestTestResult& res);
   void PostProcessBoundsCheckerTest(cmCTestTestResult& res);
 };

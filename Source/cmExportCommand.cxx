@@ -1,26 +1,27 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmExportCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-02-06 19:20:35 $
-  Version:   $Revision: 1.11 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmExportCommand.h"
 #include "cmGlobalGenerator.h"
 #include "cmLocalGenerator.h"
 #include "cmGeneratedFileStream.h"
 #include "cmake.h"
 
+#include <cmsys/RegularExpression.hxx>
+
 #include "cmExportBuildFileGenerator.h"
+
+#if defined(__HAIKU__)
+#include <StorageKit.h>
+#endif
 
 cmExportCommand::cmExportCommand()
 :cmCommand()
@@ -45,6 +46,11 @@ bool cmExportCommand
     {
     this->SetError("called with too few arguments");
     return false;
+    }
+
+  if(args[0] == "PACKAGE")
+    {
+    return this->HandlePackage(args);
     }
 
   std::vector<std::string> unknownArgs;
@@ -184,3 +190,156 @@ bool cmExportCommand
 
   return true;
 }
+
+//----------------------------------------------------------------------------
+bool cmExportCommand::HandlePackage(std::vector<std::string> const& args)
+{
+  // Parse PACKAGE mode arguments.
+  enum Doing { DoingNone, DoingPackage };
+  Doing doing = DoingPackage;
+  std::string package;
+  for(unsigned int i=1; i < args.size(); ++i)
+    {
+    if(doing == DoingPackage)
+      {
+      package = args[i];
+      doing = DoingNone;
+      }
+    else
+      {
+      cmOStringStream e;
+      e << "PACKAGE given unknown argumsnt: " << args[i];
+      this->SetError(e.str().c_str());
+      return false;
+      }
+    }
+
+  // Verify the package name.
+  if(package.empty())
+    {
+    this->SetError("PACKAGE must be given a package name.");
+    return false;
+    }
+  const char* packageExpr = "^[A-Za-z0-9_.-]+$";
+  cmsys::RegularExpression packageRegex(packageExpr);
+  if(!packageRegex.find(package.c_str()))
+    {
+    cmOStringStream e;
+    e << "PACKAGE given invalid package name \"" << package << "\".  "
+      << "Package names must match \"" << packageExpr << "\".";
+    this->SetError(e.str().c_str());
+    return false;
+    }
+
+  // We store the current build directory in the registry as a value
+  // named by a hash of its own content.  This is deterministic and is
+  // unique with high probability.
+  const char* outDir = this->Makefile->GetCurrentOutputDirectory();
+  std::string hash = cmSystemTools::ComputeStringMD5(outDir);
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  this->StorePackageRegistryWin(package, outDir, hash.c_str());
+#else
+  this->StorePackageRegistryDir(package, outDir, hash.c_str());
+#endif
+
+  return true;
+}
+
+#if defined(_WIN32) && !defined(__CYGWIN__)
+# include <windows.h>
+# undef GetCurrentDirectory
+//----------------------------------------------------------------------------
+void cmExportCommand::ReportRegistryError(std::string const& msg,
+                                          std::string const& key,
+                                          long err)
+{
+  cmOStringStream e;
+  e << msg << "\n"
+    << "  HKEY_CURRENT_USER\\" << key << "\n";
+  char winmsg[1024];
+  if(FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM |
+                   FORMAT_MESSAGE_IGNORE_INSERTS, 0, err,
+                   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                   winmsg, 1024, 0) > 0)
+    {
+    e << "Windows reported:\n"
+      << "  " << winmsg;
+    }
+  this->Makefile->IssueMessage(cmake::WARNING, e.str());
+}
+
+//----------------------------------------------------------------------------
+void cmExportCommand::StorePackageRegistryWin(std::string const& package,
+                                              const char* content,
+                                              const char* hash)
+{
+  std::string key = "Software\\Kitware\\CMake\\Packages\\";
+  key += package;
+  HKEY hKey;
+  LONG err = RegCreateKeyEx(HKEY_CURRENT_USER,
+                            key.c_str(), 0, 0, REG_OPTION_NON_VOLATILE,
+                            KEY_SET_VALUE, 0, &hKey, 0);
+  if(err != ERROR_SUCCESS)
+    {
+    this->ReportRegistryError(
+      "Cannot create/open registry key", key, err);
+    return;
+    }
+  err = RegSetValueEx(hKey, hash, 0, REG_SZ, (BYTE const*)content,
+                      static_cast<DWORD>(strlen(content)+1));
+  RegCloseKey(hKey);
+  if(err != ERROR_SUCCESS)
+    {
+    cmOStringStream msg;
+    msg << "Cannot set registry value \"" << hash << "\" under key";
+    this->ReportRegistryError(msg.str(), key, err);
+    return;
+    }
+}
+#else
+//----------------------------------------------------------------------------
+void cmExportCommand::StorePackageRegistryDir(std::string const& package,
+                                              const char* content,
+                                              const char* hash)
+{
+#if defined(__HAIKU__)
+  BPath dir;
+  if (find_directory(B_USER_SETTINGS_DIRECTORY, &dir) != B_OK)
+    {
+    return;
+    }
+  dir.Append("cmake/packages");
+  dir.Append(package.c_str());
+  std::string fname = dir.Path();
+#else
+  const char* home = cmSystemTools::GetEnv("HOME");
+  if(!home)
+    {
+    return;
+    }
+  std::string fname = home;
+  cmSystemTools::ConvertToUnixSlashes(fname);
+  fname += "/.cmake/packages/";
+  fname += package;
+#endif
+  cmSystemTools::MakeDirectory(fname.c_str());
+  fname += "/";
+  fname += hash;
+  if(!cmSystemTools::FileExists(fname.c_str()))
+    {
+    cmGeneratedFileStream entry(fname.c_str(), true);
+    if(entry)
+      {
+      entry << content << "\n";
+      }
+    else
+      {
+      cmOStringStream e;
+      e << "Cannot create package registry file:\n"
+        << "  " << fname << "\n"
+        << cmSystemTools::GetLastSystemError() << "\n";
+      this->Makefile->IssueMessage(cmake::WARNING, e.str());
+      }
+    }
+}
+#endif

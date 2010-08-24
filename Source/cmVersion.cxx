@@ -1,42 +1,24 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmVersion.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-05-21 14:50:13 $
-  Version:   $Revision: 1.1027.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmVersion.h"
 
-#include <cmsys/DateStamp.h>
+#include "cmVersionMacros.h"
 
-std::string cmVersion::GetReleaseVersion()
-{
-#if CMake_VERSION_MINOR & 1
-  return cmsys_DATE_STAMP_STRING_FULL;
-#else
-# ifdef CMake_VERSION_RC
-  return "patch " CMAKE_TO_STRING(CMake_VERSION_PATCH) " RC-" 
-    CMAKE_TO_STRING(CMake_VERSION_RC);
-# else
-  return "patch " CMAKE_TO_STRING(CMake_VERSION_PATCH);
-# endif  
-#endif
-}
+unsigned int cmVersion::GetMajorVersion() { return CMake_VERSION_MAJOR; }
+unsigned int cmVersion::GetMinorVersion() { return CMake_VERSION_MINOR; }
+unsigned int cmVersion::GetPatchVersion() { return CMake_VERSION_PATCH; }
+unsigned int cmVersion::GetTweakVersion() { return CMake_VERSION_TWEAK; }
 
-std::string cmVersion::GetCMakeVersion()
+const char* cmVersion::GetCMakeVersion()
 {
-  cmOStringStream str;
-  str << CMake_VERSION_MAJOR << "." << CMake_VERSION_MINOR
-    << "-"
-    << cmVersion::GetReleaseVersion();
-  return str.str();
+  return CMake_VERSION;
 }

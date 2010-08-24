@@ -1,16 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   KWSys - Kitware System Library
-  Module:    $RCSfile: CommandLineArguments.cxx,v $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "kwsysPrivate.h"
 #include KWSYS_HEADER(CommandLineArguments.hxx)
 
@@ -521,7 +519,7 @@ unsigned int CommandLineArguments::GetLastArgument()
 void CommandLineArguments::GenerateHelp()
 {
   kwsys_ios::ostringstream str;
-
+  
   // Collapse all arguments into the map of vectors of all arguments that do
   // the same thing.
   CommandLineArguments::Internal::CallbacksMap::iterator it;
@@ -660,7 +658,7 @@ void CommandLineArguments::GenerateHelp()
           skip = cc;
           }
         }
-      str.write(ptr, skip);
+      str.write(ptr, static_cast<kwsys_ios::streamsize>(skip));
       str << kwsys_ios::endl;
       ptr += skip;
       len -= skip;
@@ -701,7 +699,7 @@ void CommandLineArguments::PopulateVariable(
   int* variable, const kwsys_stl::string& value)
 {
   char* res = 0;
-  *variable = strtol(value.c_str(), &res, 10);
+  *variable = static_cast<int>(strtol(value.c_str(), &res, 10));
   //if ( res && *res )
   //  {
   //  Can handle non-int
@@ -759,7 +757,7 @@ void CommandLineArguments::PopulateVariable(
   kwsys_stl::vector<int>* variable, const kwsys_stl::string& value)
 {
   char* res = 0;
-  variable->push_back(strtol(value.c_str(), &res, 10));
+  variable->push_back(static_cast<int>(strtol(value.c_str(), &res, 10)));
   //if ( res && *res )
   //  {
   //  Can handle non-int

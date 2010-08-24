@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCPackPackageMakerGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:55 $
-  Version:   $Revision: 1.23.2.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCPackPackageMakerGenerator.h"
 
 #include "cmake.h"
@@ -326,8 +321,19 @@ int cmCPackPackageMakerGenerator::CompressFiles(const char* outFileName,
     << "\" \"" << outFileName << "\"";
   std::string output;
   int retVal = 1;
-  bool res = cmSystemTools::RunSingleCommand(dmgCmd.str().c_str(), &output,
-    &retVal, 0, this->GeneratorVerbose, 0);
+  int numTries = 4;
+  bool res;
+  while(numTries > 0)
+    {
+    res = cmSystemTools::RunSingleCommand(dmgCmd.str().c_str(), &output,
+                                          &retVal, 0, this->GeneratorVerbose, 
+                                          0);
+    if(res && retVal)
+      {
+      numTries = -1;
+      }
+    numTries--;
+    }
   if ( !res || retVal )
     {
     cmGeneratedFileStream ofs(tmpFile.c_str());
