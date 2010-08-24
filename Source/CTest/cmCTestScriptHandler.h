@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestScriptHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2007-06-08 20:06:33 $
-  Version:   $Revision: 1.19 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestScriptHandler_h
 #define cmCTestScriptHandler_h
@@ -82,13 +77,19 @@ public:
   /*
    * Run a script
    */
-  static bool RunScript(cmCTest* ctest, const char *script, bool InProcess);
+  static bool RunScript(cmCTest* ctest, const char *script, bool InProcess,
+    int* returnValue);
   int RunCurrentScript();
 
   /*
    * Empty Binary Directory
    */
   static bool EmptyBinaryDirectory(const char *dir);
+
+  /*
+   * Write an initial CMakeCache.txt from the given contents.
+   */
+  static bool WriteInitialCache(const char* directory, const char* text);
 
   /*
    * Some elapsed time handling functions
@@ -110,7 +111,7 @@ public:
 
   void CreateCMake();
   void GetCommandDocumentation(std::vector<cmDocumentationEntry>& v) const;
-
+  cmake* GetCMake() { return this->CMake;}
 private:
   // reads in a script
   int ReadInScript(const std::string& total_script_arg);
@@ -151,7 +152,7 @@ private:
   cmStdString CTestCmd;
   cmStdString UpdateCmd;
   cmStdString CTestEnv;
-  cmStdString InitCache;
+  cmStdString InitialCache;
   cmStdString CMakeCmd;
   cmStdString CMOutFile;
   std::vector<cmStdString> ExtraUpdates;

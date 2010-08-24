@@ -1,4 +1,17 @@
 
+#=============================================================================
+# Copyright 2004-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # This file sets the basic flags for the C++ language in CMake.
 # It also loads the available platform file for the system-compiler
 # if it exists.
@@ -12,6 +25,11 @@ IF(UNIX)
 ELSE(UNIX)
   SET(CMAKE_CXX_OUTPUT_EXTENSION .obj)
 ENDIF(UNIX)
+
+# Load compiler-specific information.
+IF(CMAKE_CXX_COMPILER_ID)
+  INCLUDE(Compiler/${CMAKE_CXX_COMPILER_ID}-CXX OPTIONAL)
+ENDIF(CMAKE_CXX_COMPILER_ID)
 
 SET(CMAKE_BASE_NAME)
 GET_FILENAME_COMPONENT(CMAKE_BASE_NAME ${CMAKE_CXX_COMPILER} NAME_WE)
@@ -36,7 +54,15 @@ IF(CMAKE_CXX_COMPILER_ID)
   INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_CXX_COMPILER_ID}-CXX OPTIONAL RESULT_VARIABLE _INCLUDED_FILE)
 ENDIF(CMAKE_CXX_COMPILER_ID)
 IF (NOT _INCLUDED_FILE)
-  INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_BASE_NAME} OPTIONAL)
+  INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_BASE_NAME} OPTIONAL
+          RESULT_VARIABLE _INCLUDED_FILE)
+ENDIF (NOT _INCLUDED_FILE)
+# We specify the compiler information in the system file for some
+# platforms, but this language may not have been enabled when the file
+# was first included.  Include it again to get the language info.
+# Remove this when all compiler info is removed from system files.
+IF (NOT _INCLUDED_FILE)
+  INCLUDE(Platform/${CMAKE_SYSTEM_NAME} OPTIONAL)
 ENDIF (NOT _INCLUDED_FILE)
 
 
@@ -88,6 +114,14 @@ IF(NOT CMAKE_SHARED_LIBRARY_RPATH_LINK_CXX_FLAG)
   SET(CMAKE_SHARED_LIBRARY_RPATH_LINK_CXX_FLAG ${CMAKE_SHARED_LIBRARY_RPATH_LINK_C_FLAG})
 ENDIF(NOT CMAKE_SHARED_LIBRARY_RPATH_LINK_CXX_FLAG)
 
+IF(NOT DEFINED CMAKE_EXE_EXPORTS_CXX_FLAG)
+  SET(CMAKE_EXE_EXPORTS_CXX_FLAG ${CMAKE_EXE_EXPORTS_C_FLAG})
+ENDIF()
+
+IF(NOT DEFINED CMAKE_SHARED_LIBRARY_SONAME_CXX_FLAG)
+  SET(CMAKE_SHARED_LIBRARY_SONAME_CXX_FLAG ${CMAKE_SHARED_LIBRARY_SONAME_C_FLAG})
+ENDIF()
+
 IF(NOT CMAKE_EXECUTABLE_RUNTIME_CXX_FLAG)
   SET(CMAKE_EXECUTABLE_RUNTIME_CXX_FLAG ${CMAKE_SHARED_LIBRARY_RUNTIME_CXX_FLAG})
 ENDIF(NOT CMAKE_EXECUTABLE_RUNTIME_CXX_FLAG)
@@ -120,14 +154,6 @@ ENDIF(NOT CMAKE_SHARED_MODULE_CREATE_CXX_FLAGS)
 IF(NOT CMAKE_SHARED_MODULE_CXX_FLAGS)
   SET(CMAKE_SHARED_MODULE_CXX_FLAGS ${CMAKE_SHARED_MODULE_C_FLAGS})
 ENDIF(NOT CMAKE_SHARED_MODULE_CXX_FLAGS)
-
-IF(NOT CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG)
-  SET(CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG ${CMAKE_SHARED_MODULE_RUNTIME_FLAG}) 
-ENDIF(NOT CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG)
-
-IF(NOT CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG_SEP)
-  SET(CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG_SEP ${CMAKE_SHARED_MODULE_RUNTIME_FLAG_SEP})
-ENDIF(NOT CMAKE_SHARED_MODULE_RUNTIME_CXX_FLAG_SEP)
 
 # Initialize CXX link type selection flags from C versions.
 FOREACH(type SHARED_LIBRARY SHARED_MODULE EXE)

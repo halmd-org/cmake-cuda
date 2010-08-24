@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmExportFileGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:51 $
-  Version:   $Revision: 1.11.2.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmExportFileGenerator.h"
 
 #include "cmGeneratedFileStream.h"
@@ -150,58 +145,26 @@ cmExportFileGenerator
     }
 
   // Add the transitive link dependencies for this configuration.
-  if(cmTargetLinkInterface const* iface =
-     target->GetLinkInterface(config))
+  if(cmTarget::LinkInterface const* iface = target->GetLinkInterface(config))
     {
-    // This target provides a link interface, so use it.
+    this->SetImportLinkProperty(suffix, target,
+                                "IMPORTED_LINK_INTERFACE_LANGUAGES",
+                                iface->Languages, properties);
     this->SetImportLinkProperty(suffix, target,
                                 "IMPORTED_LINK_INTERFACE_LIBRARIES",
                                 iface->Libraries, properties);
     this->SetImportLinkProperty(suffix, target,
                                 "IMPORTED_LINK_DEPENDENT_LIBRARIES",
                                 iface->SharedDeps, properties);
-    }
-  else if(target->GetType() == cmTarget::STATIC_LIBRARY ||
-          target->GetType() == cmTarget::SHARED_LIBRARY)
-    {
-    // The default link interface for static and shared libraries is
-    // their link implementation library list.
-    this->SetImportLinkProperties(config, suffix, target, properties);
-    }
-}
-
-//----------------------------------------------------------------------------
-void
-cmExportFileGenerator
-::SetImportLinkProperties(const char* config, std::string const& suffix,
-                          cmTarget* target, ImportPropertyMap& properties)
-{
-  // Compute which library configuration to link.
-  cmTarget::LinkLibraryType linkType = target->ComputeLinkType(config);
-
-  // Construct the list of libs linked for this configuration.
-  std::vector<std::string> actual_libs;
-  cmTarget::LinkLibraryVectorType const& libs =
-    target->GetOriginalLinkLibraries();
-  for(cmTarget::LinkLibraryVectorType::const_iterator li = libs.begin();
-      li != libs.end(); ++li)
-    {
-    // Skip entries that will resolve to the target itself, are empty,
-    // or are not meant for this configuration.
-    if(li->first == target->GetName() || li->first.empty() ||
-       !(li->second == cmTarget::GENERAL || li->second == linkType))
+    if(iface->Multiplicity > 0)
       {
-      continue;
+      std::string prop = "IMPORTED_LINK_INTERFACE_MULTIPLICITY";
+      prop += suffix;
+      cmOStringStream m;
+      m << iface->Multiplicity;
+      properties[prop] = m.str();
       }
-
-    // Store this entry.
-    actual_libs.push_back(li->first);
     }
-
-  // Store the entries in the property.
-  this->SetImportLinkProperty(suffix, target,
-                              "IMPORTED_LINK_INTERFACE_LIBRARIES",
-                              actual_libs, properties);
 }
 
 //----------------------------------------------------------------------------

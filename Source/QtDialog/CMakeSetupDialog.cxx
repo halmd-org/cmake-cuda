@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: CMakeSetupDialog.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-03-31 14:29:15 $
-  Version:   $Revision: 1.40.2.9 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "CMakeSetupDialog.h"
 #include <QFileDialog>
@@ -32,11 +27,12 @@
 #include <QUrl>
 #include <QShortcut>
 #include <QMacInstallDialog.h>
-#include "cmVersion.h"
+
 #include "QCMake.h"
 #include "QCMakeCacheView.h"
 #include "AddCacheEntry.h"
 #include "FirstConfigure.h"
+#include "cmVersion.h"
 
 QCMakeThread::QCMakeThread(QObject* p) 
   : QThread(p), CMakeInstance(NULL)
@@ -61,6 +57,10 @@ void QCMakeThread::run()
 CMakeSetupDialog::CMakeSetupDialog()
   : ExitAfterGenerate(true), CacheModified(false), CurrentState(Interrupting)
 {
+  QString title = QString(tr("CMake %1"));
+  title = title.arg(cmVersion::GetCMakeVersion());
+  this->setWindowTitle(title);
+
   // create the GUI
   QSettings settings;
   settings.beginGroup("Settings/StartPath");
@@ -76,13 +76,13 @@ CMakeSetupDialog::CMakeSetupDialog()
   this->ProgressBar->reset();
   this->RemoveEntry->setEnabled(false);
   this->AddEntry->setEnabled(false);
+  
+  QByteArray p = settings.value("SplitterSizes").toByteArray();
+  this->Splitter->restoreState(p);
 
   bool groupView = settings.value("GroupView", false).toBool();
-  if(groupView)
-  {
-    this->setViewType(2);
-    this->ViewType->setCurrentIndex(2);
-  }
+  this->setGroupedView(groupView);
+  this->groupedCheck->setCheckState(groupView ? Qt::Checked : Qt::Unchecked);
 
   QMenu* FileMenu = this->menuBar()->addMenu(tr("&File"));
   this->ReloadCacheAction = FileMenu->addAction(tr("&Reload Cache"));
@@ -104,6 +104,9 @@ CMakeSetupDialog::CMakeSetupDialog()
   this->GenerateAction = ToolsMenu->addAction(tr("&Generate"));
   QObject::connect(this->GenerateAction, SIGNAL(triggered(bool)), 
                    this, SLOT(doGenerate()));
+  QAction* showChangesAction = ToolsMenu->addAction(tr("&Show My Changes"));
+  QObject::connect(showChangesAction, SIGNAL(triggered(bool)), 
+                   this, SLOT(showUserChanges()));
 #if defined(Q_WS_MAC)
   this->InstallForCommandLineAction 
     = ToolsMenu->addAction(tr("&Install For Command Line Use"));
@@ -211,10 +214,12 @@ void CMakeSetupDialog::initialize()
                    SIGNAL(outputMessage(QString)),
                    this, SLOT(message(QString)));
 
-  QObject::connect(this->ViewType, SIGNAL(currentIndexChanged(int)), 
-                   this, SLOT(setViewType(int)));
+  QObject::connect(this->groupedCheck, SIGNAL(toggled(bool)),
+                   this, SLOT(setGroupedView(bool)));
+  QObject::connect(this->advancedCheck, SIGNAL(toggled(bool)),
+                   this, SLOT(setAdvancedView(bool)));
   QObject::connect(this->Search, SIGNAL(textChanged(QString)), 
-                   this->CacheValues, SLOT(setSearchFilter(QString)));
+                   this, SLOT(setSearchFilter(QString)));
   
   QObject::connect(this->CMakeThread->cmakeInstance(),
                    SIGNAL(generatorChanged(QString)),
@@ -254,6 +259,7 @@ CMakeSetupDialog::~CMakeSetupDialog()
   settings.beginGroup("Settings/StartPath");
   settings.setValue("Height", this->height());
   settings.setValue("Width", this->width());
+  settings.setValue("SplitterSizes", this->Splitter->saveState());
 
   // wait for thread to stop
   this->CMakeThread->quit();
@@ -274,20 +280,27 @@ void CMakeSetupDialog::doConfigure()
   QDir dir(bindir);
   if(!dir.exists())
     {
-    QString message = tr("Build directory does not exist, "
+    QString msg = tr("Build directory does not exist, "
                          "should I create it?")
                       + "\n\n"
                       + tr("Directory: ");
-    message += bindir;
+    msg += bindir;
     QString title = tr("Create Directory");
     QMessageBox::StandardButton btn;
-    btn = QMessageBox::information(this, title, message, 
+    btn = QMessageBox::information(this, title, msg, 
                                    QMessageBox::Yes | QMessageBox::No);
     if(btn == QMessageBox::No)
       {
       return;
       }
-    dir.mkpath(".");
+    if(!dir.mkpath("."))
+      {
+      QMessageBox::information(this, tr("Create Directory Failed"), 
+        QString(tr("Failed to create directory %1")).arg(dir.path()), 
+        QMessageBox::Ok);
+
+      return;
+      }
     }
 
   // if no generator, prompt for it and other setup stuff
@@ -335,7 +348,7 @@ void CMakeSetupDialog::finishConfigure(int err)
 
 void CMakeSetupDialog::finishGenerate(int err)
 {
-  this->enterState(ReadyGenerate);
+  this->enterState(ReadyConfigure);
   if(err != 0)
     {
     QMessageBox::critical(this, tr("Error"), 
@@ -368,11 +381,11 @@ void CMakeSetupDialog::closeEvent(QCloseEvent* e)
   // prompt for close if there are unsaved changes, and we're not busy
   if(this->CacheModified)
     {
-    QString message = tr("You have changed options but not rebuilt, "
+    QString msg = tr("You have changed options but not rebuilt, "
                     "are you sure you want to exit?");
     QString title = tr("Confirm Exit");
     QMessageBox::StandardButton btn;
-    btn = QMessageBox::critical(this, title, message,
+    btn = QMessageBox::critical(this, title, msg,
                                 QMessageBox::Yes | QMessageBox::No);
     if(btn == QMessageBox::No)
       {
@@ -383,12 +396,12 @@ void CMakeSetupDialog::closeEvent(QCloseEvent* e)
   // don't close if we're busy, unless the user really wants to
   if(this->CurrentState == Configuring)
     {
-    QString message = "You are in the middle of a Configure.\n"
+    QString msg = "You are in the middle of a Configure.\n"
                    "If you Exit now the configure information will be lost.\n"
                    "Are you sure you want to Exit?";
     QString title = tr("Confirm Exit");
     QMessageBox::StandardButton btn;
-    btn = QMessageBox::critical(this, title, message,
+    btn = QMessageBox::critical(this, title, msg,
                                 QMessageBox::Yes | QMessageBox::No);
     if(btn == QMessageBox::No)
       {
@@ -505,8 +518,14 @@ void CMakeSetupDialog::onSourceDirectoryChanged(const QString& dir)
 
 void CMakeSetupDialog::onBinaryDirectoryChanged(const QString& dir)
 {
+  QString title = QString(tr("CMake %1 - %2"));
+  title = title.arg(cmVersion::GetCMakeVersion());
+  title = title.arg(dir);
+  this->setWindowTitle(title);
+
   this->CacheModified = false;
   this->CacheValues->cacheModel()->clear();
+  qobject_cast<QCMakeCacheModelDelegate*>(this->CacheValues->itemDelegate())->clearChanges();
   this->Output->clear();
   QMetaObject::invokeMethod(this->CMakeThread->cmakeInstance(),
     "setBinaryDirectory", Qt::QueuedConnection, Q_ARG(QString, dir));
@@ -522,16 +541,16 @@ void CMakeSetupDialog::showProgress(const QString& /*msg*/, float percent)
   this->ProgressBar->setValue(qRound(percent * 100));
 }
 
-void CMakeSetupDialog::error(const QString& message)
+void CMakeSetupDialog::error(const QString& msg)
 {
   this->Output->setCurrentCharFormat(this->ErrorFormat);
-  this->Output->append(message);
+  this->Output->append(msg);
 }
 
-void CMakeSetupDialog::message(const QString& message)
+void CMakeSetupDialog::message(const QString& msg)
 {
   this->Output->setCurrentCharFormat(this->MessageFormat);
-  this->Output->append(message);
+  this->Output->append(msg);
 }
 
 void CMakeSetupDialog::setEnabledState(bool enabled)
@@ -659,9 +678,9 @@ void CMakeSetupDialog::doReloadCache()
 void CMakeSetupDialog::doDeleteCache()
 {   
   QString title = tr("Delete Cache");
-  QString message = "Are you sure you want to delete the cache?";
+  QString msg = "Are you sure you want to delete the cache?";
   QMessageBox::StandardButton btn;
-  btn = QMessageBox::information(this, title, message, 
+  btn = QMessageBox::information(this, title, msg, 
                                  QMessageBox::Yes | QMessageBox::No);
   if(btn == QMessageBox::No)
     {
@@ -677,7 +696,7 @@ void CMakeSetupDialog::doAbout()
                 "Using Qt %2\n"
                 "www.cmake.org";
 
-  msg = msg.arg(cmVersion::GetCMakeVersion().c_str());
+  msg = msg.arg(cmVersion::GetCMakeVersion());
   msg = msg.arg(qVersion());
 
   QDialog dialog;
@@ -930,30 +949,91 @@ void CMakeSetupDialog::setDebugOutput(bool flag)
     "setDebugOutput", Qt::QueuedConnection, Q_ARG(bool, flag));
 }
 
-void CMakeSetupDialog::setViewType(int v)
+void CMakeSetupDialog::setGroupedView(bool v)
 {
-  if(v == 0)  // simple view
-    {
-    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::FlatView);
-    this->CacheValues->setRootIsDecorated(false);
-    this->CacheValues->setShowAdvanced(false);
-    }
-  else if(v == 1)  // advanced view
-    {
-    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::FlatView);
-    this->CacheValues->setRootIsDecorated(false);
-    this->CacheValues->setShowAdvanced(true);
-    }
-  else if(v == 2)  // grouped view
-    {
-    this->CacheValues->cacheModel()->setViewType(QCMakeCacheModel::GroupView);
-    this->CacheValues->setRootIsDecorated(true);
-    this->CacheValues->setShowAdvanced(true);
-    }
+  this->CacheValues->cacheModel()->setViewType(v ? QCMakeCacheModel::GroupView : QCMakeCacheModel::FlatView);
+  this->CacheValues->setRootIsDecorated(v);
   
   QSettings settings;
   settings.beginGroup("Settings/StartPath");
-  settings.setValue("GroupView", v == 2);
+  settings.setValue("GroupView", v);
   
 }
+
+void CMakeSetupDialog::setAdvancedView(bool v)
+{
+  this->CacheValues->setShowAdvanced(v);
+}
+
+void CMakeSetupDialog::showUserChanges()
+{
+  QSet<QCMakeProperty> changes =
+    qobject_cast<QCMakeCacheModelDelegate*>(this->CacheValues->itemDelegate())->changes();
+
+  QDialog dialog(this);
+  dialog.setWindowTitle(tr("My Changes"));
+  dialog.resize(600, 400);
+  QVBoxLayout* l = new QVBoxLayout(&dialog);
+  QTextEdit* textedit = new QTextEdit(&dialog);
+  textedit->setReadOnly(true);
+  l->addWidget(textedit);
+  QDialogButtonBox* btns = new QDialogButtonBox(QDialogButtonBox::Close,
+                                                Qt::Horizontal, &dialog);
+  QObject::connect(btns, SIGNAL(rejected()), &dialog, SLOT(accept()));
+  l->addWidget(btns);
+
+  QString command;
+  QString cache;
+  
+  foreach(QCMakeProperty prop, changes)
+    {
+    QString type;
+    switch(prop.Type)
+      {
+      case QCMakeProperty::BOOL:
+        type = "BOOL";
+        break;
+      case QCMakeProperty::PATH:
+        type = "PATH";
+        break;
+      case QCMakeProperty::FILEPATH:
+        type = "FILEPATH";
+        break;
+      case QCMakeProperty::STRING:
+        type = "STRING";
+        break;
+      }
+    QString value;
+    if(prop.Type == QCMakeProperty::BOOL)
+      {
+      value = prop.Value.toBool() ? "1" : "0";
+      }
+    else
+      {
+      value = prop.Value.toString();
+      }
+
+    QString line("%1:%2=");
+    line = line.arg(prop.Key);
+    line = line.arg(type);
+
+    command += QString("-D%1\"%2\" ").arg(line).arg(value);
+    cache += QString("%1%2\n").arg(line).arg(value);
+    }
+  
+  textedit->append(tr("Commandline options:"));
+  textedit->append(command);
+  textedit->append("\n");
+  textedit->append(tr("Cache file:"));
+  textedit->append(cache);
+  
+  dialog.exec();
+}
+
+void CMakeSetupDialog::setSearchFilter(const QString& str)
+{
+  this->CacheValues->selectionModel()->clear();
+  this->CacheValues->setSearchFilter(str);
+}
+
 

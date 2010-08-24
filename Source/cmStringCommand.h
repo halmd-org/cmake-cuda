@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmStringCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2009-03-27 15:56:47 $
-  Version:   $Revision: 1.28.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmStringCommand_h
 #define cmStringCommand_h
 
@@ -94,7 +89,7 @@ public:
       "  string(SUBSTRING <string> <begin> <length> <output variable>)\n"
       "  string(STRIP <string> <output variable>)\n"
       "  string(RANDOM [LENGTH <length>] [ALPHABET <alphabet>]\n"
-      "         <output variable>)\n"
+      "         [RANDOM_SEED <seed>] <output variable>)\n"
       "REGEX MATCH will match the regular expression once and store the "
       "match in the output variable.\n"
       "REGEX MATCHALL will match the regular expression as many times as "
@@ -120,7 +115,8 @@ public:
       "RANDOM will return a random string of given length consisting of "
       "characters from the given alphabet. Default length is 5 "
       "characters and default alphabet is all numbers and upper and "
-      "lower case letters.\n"
+      "lower case letters.  If an integer RANDOM_SEED is given, its "
+      "value will be used to seed the random number generator.\n"
       "The following characters have special meaning in regular expressions:\n"
       "   ^         Matches at beginning of a line\n"
       "   $         Matches at end of a line\n"

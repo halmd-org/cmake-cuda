@@ -1,4 +1,5 @@
-set(CVSROOT ":pserver:anonymous@www.cmake.org:/cvsroot/CMake")
+set(CVSROOT ":pserver:anonymous@cmake.org:/cmake.git")
+
 get_filename_component(SCRIPT_PATH "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
 # default to self extracting tgz, tgz, and tar.Z
@@ -26,22 +27,19 @@ endif(NOT DEFINED RUN_SHELL)
 if(NOT DEFINED PROCESSORS)
   set(PROCESSORS 1)
 endif(NOT DEFINED PROCESSORS)
-if(NOT DEFINED CMAKE_VERSION)
-  message(FATAL_ERROR "CMAKE_VERSION not defined")
-endif(NOT DEFINED CMAKE_VERSION)
+if(NOT DEFINED CMAKE_CREATE_VERSION)
+  message(FATAL_ERROR "CMAKE_CREATE_VERSION not defined")
+endif(NOT DEFINED CMAKE_CREATE_VERSION)
 if(NOT DEFINED CVS_COMMAND)
   set(CVS_COMMAND cvs)
 endif(NOT DEFINED CVS_COMMAND)
 
-if("${CMAKE_VERSION}" STREQUAL "CVS")
-  set( CMAKE_CHECKOUT "${CVS_COMMAND} -q -z3 -d ${CVSROOT} export -D now ")
-  set( CMAKE_VERSION "CurrentCVS")
-else("${CMAKE_VERSION}" STREQUAL "CVS")
-  set( CMAKE_CHECKOUT "${CVS_COMMAND} -q -z3 -d ${CVSROOT} export -r ${CMAKE_VERSION} ")
-endif("${CMAKE_VERSION}" STREQUAL "CVS")
+set(GIT_BRANCH ${CMAKE_CREATE_VERSION})
+set( CMAKE_CHECKOUT "${CVS_COMMAND} -q -d ${CVSROOT} co -d ${CMAKE_CREATE_VERSION} ${CMAKE_CREATE_VERSION}")
+
 
 if(NOT DEFINED FINAL_PATH )
-  set(FINAL_PATH ${CMAKE_RELEASE_DIRECTORY}/${CMAKE_VERSION}-build)
+  set(FINAL_PATH ${CMAKE_RELEASE_DIRECTORY}/${CMAKE_CREATE_VERSION}-build)
 endif(NOT DEFINED FINAL_PATH )
 
 if(NOT HOST)
@@ -51,7 +49,7 @@ if(NOT DEFINED MAKE)
   message(FATAL_ERROR "MAKE must be specified with -DMAKE=\"make -j2\"")
 endif(NOT DEFINED MAKE)
   
-message("Creating CMake release ${CMAKE_VERSION} on ${HOST} with parallel = ${PROCESSORS}")
+message("Creating CMake release ${CMAKE_CREATE_VERSION} on ${HOST} with parallel = ${PROCESSORS}")
 
 # define a macro to run a remote command
 macro(remote_command comment command)
@@ -69,7 +67,6 @@ macro(remote_command comment command)
 endmacro(remote_command)
 
 # set this so configure file will work from script mode
-set(CMAKE_BACKWARDS_COMPATIBILITY 2.4)
 # create the script specific for the given host
 set(SCRIPT_FILE release_cmake-${SCRIPT_NAME}.sh)
 configure_file(${SCRIPT_PATH}/release_cmake.sh.in ${SCRIPT_FILE} @ONLY)

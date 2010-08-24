@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestBuildHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-30 16:17:36 $
-  Version:   $Revision: 1.13 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestBuildHandler_h
 #define cmCTestBuildHandler_h
@@ -49,7 +44,12 @@ public:
    */
   virtual void Initialize();
 
+  int GetTotalErrors() { return this->TotalErrors;}
+  int GetTotalWarnings() { return this->TotalWarnings;}
+
 private:
+  std::string GetMakeCommand();
+
   //! Run command specialized for make and configure. Returns process status
   // and retVal is return value or exception.
   int RunMakeCommand(const char* command,
@@ -84,10 +84,13 @@ private:
   };
 
   // generate the XML output
-  void GenerateDartBuildOutput(std::ostream& os,
-                               std::vector<cmCTestBuildErrorWarning>,
-                               double elapsed_time);
-
+  void GenerateXMLHeader(std::ostream& os);
+  void GenerateXMLLaunched(std::ostream& os);
+  void GenerateXMLLogScraped(std::ostream& os);
+  void GenerateXMLFooter(std::ostream& os, double elapsed_build_time);
+  void GenerateXMLLaunchedFragment(std::ostream& os, const char* fname);
+  bool IsLaunchedErrorFile(const char* fname);
+  bool IsLaunchedWarningFile(const char* fname);
 
   std::string             StartBuild;
   std::string             EndBuild;
@@ -98,6 +101,8 @@ private:
   std::vector<cmStdString> CustomErrorExceptions;
   std::vector<cmStdString> CustomWarningMatches;
   std::vector<cmStdString> CustomWarningExceptions;
+  std::vector<std::string> ReallyCustomWarningMatches;
+  std::vector<std::string> ReallyCustomWarningExceptions;
   std::vector<cmCTestCompileErrorWarningRex> ErrorWarningFileLineRegex;
 
   std::vector<cmsys::RegularExpression> ErrorMatchRegex;
@@ -136,6 +141,12 @@ private:
 
   int                                   MaxErrors;
   int                                   MaxWarnings;
+
+  bool UseCTestLaunch;
+  std::string CTestLaunchDir;
+  class LaunchHelper;
+  friend class LaunchHelper;
+  class FragmentCompare;
 };
 
 #endif

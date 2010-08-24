@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * $Id: mprintf.c,v 1.5 2007-03-15 19:22:13 andy Exp $
+ * $Id$
  *
  *************************************************************************
  *
@@ -43,10 +43,6 @@
 #endif
 
 #include <curl/mprintf.h>
-
-#ifndef SIZEOF_LONG_DOUBLE
-#define SIZEOF_LONG_DOUBLE 0
-#endif
 
 #ifndef SIZEOF_SIZE_T
 /* default to 4 bytes for size_t unless defined in the config.h */

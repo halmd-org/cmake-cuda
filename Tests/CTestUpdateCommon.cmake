@@ -10,7 +10,8 @@ function(run_child)
     )
   if(FAILED)
     string(REGEX REPLACE "\n" "\n  " OUTPUT "${OUTPUT}")
-    message(FATAL_ERROR "Child failed.  Output is\n  ${OUTPUT}\n")
+    message(FATAL_ERROR "Child failed (${FAILED}), output is\n  ${OUTPUT}\n"
+      "Command = [${ARGN}]\n")
   endif(FAILED)
 endfunction(run_child)
 
@@ -29,27 +30,66 @@ function(check_updates build)
   message(" found ${UPDATE_XML_FILE}")
 
   # Read entries from the Update.xml file
+  set(types "Updated|Modified|Conflicting")
   file(STRINGS ${TOP}/${UPDATE_XML_FILE} UPDATE_XML_ENTRIES
-    REGEX "FullName"
+    REGEX "<(${types}|FullName)>"
     LIMIT_INPUT 4096
     )
+  string(REGEX REPLACE
+    "[ \t]*<(${types})>[ \t]*;[ \t]*<FullName>([^<]*)</FullName>"
+    "\\1{\\2}" UPDATE_XML_ENTRIES "${UPDATE_XML_ENTRIES}")
 
-  # Verify that expected entries exist
-  set(MISSING)
-  foreach(f ${ARGN})
-    if(NOT "${UPDATE_XML_ENTRIES}" MATCHES "<FullName>${f}</FullName>")
-      list(APPEND MISSING ${f})
-    endif()
-  endforeach(f)
+  # Compare expected and actual entries
+  set(EXTRA "${UPDATE_XML_ENTRIES}")
+  list(REMOVE_ITEM EXTRA ${ARGN} ${UPDATE_EXTRA} ${UPDATE_MAYBE})
+  set(MISSING "${ARGN}" ${UPDATE_EXTRA})
+  list(REMOVE_ITEM MISSING ${UPDATE_XML_ENTRIES})
+
+  if(NOT UPDATE_NOT_GLOBAL)
+    set(rev_elements Revision PriorRevision ${UPDATE_GLOBAL_ELEMENTS})
+    string(REPLACE ";" "|" rev_regex "${rev_elements}")
+    set(rev_regex "^\t<(${rev_regex})>[^<\n]+</(${rev_regex})>$")
+    file(STRINGS ${TOP}/${UPDATE_XML_FILE} UPDATE_XML_REVISIONS
+      REGEX "${rev_regex}"
+      LIMIT_INPUT 4096
+      )
+    foreach(r IN LISTS UPDATE_XML_REVISIONS)
+      string(REGEX REPLACE "${rev_regex}" "\\1" element "${r}")
+      set(element_${element} 1)
+    endforeach()
+    foreach(element ${rev_elements})
+      if(NOT element_${element})
+        list(APPEND MISSING "global <${element}> element")
+      endif()
+    endforeach()
+  endif()
 
   # Report the result
+  set(MSG "")
   if(MISSING)
     # List the missing entries
-    set(MSG "Update.xml is missing an entry for:\n")
+    set(MSG "${MSG}Update.xml is missing expected entries:\n")
     foreach(f ${MISSING})
       set(MSG "${MSG}  ${f}\n")
     endforeach(f)
+  else(MISSING)
+    # Success
+    message(" no entries missing from Update.xml")
+  endif(MISSING)
 
+  # Report the result
+  if(EXTRA)
+    # List the extra entries
+    set(MSG "${MSG}Update.xml has extra unexpected entries:\n")
+    foreach(f ${EXTRA})
+      set(MSG "${MSG}  ${f}\n")
+    endforeach(f)
+  else(EXTRA)
+    # Success
+    message(" no extra entries in Update.xml")
+  endif(EXTRA)
+
+  if(MSG)
     # Provide the log file
     file(GLOB UPDATE_LOG_FILE
       ${TOP}/${build}/Testing/Temporary/LastUpdate*.log)
@@ -63,10 +103,7 @@ function(check_updates build)
 
     # Display the error message
     message(FATAL_ERROR "${MSG}")
-  else(MISSING)
-    # Success
-    message(" no entries missing from Update.xml")
-  endif(MISSING)
+  endif(MSG)
 endfunction(check_updates)
 
 #-----------------------------------------------------------------------------
@@ -88,13 +125,30 @@ endfunction(create_content)
 
 #-----------------------------------------------------------------------------
 # Function to update content.
-function(update_content dir added_var removed_var)
+function(update_content dir added_var removed_var dirs_var)
   file(APPEND ${TOP}/${dir}/foo.txt "foo line 2\n")
   file(WRITE ${TOP}/${dir}/zot.txt "zot\n")
   file(REMOVE ${TOP}/${dir}/bar.txt)
-  set(${added_var} zot.txt PARENT_SCOPE)
+  file(MAKE_DIRECTORY ${TOP}/${dir}/subdir)
+  file(WRITE ${TOP}/${dir}/subdir/foo.txt "foo\n")
+  file(WRITE ${TOP}/${dir}/subdir/bar.txt "bar\n")
+  set(${dirs_var} subdir PARENT_SCOPE)
+  set(${added_var} zot.txt subdir/foo.txt subdir/bar.txt PARENT_SCOPE)
   set(${removed_var} bar.txt PARENT_SCOPE)
 endfunction(update_content)
+
+#-----------------------------------------------------------------------------
+# Function to change existing files
+function(change_content dir)
+  file(APPEND ${TOP}/${dir}/foo.txt "foo line 3\n")
+  file(APPEND ${TOP}/${dir}/subdir/foo.txt "foo line 2\n")
+endfunction(change_content)
+
+#-----------------------------------------------------------------------------
+# Function to create local modifications before update
+function(modify_content dir)
+  file(APPEND ${TOP}/${dir}/CTestConfig.cmake "# local modification\n")
+endfunction(modify_content)
 
 #-----------------------------------------------------------------------------
 # Function to write CTestConfiguration.ini content.
@@ -111,15 +165,15 @@ endfunction(create_build_tree)
 
 #-----------------------------------------------------------------------------
 # Function to write the dashboard test script.
-function(create_dashboard_script name custom_text)
+function(create_dashboard_script bin_dir custom_text)
   # Write the dashboard script.
-  file(WRITE ${TOP}/dashboard.cmake
+  file(WRITE ${TOP}/${bin_dir}.cmake
     "# CTest Dashboard Script
 set(CTEST_DASHBOARD_ROOT \"${TOP}\")
 set(CTEST_SITE test.site)
 set(CTEST_BUILD_NAME dash-test)
 set(CTEST_SOURCE_DIRECTORY \${CTEST_DASHBOARD_ROOT}/dash-source)
-set(CTEST_BINARY_DIRECTORY \${CTEST_DASHBOARD_ROOT}/dash-binary)
+set(CTEST_BINARY_DIRECTORY \${CTEST_DASHBOARD_ROOT}/${bin_dir})
 ${custom_text}
 # Start a dashboard and run the update step
 ctest_start(Experimental)
@@ -136,19 +190,38 @@ function(run_dashboard_command_line bin_dir)
     )
 
   # Verify the updates reported by CTest.
-  check_updates(${bin_dir} foo.txt bar.txt zot.txt)
+  list(APPEND UPDATE_MAYBE Updated{subdir})
+  set(_modified Modified{CTestConfig.cmake})
+  if(UPDATE_NO_MODIFIED)
+    set(_modified "")
+  endif()
+  check_updates(${bin_dir}
+    Updated{foo.txt}
+    Updated{bar.txt}
+    Updated{zot.txt}
+    Updated{subdir/foo.txt}
+    Updated{subdir/bar.txt}
+    ${_modified}
+    )
 endfunction(run_dashboard_command_line)
 
 #-----------------------------------------------------------------------------
 # Function to run the dashboard through a script
-function(run_dashboard_script name)
+function(run_dashboard_script bin_dir)
   run_child(
     WORKING_DIRECTORY ${TOP}
-    COMMAND ${CMAKE_CTEST_COMMAND} -S ${name} -V
+    COMMAND ${CMAKE_CTEST_COMMAND} -S ${bin_dir}.cmake -V
     )
 
   # Verify the updates reported by CTest.
-  check_updates(dash-binary foo.txt bar.txt zot.txt)
+  list(APPEND UPDATE_MAYBE Updated{subdir})
+  check_updates(${bin_dir}
+    Updated{foo.txt}
+    Updated{bar.txt}
+    Updated{zot.txt}
+    Updated{subdir/foo.txt}
+    Updated{subdir/bar.txt}
+    )
 endfunction(run_dashboard_script)
 
 #-----------------------------------------------------------------------------

@@ -1,10 +1,5 @@
-cmake_minimum_required (VERSION 2.6)
-project(Export C)
-
-# We need ansi C support.
-if(CMAKE_ANSI_CFLAGS)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_ANSI_CFLAGS}")
-endif(CMAKE_ANSI_CFLAGS)
+cmake_minimum_required (VERSION 2.7.20090711)
+project(Export C CXX)
 
 # Pretend that RelWithDebInfo should link to debug libraries to test
 # the DEBUG_CONFIGURATIONS property.
@@ -36,8 +31,21 @@ set_property(TARGET testLib3 PROPERTY LINK_INTERFACE_LIBRARIES "")
 set_property(TARGET testLib3 PROPERTY VERSION 1.2)
 set_property(TARGET testLib3 PROPERTY SOVERSION 3)
 
+# Test <ARCHIVE|LIBRARY|RUNTIME>_OUTPUT_NAME[_<CONFIG>] properties.
+set_property(TARGET testLib3 PROPERTY RUNTIME_OUTPUT_NAME_DEBUG testLib3dll-d)
+set_property(TARGET testLib3 PROPERTY RUNTIME_OUTPUT_NAME_RELEASE testLib3dll-r)
+set_property(TARGET testLib3 PROPERTY RUNTIME_OUTPUT_NAME testLib3dll)
+set_property(TARGET testLib3 PROPERTY LIBRARY_OUTPUT_NAME_DEBUG testLib3lib-d)
+set_property(TARGET testLib3 PROPERTY LIBRARY_OUTPUT_NAME_RELEASE testLib3lib-r)
+set_property(TARGET testLib3 PROPERTY LIBRARY_OUTPUT_NAME testLib3lib)
+set_property(TARGET testLib3 PROPERTY ARCHIVE_OUTPUT_NAME testLib3import)
+
 add_library(testLib4 SHARED testLib4.c)
 set_property(TARGET testLib4 PROPERTY FRAMEWORK 1)
+
+add_library(testLib5 SHARED testLib5.c)
+
+add_library(testLib6 STATIC testLib6.cxx testLib6c.c)
 
 # Work-around: Visual Studio 6 does not support per-target object files.
 set(VS6)
@@ -65,11 +73,22 @@ target_link_libraries(testLib4
 add_executable(testExe3 testExe3.c)
 set_property(TARGET testExe3 PROPERTY MACOSX_BUNDLE 1)
 
+# Test cyclic dependencies.
+add_library(testLibCycleA STATIC
+  testLibCycleA1.c testLibCycleA2.c testLibCycleA3.c)
+add_library(testLibCycleB STATIC
+  testLibCycleB1.c testLibCycleB2.c testLibCycleB3.c)
+target_link_libraries(testLibCycleA testLibCycleB)
+target_link_libraries(testLibCycleB testLibCycleA)
+set_property(TARGET testLibCycleA PROPERTY LINK_INTERFACE_MULTIPLICITY 3)
+
 # Install and export from install tree.
 install(
   TARGETS
   testExe1 testLib1 testLib2 testExe2 testLib3 testLib4 testExe3
   testExe2lib testLib4lib testLib4libdbg testLib4libopt
+  testLib6
+  testLibCycleA testLibCycleB
   EXPORT exp
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib NAMELINK_SKIP
@@ -85,7 +104,19 @@ install(
   LIBRARY DESTINATION lib/impl
   ARCHIVE DESTINATION lib/impl
   )
+install(
+  TARGETS testLib5
+  EXPORT exp
+  # Leave out RUNTIME DESTINATION to test implib-only export.
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  )
 install(EXPORT exp NAMESPACE exp_ DESTINATION lib/exp)
+
+# Install testLib5.dll outside the export.
+if(WIN32)
+  install(TARGETS testLib5 RUNTIME DESTINATION bin)
+endif(WIN32)
 
 # Export from build tree.
 export(TARGETS testExe1 testLib1 testLib2 testLib3
@@ -93,8 +124,9 @@ export(TARGETS testExe1 testLib1 testLib2 testLib3
   NAMESPACE bld_
   FILE ExportBuildTree.cmake
   )
-export(TARGETS testExe2 testLib4 testExe3 testExe2lib
+export(TARGETS testExe2 testLib4 testLib5 testLib6 testExe3 testExe2lib
   testLib4lib testLib4libdbg testLib4libopt
+  testLibCycleA testLibCycleB
   NAMESPACE bld_
   APPEND FILE ExportBuildTree.cmake
   )

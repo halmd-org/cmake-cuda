@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestGenericHandler.cxx,v $
-  Language:  C++
-  Date:      $Date: 2007-08-28 17:46:57 $
-  Version:   $Revision: 1.16 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "cmCTestGenericHandler.h"
 #include "cmSystemTools.h"
@@ -26,6 +21,7 @@ cmCTestGenericHandler::cmCTestGenericHandler()
   this->HandlerVerbose = false;
   this->CTest = 0;
   this->SubmitIndex = 0;
+  this->AppendXML = false;
 }
 
 //----------------------------------------------------------------------
@@ -80,6 +76,7 @@ void cmCTestGenericHandler::SetPersistentOption(const char* op,
 //----------------------------------------------------------------------
 void cmCTestGenericHandler::Initialize()
 {
+  this->AppendXML = false;
   this->Options.clear();
   t_StringToString::iterator it;
   for ( it = this->PersistentOptions.begin(); 
@@ -103,8 +100,9 @@ const char* cmCTestGenericHandler::GetOption(const char* op)
 }
 
 //----------------------------------------------------------------------
-bool cmCTestGenericHandler::StartResultingXML(const char* name,
-  cmGeneratedFileStream& xofs)
+bool cmCTestGenericHandler::StartResultingXML(cmCTest::Part part,
+                                              const char* name,
+                                              cmGeneratedFileStream& xofs)
 {
   if ( !name )
     {
@@ -123,8 +121,10 @@ bool cmCTestGenericHandler::StartResultingXML(const char* name,
   if(this->CTest->GetCurrentTag().empty())
     {
     cmCTestLog(this->CTest, ERROR_MESSAGE,
-               "Current Tag empty, this may mean"
-               " NightlyStartTime was not set correctly." << std::endl);
+               "Current Tag empty, this may mean NightlyStartTime / "
+               "CTEST_NIGHTLY_START_TIME was not set correctly. Or "
+               "maybe you forgot to call ctest_start() before calling "
+               "ctest_configure()." << std::endl);
     cmSystemTools::SetFatalErrorOccured();
     return false;
     }
@@ -136,7 +136,7 @@ bool cmCTestGenericHandler::StartResultingXML(const char* name,
       << std::endl);
     return false;
     }
-  this->CTest->AddSubmitFile(ostr.str().c_str());
+  this->CTest->AddSubmitFile(part, ostr.str().c_str());
   return true;
 }
 
@@ -169,4 +169,3 @@ bool cmCTestGenericHandler::StartLogFile(const char* name,
     }
   return true;
 }
-

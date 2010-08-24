@@ -2,10 +2,10 @@
 # This module finds if any HLA RTI is installed and locates the standard RTI
 # include files and libraries.
 #
-# RTI is a simulation infrastructure standartized by IEEE and SISO. It has a
+# RTI is a simulation infrastructure standardized by IEEE and SISO. It has a
 # well defined C++ API that assures that simulation applications are
 # independent on a particular RTI implementation.
-# http://en.wikipedia.org/wiki/Run-Time_Infrastructure_(simulation)
+#  http://en.wikipedia.org/wiki/Run-Time_Infrastructure_(simulation)
 #
 # This code sets the following variables:
 #  RTI_INCLUDE_DIR = the directory where RTI includes file are found
@@ -14,6 +14,20 @@
 #  RTI_FOUND = Set to FALSE if any HLA RTI was not found
 #
 # Report problems to <certi-devel@nongnu.org>
+
+#=============================================================================
+# Copyright 2008-2009 Kitware, Inc.
+# Copyright 2008 Petr Gotthard <gotthard@honeywell.com>
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 MACRO(RTI_MESSAGE_QUIETLY QUIET TYPE MSG)
   IF(NOT ${QUIET})
@@ -85,4 +99,4 @@ INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(RTI DEFAULT_MSG
   RTI_LIBRARY RTI_INCLUDE_DIR)
 
-# $Id: FindRTI.cmake,v 1.3.2.2 2009-02-04 16:44:12 hoffman Exp $
+# $Id$

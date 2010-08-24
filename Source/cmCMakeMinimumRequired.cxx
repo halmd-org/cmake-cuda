@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCMakeMinimumRequired.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:49 $
-  Version:   $Revision: 1.17.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCMakeMinimumRequired.h"
 
 #include "cmVersion.h"
@@ -71,14 +66,17 @@ bool cmCMakeMinimumRequired
   int current_major = cmVersion::GetMajorVersion();
   int current_minor = cmVersion::GetMinorVersion();
   int current_patch = cmVersion::GetPatchVersion();
+  int current_tweak = cmVersion::GetTweakVersion();
 
-  // Parse the required version number.  If no patch-level is given
-  // use zero.
+  // Parse at least two components of the version number.
+  // Use zero for those not specified.
   int required_major = 0;
   int required_minor = 0;
   int required_patch = 0;
-  if(sscanf(version_string.c_str(), "%d.%d.%d",
-            &required_major, &required_minor, &required_patch) < 2)
+  int required_tweak = 0;
+  if(sscanf(version_string.c_str(), "%u.%u.%u.%u",
+            &required_major, &required_minor,
+            &required_patch, &required_tweak) < 2)
     {
     cmOStringStream e;
     e << "could not parse VERSION \"" << version_string.c_str() << "\".";
@@ -87,18 +85,22 @@ bool cmCMakeMinimumRequired
     }
 
   // Compare the version numbers.
-  if(current_major < required_major ||
-     current_major == required_major &&
-     current_minor < required_minor ||
-     current_major == required_major &&
-     current_minor == required_minor &&
-     current_patch < required_patch)
+  if((current_major < required_major) ||
+     (current_major == required_major &&
+      current_minor < required_minor) ||
+     (current_major == required_major &&
+      current_minor == required_minor &&
+      current_patch < required_patch) ||
+     (current_major == required_major &&
+      current_minor == required_minor &&
+      current_patch == required_patch &&
+      current_tweak < required_tweak))
     {
     // The current version is too low.
     cmOStringStream e;
     e << "CMake " << version_string.c_str()
       << " or higher is required.  You are running version "
-      << current_major << "." << current_minor << "." << current_patch;
+      << cmVersion::GetCMakeVersion();
     this->Makefile->IssueMessage(cmake::FATAL_ERROR, e.str());
     cmSystemTools::SetFatalErrorOccured();
     return true;
@@ -110,7 +112,7 @@ bool cmCMakeMinimumRequired
     return false;
     }
 
-  if (required_major < 2 || required_major == 2 && required_minor < 4)
+  if (required_major < 2 || (required_major == 2 && required_minor < 4))
   {
     this->Makefile->SetPolicyVersion("2.4");
   }

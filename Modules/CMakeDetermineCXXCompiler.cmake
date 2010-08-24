@@ -1,4 +1,17 @@
 
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # determine the compiler to use for C++ programs
 # NOTE, a generator may set CMAKE_CXX_COMPILER before
 # loading this file to force a compiler.
@@ -163,7 +176,10 @@ ENDIF (CMAKE_CROSSCOMPILING
     AND NOT _CMAKE_TOOLCHAIN_PREFIX)
 
 INCLUDE(CMakeFindBinUtils)
-
+IF(MSVC_CXX_ARCHITECTURE_ID)
+  SET(SET_MSVC_CXX_ARCHITECTURE_ID
+    "SET(MSVC_CXX_ARCHITECTURE_ID ${MSVC_CXX_ARCHITECTURE_ID})")
+ENDIF(MSVC_CXX_ARCHITECTURE_ID)
 # configure all variables set in this file
 CONFIGURE_FILE(${CMAKE_ROOT}/Modules/CMakeCXXCompiler.cmake.in
   ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeCXXCompiler.cmake

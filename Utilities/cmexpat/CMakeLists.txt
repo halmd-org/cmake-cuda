@@ -1,5 +1,4 @@
 PROJECT(CMEXPAT)
-INCLUDE_REGULAR_EXPRESSION("^.*$")
 
 SET(expat_SRCS
   xmlparse.c
@@ -32,3 +31,4 @@ CONFIGURE_FILE(${CMEXPAT_SOURCE_DIR}/expat.h
                ${CMEXPAT_BINARY_DIR}/expat.h)
 
 ADD_LIBRARY(cmexpat ${expat_SRCS})
+INSTALL(FILES COPYING DESTINATION ${CMake_DOC_DEST}/cmexpat)

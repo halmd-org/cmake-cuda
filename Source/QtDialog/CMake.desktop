@@ -1,10 +1,9 @@
 [Desktop Entry]
 Version=1.0
-Encoding=UTF-8
 Name=CMake
 Comment=Cross-platform buildsystem
 Exec=cmake-gui %f
-Icon=CMakeSetup.png
+Icon=CMakeSetup32.png
 Terminal=false
 X-MultipleArgs=false
 Type=Application

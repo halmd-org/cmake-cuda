@@ -1,35 +1,27 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCPackZIPGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2007-11-05 21:55:45 $
-  Version:   $Revision: 1.6 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCPackZIPGenerator_h
 #define cmCPackZIPGenerator_h
 
-#include "cmCPackGenerator.h"
-
-class cmCPackZIPGeneratorForward;
+#include "cmCPackArchiveGenerator.h"
 
 /** \class cmCPackZIPGenerator
  * \brief A generator for ZIP files
  */
-class cmCPackZIPGenerator : public cmCPackGenerator
+class cmCPackZIPGenerator : public cmCPackArchiveGenerator
 {
 public:
-  friend class cmCPackZIPGeneratorForward;
-  cmCPackTypeMacro(cmCPackZIPGenerator, cmCPackGenerator);
+  cmCPackTypeMacro(cmCPackZIPGenerator, cmCPackArchiveGenerator);
 
   /**
    * Construct generator
@@ -38,12 +30,7 @@ public:
   virtual ~cmCPackZIPGenerator();
 
 protected:
-  virtual int InitializeInternal();
-  int CompressFiles(const char* outFileName, const char* toplevel,
-    const std::vector<std::string>& files);
   virtual const char* GetOutputExtension() { return ".zip"; }
-
-  int ZipStyle;
 };
 
 #endif

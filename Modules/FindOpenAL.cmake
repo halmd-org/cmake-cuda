@@ -10,6 +10,19 @@
 #
 # Created by Eric Wing. This was influenced by the FindSDL.cmake module.
 
+#=============================================================================
+# Copyright 2005-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # This makes the presumption that you are include al.h like
 # #include "al.h"
 # and not 
@@ -82,8 +95,9 @@ FIND_LIBRARY(OPENAL_LIBRARY
 )
 
 
-SET(OPENAL_FOUND "NO")
-IF(OPENAL_LIBRARY AND OPENAL_INCLUDE_DIR)
-  SET(OPENAL_FOUND "YES")
-ENDIF(OPENAL_LIBRARY AND OPENAL_INCLUDE_DIR)
+# handle the QUIETLY and REQUIRED arguments and set OPENAL_FOUND to TRUE if
+# all listed variables are TRUE
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(OpenAL  DEFAULT_MSG  OPENAL_LIBRARY OPENAL_INCLUDE_DIR)
 
+MARK_AS_ADVANCED(OPENAL_LIBRARY OPENAL_INCLUDE_DIR)

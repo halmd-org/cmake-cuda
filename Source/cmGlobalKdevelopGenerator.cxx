@@ -1,21 +1,15 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2004-2009 Kitware, Inc.
+  Copyright 2004 Alexander Neundorf (neundorf@kde.org)
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalKdevelopGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-09-03 13:43:17 $
-  Version:   $Revision: 1.29.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  Copyright (c) 2004 Alexander Neundorf neundorf@kde.org, All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
-
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGlobalKdevelopGenerator.h"
 #include "cmGlobalUnixMakefileGenerator3.h"
 #include "cmLocalUnixMakefileGenerator3.h"
@@ -481,6 +475,7 @@ void cmGlobalKdevelopGenerator
         "      <environments>\n"
         "        <default>\n"
         "          <envvar value=\"1\" name=\"VERBOSE\" />\n"
+        "          <envvar value=\"1\" name=\"CMAKE_NO_VERBOSE\" />\n"
         "        </default>\n"
         "      </environments>\n"
         "    </make>\n";

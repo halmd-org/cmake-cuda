@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmTargetLinkLibrariesCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:53 $
-  Version:   $Revision: 1.15.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmTargetLinkLibrariesCommand_h
 #define cmTargetLinkLibrariesCommand_h
 
@@ -64,12 +59,14 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  target_link_libraries(<target> [lib1 [lib2 [...]]]\n"
-      "                        [[debug|optimized|general] <lib>] ...)\n"
-      "Specify a list of libraries to be linked into the specified target.  "
-      "If any library name matches that of a target in the current project "
+      "  target_link_libraries(<target> [item1 [item2 [...]]]\n"
+      "                        [[debug|optimized|general] <item>] ...)\n"
+      "Specify libraries or flags to use when linking a given target.  "
+      "If a library name matches that of another target in the project "
       "a dependency will automatically be added in the build system to make "
-      "sure the library being linked is up-to-date before the target links."
+      "sure the library being linked is up-to-date before the target links.  "
+      "Item names starting with '-', but not '-l' or '-framework', are "
+      "treated as linker flags."
       "\n"
       "A \"debug\", \"optimized\", or \"general\" keyword indicates that "
       "the library immediately following it is to be used only for the "
@@ -105,6 +102,28 @@ public:
       "the LINK_INTERFACE_LIBRARIES property.  "
       "Libraries specified as \"general\" (or without any keyword) are "
       "treated as if specified for both \"debug\" and \"optimized\"."
+      "\n"
+      "The library dependency graph is normally acyclic (a DAG), but in the "
+      "case of mutually-dependent STATIC libraries CMake allows the graph "
+      "to contain cycles (strongly connected components).  "
+      "When another target links to one of the libraries CMake repeats "
+      "the entire connected component.  "
+      "For example, the code\n"
+      "  add_library(A STATIC a.c)\n"
+      "  add_library(B STATIC b.c)\n"
+      "  target_link_libraries(A B)\n"
+      "  target_link_libraries(B A)\n"
+      "  add_executable(main main.c)\n"
+      "  target_link_libraries(main A)\n"
+      "links 'main' to 'A B A B'.  "
+      "("
+      "While one repetition is usually sufficient, pathological object "
+      "file and symbol arrangements can require more.  "
+      "One may handle such cases by manually repeating the component in "
+      "the last target_link_libraries call.  "
+      "However, if two archives are really so interdependent they should "
+      "probably be combined into a single archive."
+      ")"
       ;
     }
   

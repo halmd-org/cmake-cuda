@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSetPropertyCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-04-02 13:16:06 $
-  Version:   $Revision: 1.3.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSetsPropertiesCommand_h
 #define cmSetsPropertiesCommand_h
 
@@ -59,7 +54,8 @@ public:
         "                DIRECTORY [dir]                   |\n"
         "                TARGET    [target1 [target2 ...]] |\n"
         "                SOURCE    [src1 [src2 ...]]       |\n"
-        "                TEST      [test1 [test2 ...]]>\n"
+        "                TEST      [test1 [test2 ...]]     |\n"
+        "                CACHE     [entry1 [entry2 ...]]>\n"
         "               [APPEND]\n"
         "               PROPERTY <name> [value1 [value2 ...]])\n"
         "Set one property on zero or more objects of a scope.  "
@@ -70,8 +66,11 @@ public:
         "directory (already processed by CMake) may be named by full or "
         "relative path.\n"
         "TARGET scope may name zero or more existing targets.\n"
-        "SOURCE scope may name zero or more source files.\n"
+        "SOURCE scope may name zero or more source files.  "
+        "Note that source file properties are visible only to targets "
+        "added in the same directory (CMakeLists.txt).\n"
         "TEST scope may name zero or more existing tests.\n"
+        "CACHE scope must name zero or more cache existing entries.\n"
         "The required PROPERTY option is immediately followed by the name "
         "of the property to set.  Remaining arguments are used to "
         "compose the property value in the form of a semicolon-separated "
@@ -104,6 +103,8 @@ private:
   bool HandleSource(cmSourceFile* sf);
   bool HandleTestMode();
   bool HandleTest(cmTest* test);
+  bool HandleCacheMode();
+  bool HandleCacheEntry(cmCacheManager::CacheIterator&);
 };
 
 

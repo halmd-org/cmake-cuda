@@ -6,9 +6,6 @@ INCLUDE_DIRECTORIES(
   "${CMZLIB_BINARY_DIR}/.."
   )
 
-# Match all headers for dependencies but complain about none.
-INCLUDE_REGULAR_EXPRESSION("^.*$")
-
 # source files for zlib
 SET(ZLIB_SRCS
   adler32.c  compress.c  crc32.c  deflate.c  gzio.c   inffast.c
@@ -42,3 +39,5 @@ ENDFOREACH(name)
 
 
 ADD_LIBRARY(cmzlib ${ZLIB_SRCS})
+
+INSTALL(FILES Copyright.txt DESTINATION ${CMake_DOC_DEST}/cmzlib)

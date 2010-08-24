@@ -1,10 +1,10 @@
 " =============================================================================
 "
 "   Program:   CMake - Cross-Platform Makefile Generator
-"   Module:    $RCSfile: cmake-syntax.vim,v $
+"   Module:    $RCSfile$
 "   Language:  VIM
-"   Date:      $Date: 2008-09-03 13:43:16 $
-"   Version:   $Revision: 1.9.2.1 $
+"   Date:      $Date$
+"   Version:   $Revision$
 "
 " =============================================================================
 
@@ -12,8 +12,8 @@
 " Language:     CMake
 " Author:       Andy Cedilnik <andy.cedilnik@kitware.com>
 " Maintainer:   Karthik Krishnan <karthik.krishnan@kitware.com>
-" Last Change:  $Date: 2008-09-03 13:43:16 $
-" Version:      $Revision: 1.9.2.1 $
+" Last Change:  $Date$
+" Version:      $Revision$
 "
 " Licence:      The CMake license applies to this file. See
 "               http://www.cmake.org/HTML/Copyright.html

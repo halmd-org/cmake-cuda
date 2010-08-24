@@ -1,4 +1,17 @@
 
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # This file is included by cmGlobalGenerator::EnableLanguage.
 # It is included after the compiler has been determined, so
 # we know things like the compiler name and if the compiler is gnu.
@@ -35,42 +48,12 @@ IF(NOT _INCLUDED_SYSTEM_INFO_FILE)
 ENDIF(NOT _INCLUDED_SYSTEM_INFO_FILE)
 
 
-# The Eclipse generator needs to know the standard include path
-# so that Eclipse ca find the headers at runtime and parsing etc. works better
-# This is done here by actually running gcc with the options so it prints its
-# system include directories, which are parsed then and stored in the cache.
-IF("${CMAKE_EXTRA_GENERATOR}" MATCHES "Eclipse")
-
-  MACRO(_DETERMINE_GCC_SYSTEM_INCLUDE_DIRS _lang _result)
-    SET(${_result})
-    SET(_gccOutput)
-    FILE(WRITE "${CMAKE_BINARY_DIR}/CMakeFiles/dummy" "\n" )
-    EXECUTE_PROCESS(COMMAND ${CMAKE_C_COMPILER} -v -E -x ${_lang} dummy
-                   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/CMakeFiles
-                   ERROR_VARIABLE _gccOutput
-                   OUTPUT_QUIET )
-    FILE(REMOVE "${CMAKE_BINARY_DIR}/CMakeFiles/dummy")
-
-    IF( "${_gccOutput}" MATCHES "> search starts here[^\n]+\n *(.+) *\n *End of (search) list" )
-      SET(${_result} ${CMAKE_MATCH_1})
-      STRING(REPLACE "\n" " " ${_result} "${${_result}}")
-      SEPARATE_ARGUMENTS(${_result})
-    ENDIF( "${_gccOutput}" MATCHES "> search starts here[^\n]+\n *(.+) *\n *End of (search) list" )
-  ENDMACRO(_DETERMINE_GCC_SYSTEM_INCLUDE_DIRS _lang)
-
-  # Now check for C
-  IF ("${CMAKE_C_COMPILER_ID}" MATCHES GNU  AND NOT  CMAKE_ECLIPSE_C_SYSTEM_INCLUDE_DIRS)
-    _DETERMINE_GCC_SYSTEM_INCLUDE_DIRS(c _dirs)
-    SET(CMAKE_ECLIPSE_C_SYSTEM_INCLUDE_DIRS "${_dirs}" CACHE INTERNAL "C compiler system include directories")
-  ENDIF ("${CMAKE_C_COMPILER_ID}" MATCHES GNU  AND NOT  CMAKE_ECLIPSE_C_SYSTEM_INCLUDE_DIRS)
-
-  # And now the same for C++
-  IF ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU  AND NOT  CMAKE_ECLIPSE_CXX_SYSTEM_INCLUDE_DIRS)
-    _DETERMINE_GCC_SYSTEM_INCLUDE_DIRS(c++ _dirs)
-    SET(CMAKE_ECLIPSE_CXX_SYSTEM_INCLUDE_DIRS "${_dirs}" CACHE INTERNAL "CXX compiler system include directories")
-  ENDIF ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU  AND NOT  CMAKE_ECLIPSE_CXX_SYSTEM_INCLUDE_DIRS)
-
-ENDIF("${CMAKE_EXTRA_GENERATOR}" MATCHES "Eclipse")
+# optionally include a file which can do extra-generator specific things, e.g.
+# CMakeFindEclipseCDT4.cmake asks gcc for the system include dirs for the Eclipse CDT4 generator
+IF(CMAKE_EXTRA_GENERATOR)
+  STRING(REPLACE " " "" _CMAKE_EXTRA_GENERATOR_NO_SPACES ${CMAKE_EXTRA_GENERATOR} )
+  INCLUDE("CMakeFind${_CMAKE_EXTRA_GENERATOR_NO_SPACES}" OPTIONAL)
+ENDIF(CMAKE_EXTRA_GENERATOR)
 
 
 # for most systems a module is the same as a shared library
@@ -80,8 +63,6 @@ ENDIF("${CMAKE_EXTRA_GENERATOR}" MATCHES "Eclipse")
 IF(NOT CMAKE_MODULE_EXISTS)
   SET(CMAKE_SHARED_MODULE_PREFIX "${CMAKE_SHARED_LIBRARY_PREFIX}")
   SET(CMAKE_SHARED_MODULE_SUFFIX "${CMAKE_SHARED_LIBRARY_SUFFIX}")
-  SET(CMAKE_SHARED_MODULE_RUNTIME_C_FLAG ${CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG})
-  SET(CMAKE_SHARED_MODULE_RUNTIME_C_FLAG_SEP ${CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG_SEP})
 ENDIF(NOT CMAKE_MODULE_EXISTS)
 
 

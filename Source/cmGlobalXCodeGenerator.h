@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalXCodeGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2009-03-23 17:58:41 $
-  Version:   $Revision: 1.52.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGlobalXCodeGenerator_h
 #define cmGlobalXCodeGenerator_h
 
@@ -33,10 +28,9 @@ class cmSourceGroup;
 class cmGlobalXCodeGenerator : public cmGlobalGenerator
 {
 public:
-  cmGlobalXCodeGenerator();
+  cmGlobalXCodeGenerator(std::string const& version);
   static cmGlobalGenerator* New();
 
-  void SetVersion(int v) { this->XcodeVersion = v;}
   ///! Get the name for the generator.
   virtual const char* GetName() const {
     return cmGlobalXCodeGenerator::GetActualName();}
@@ -80,12 +74,17 @@ public:
                                         std::string& dir);
 
   ///! What is the configurations directory variable called?
-  virtual const char* GetCMakeCFGInitDirectory()  { return "."; }
+  virtual const char* GetCMakeCFGInitDirectory();
 
   void GetTargetObjectFileDirectories(cmTarget* target,
                                       std::vector<std::string>& 
                                       dirs);
   void SetCurrentLocalGenerator(cmLocalGenerator*);
+
+  /** Return true if the generated build tree may contain multiple builds.
+      i.e. "Can I build Debug and Release in the same tree?" */
+  virtual bool IsMultiConfig();
+
 private: 
   cmXCodeObject* CreateOrGetPBXGroup(cmTarget& cmtarget,
                                      cmSourceGroup* sg);
@@ -93,6 +92,8 @@ private:
                     std::vector<cmLocalGenerator*>&
                     generators);
   std::string XCodeEscapePath(const char* p);
+  std::string RelativeToSource(const char* p);
+  std::string RelativeToBinary(const char* p);
   std::string ConvertToRelativeForXCode(const char* p);
   std::string ConvertToRelativeForMake(const char* p);
   void CreateCustomCommands(cmXCodeObject* buildPhases,
@@ -128,8 +129,11 @@ private:
   cmXCodeObject* CreateObjectReference(cmXCodeObject*);
   cmXCodeObject* CreateXCodeTarget(cmTarget& target,
                                    cmXCodeObject* buildPhases);
-  void AddConfigurations(cmXCodeObject* target,
-                         cmTarget& cmtarget);
+  void ForceLinkerLanguages();
+  void ForceLinkerLanguage(cmTarget& cmtarget);
+  const char* GetTargetFileType(cmTarget& cmtarget);
+  const char* GetTargetProductType(cmTarget& cmtarget);
+  std::string AddConfigurations(cmXCodeObject* target, cmTarget& cmtarget);
   void AppendOrAddBuildSetting(cmXCodeObject* settings, const char* attr, 
                                const char* value);
   void AppendBuildSettingAttribute(cmXCodeObject* target, const char* attr, 
@@ -138,9 +142,6 @@ private:
   void AddDependAndLinkInformation(cmXCodeObject* target);
   void CreateBuildSettings(cmTarget& target,
                            cmXCodeObject* buildSettings,
-                           std::string& fileType,
-                           std::string& productType,
-                           std::string& projectName,
                            const char* buildType);
   std::string ExtractFlag(const char* flag, std::string& flags);
   // delete all objects in the this->XCodeObjects vector.
@@ -149,9 +150,8 @@ private:
                           std::vector<cmLocalGenerator*>& generators);
   void OutputXCodeProject(cmLocalGenerator* root,
                           std::vector<cmLocalGenerator*>& generators);
-  virtual void  WriteXCodePBXProj(std::ostream& fout,
-                                  cmLocalGenerator* root,
-                                  std::vector<cmLocalGenerator*>& generators);
+  void WriteXCodePBXProj(std::ostream& fout, cmLocalGenerator* root,
+                         std::vector<cmLocalGenerator*>& generators);
   cmXCodeObject* CreateXCodeFileReference(cmSourceFile* sf,
                                           cmTarget& cmtarget);
   cmXCodeObject* CreateXCodeSourceFile(cmLocalGenerator* gen, 
@@ -178,14 +178,22 @@ private:
                           const char* varNameSuffix,
                           const char* default_flags);
 
-  void AppendDefines(std::string& defs, const char* defines_list,
+  class BuildObjectListOrString;
+  friend class BuildObjectListOrString;
+
+  void AppendDefines(BuildObjectListOrString& defs, const char* defines_list,
                      bool dflag = false);
+  void AppendDefines(BuildObjectListOrString& defs,
+                     std::vector<std::string> const& defines,
+                     bool dflag = false);
+  void AppendFlag(std::string& flags, std::string const& flag);
 
 protected:
   virtual const char* GetInstallTargetName()      { return "install"; }
   virtual const char* GetPackageTargetName()      { return "package"; }
 
-  int XcodeVersion;
+  unsigned int XcodeVersion;
+  std::string VersionString;
   std::vector<cmXCodeObject*> XCodeObjects;
   cmXCodeObject* RootObject;
 private:
@@ -200,6 +208,7 @@ private:
   std::string CurrentProject;
   std::set<cmStdString> TargetDoneSet;
   std::vector<std::string> CurrentOutputDirectoryComponents;
+  std::vector<std::string> ProjectSourceDirectoryComponents;
   std::vector<std::string> ProjectOutputDirectoryComponents;
   std::map<cmStdString, cmXCodeObject* > GroupMap;
   std::map<cmStdString, cmXCodeObject* > GroupNameMap;

@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmInstallTargetGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.24.2.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmInstallTargetGenerator_h
 #define cmInstallTargetGenerator_h
 
@@ -65,11 +60,23 @@ public:
 
 protected:
   virtual void GenerateScript(std::ostream& os);
-  virtual void GenerateScriptConfigs(std::ostream& os, Indent const& indent);
-  virtual void GenerateScriptActions(std::ostream& os, Indent const& indent);
-  void GenerateScriptForConfig(std::ostream& os,
-                               const char* config,
-                               Indent const& indent);
+  virtual void GenerateScriptForConfig(std::ostream& os,
+                                       const char* config,
+                                       Indent const& indent);
+  typedef void (cmInstallTargetGenerator::*TweakMethod)(
+    std::ostream&, Indent const&, const char*, std::string const&
+    );
+  void AddTweak(std::ostream& os, Indent const& indent,
+                const char* config, std::string const& file,
+                TweakMethod tweak);
+  void AddTweak(std::ostream& os, Indent const& indent,
+                const char* config, std::vector<std::string> const& files,
+                TweakMethod tweak);
+  std::string GetDestDirPath(std::string const& file);
+  void PreReplacementTweaks(std::ostream& os, Indent const& indent,
+                            const char* config, std::string const& file);
+  void PostReplacementTweaks(std::ostream& os, Indent const& indent,
+                             const char* config, std::string const& file);
   void AddInstallNamePatchRule(std::ostream& os, Indent const& indent,
                                const char* config,
                                const std::string& toDestDirPath);
@@ -81,10 +88,8 @@ protected:
                          std::string const& toDestDirPath);
   
   void AddStripRule(std::ostream& os, Indent const& indent,
-                    cmTarget::TargetType type,
                     const std::string& toDestDirPath);
   void AddRanlibRule(std::ostream& os, Indent const& indent,
-                     cmTarget::TargetType type,
                      const std::string& toDestDirPath);
 
   cmTarget* Target;
@@ -92,7 +97,6 @@ protected:
   std::string FilePermissions;
   bool Optional;
   NamelinkModeType NamelinkMode;
-  std::string FromDir;
 };
 
 #endif

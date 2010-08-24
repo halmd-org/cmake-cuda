@@ -2,17 +2,20 @@ cmake_minimum_required (VERSION 2.6)
 PROJECT(PrecompiledHeader C)
 
 # Make sure the proper compiler is in use.
-IF(NOT MSVC)
-  MESSAGE(FATAL_ERROR "The PrecompiledHeader test works only with MSVC")
-ENDIF(NOT MSVC)
+IF(NOT MSVC AND NOT "${CMAKE_C_COMPILER_ID}" MATCHES "^(Intel)$")
+  MESSAGE(FATAL_ERROR "The PrecompiledHeader test works only with MSVC or Intel")
+ENDIF()
 
 # Compute a custom name for the precompiled header.
 IF(CMAKE_CONFIGURATION_TYPES)
   SET(PCH_DIR "${CMAKE_CURRENT_BINARY_DIR}/PCH/${CMAKE_CFG_INTDIR}")
+  FOREACH(cfg ${CMAKE_CONFIGURATION_TYPES})
+    FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/PCH/${cfg})
+  ENDFOREACH()
 ELSE(CMAKE_CONFIGURATION_TYPES)
   SET(PCH_DIR "${CMAKE_CURRENT_BINARY_DIR}/PCH")
+  FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/PCH)
 ENDIF(CMAKE_CONFIGURATION_TYPES)
-FILE(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/PCH)
 
 # The VS6 IDE does not support renaming .pch files with /Fp.
 IF("${CMAKE_GENERATOR}" MATCHES "Visual Studio 6")

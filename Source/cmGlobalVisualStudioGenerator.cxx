@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudioGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-07-31 15:52:24 $
-  Version:   $Revision: 1.11.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGlobalVisualStudioGenerator.h"
 
 #include "cmCallVisualStudioMacro.h"
@@ -29,6 +24,14 @@ cmGlobalVisualStudioGenerator::cmGlobalVisualStudioGenerator()
 //----------------------------------------------------------------------------
 cmGlobalVisualStudioGenerator::~cmGlobalVisualStudioGenerator()
 {
+}
+
+//----------------------------------------------------------------------------
+std::string cmGlobalVisualStudioGenerator::GetRegistryBase()
+{
+  std::string key = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\";
+  key += this->GetIDEVersion();
+  return key;
 }
 
 //----------------------------------------------------------------------------
@@ -48,10 +51,26 @@ void cmGlobalVisualStudioGenerator::Generate()
       {
       // Use no actual command lines so that the target itself is not
       // considered always out of date.
-      gen[0]->GetMakefile()->
+      cmTarget* allBuild = 
+        gen[0]->GetMakefile()->
         AddUtilityCommand("ALL_BUILD", true, no_working_dir,
                           no_depends, no_commands, false,
                           "Build all projects");
+      // Now make all targets depend on the ALL_BUILD target
+      cmTargets targets;
+      for(std::vector<cmLocalGenerator*>::iterator i = gen.begin();
+          i != gen.end(); ++i)
+        {
+        cmTargets& targets = (*i)->GetMakefile()->GetTargets();
+        for(cmTargets::iterator t = targets.begin();
+            t != targets.end(); ++t)
+          {
+          if(!this->IsExcluded(gen[0], t->second))
+            {
+            allBuild->AddUtility(t->second.GetName());
+            }
+          }
+        }
       }
     }
 
@@ -360,19 +379,6 @@ const char*
 cmGlobalVisualStudioGenerator::GetUtilityForTarget(cmTarget& target,
                                                    const char* name)
 {
-  // Handle the external MS project special case.
-  if(strncmp(name, "INCLUDE_EXTERNAL_MSPROJECT", 26) == 0)
-    {
-    // Note from Ken:
-    // kind of weird removing the first 27 letters.  my
-    // recommendatsions: use cmCustomCommand::GetCommand() to get the
-    // project name or get rid of the target name starting with
-    // "INCLUDE_EXTERNAL_MSPROJECT_" and use another indicator/flag
-    // somewhere.  These external project names shouldn't conflict
-    // with cmake target names anyways.
-    return name+27;
-    }
-
   // Possibly depend on an intermediate utility target to avoid
   // linking.
   if(target.GetType() == cmTarget::STATIC_LIBRARY ||
@@ -400,6 +406,30 @@ cmGlobalVisualStudioGenerator::GetUtilityForTarget(cmTarget& target,
 
   // No special case.  Just use the original dependency name.
   return name;
+}
+
+//----------------------------------------------------------------------------
+void cmGlobalVisualStudioGenerator::GetTargetSets(
+  TargetDependSet& projectTargets, TargetDependSet& originalTargets,
+  cmLocalGenerator* root, GeneratorVector const& generators
+  )
+{
+  this->cmGlobalGenerator::GetTargetSets(projectTargets, originalTargets,
+                                         root, generators);
+
+  // Add alternative dependency targets created by FixUtilityDepends.
+  for(TargetDependSet::iterator ti = projectTargets.begin();
+      ti != projectTargets.end(); ++ti)
+    {
+    cmTarget* tgt = *ti;
+    if(const char* altName = tgt->GetProperty("ALTERNATIVE_DEPENDENCY_NAME"))
+      {
+      if(cmTarget* alt = tgt->GetMakefile()->FindTarget(altName))
+        {
+        projectTargets.insert(alt);
+        }
+      }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -719,4 +749,32 @@ bool cmGlobalVisualStudioGenerator::TargetIsFortranOnly(cmTarget& target)
       }
     }
   return false;
+}
+
+//----------------------------------------------------------------------------
+bool
+cmGlobalVisualStudioGenerator::TargetCompare
+::operator()(cmTarget const* l, cmTarget const* r) const
+{
+  // Make sure ALL_BUILD is first so it is the default active project.
+  if(strcmp(r->GetName(), "ALL_BUILD") == 0)
+    {
+    return false;
+    }
+  if(strcmp(l->GetName(), "ALL_BUILD") == 0)
+    {
+    return true;
+    }
+  return strcmp(l->GetName(), r->GetName()) < 0;
+}
+
+//----------------------------------------------------------------------------
+cmGlobalVisualStudioGenerator::OrderedTargetDependSet
+::OrderedTargetDependSet(cmGlobalGenerator::TargetDependSet const& targets)
+{
+  for(cmGlobalGenerator::TargetDependSet::const_iterator ti =
+        targets.begin(); ti != targets.end(); ++ti)
+    {
+    this->insert(*ti);
+    }
 }

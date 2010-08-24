@@ -1,13 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project(SourceGroups)
 
-# We need ansi C support, otherwise it doesn't build e.g. on HP-UX:
-# main.c", line 3: error 1705: Function prototypes are an ANSI feature.
-IF(CMAKE_ANSI_CFLAGS)
-  SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_ANSI_CFLAGS}")
-ENDIF(CMAKE_ANSI_CFLAGS)
-
-
 # this is not really a test which can fail
 # it is more an example with several source_group() 
 # commands.
@@ -38,5 +31,5 @@ source_group(Base\\Sub1\\Base FILES bar.c)
 source_group(EmptyGroup)
 
 
-add_executable(SourceGroups main.c bar.c foo.c sub1/foo.c sub1/foobar.c baz.c)
+add_executable(SourceGroups main.c bar.c foo.c sub1/foo.c sub1/foobar.c baz.c README.txt)
 

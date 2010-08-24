@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCPackTarCompressGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2007-02-02 19:40:26 $
-  Version:   $Revision: 1.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCPackTarCompressGenerator_h
 #define cmCPackTarCompressGenerator_h
@@ -23,12 +18,10 @@
 /** \class cmCPackTarCompressGenerator
  * \brief A generator for TarCompress files
  */
-class cmCPackTarCompressGenerator : public cmCPackTGZGenerator
+class cmCPackTarCompressGenerator : public cmCPackArchiveGenerator
 {
 public:
-  friend class cmCPackTarCompressGeneratorForward;
-  cmCPackTypeMacro(cmCPackTarCompressGenerator, cmCPackTGZGenerator);
-
+  cmCPackTypeMacro(cmCPackTarCompressGenerator, cmCPackArchiveGenerator);
   /**
    * Construct generator
    */
@@ -36,13 +29,7 @@ public:
   virtual ~cmCPackTarCompressGenerator();
 
 protected:
-  virtual int InitializeInternal();
-  int CompressFiles(const char* outFileName, const char* toplevel,
-    const std::vector<std::string>& files);
   virtual const char* GetOutputExtension() { return ".tar.Z"; }
-
-  int RenameFile(const char* oldname, const char* newname);
-  int GenerateHeader(std::ostream* os);
 };
 
 #endif

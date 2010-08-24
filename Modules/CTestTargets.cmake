@@ -1,3 +1,17 @@
+
+#=============================================================================
+# Copyright 2005-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 IF(NOT RUN_FROM_CTEST_OR_DART)
   MESSAGE(FATAL_ERROR "Do not incldue CTestTargets.cmake directly")
 ENDIF(NOT RUN_FROM_CTEST_OR_DART)
@@ -50,6 +64,7 @@ IF(NOT _CTEST_TARGETS_ADDED)
     ADD_CUSTOM_TARGET(${mode}
       ${CMAKE_CTEST_COMMAND} ${__conf_types} -D ${mode}
       )
+    SET_PROPERTY(TARGET ${mode} PROPERTY RULE_LAUNCH_CUSTOM "")
   ENDFOREACH(mode)
 
   # For Makefile generators add more granular targets.
@@ -63,6 +78,7 @@ IF(NOT _CTEST_TARGETS_ADDED)
         ADD_CUSTOM_TARGET(${mode}${testtype}
           ${CMAKE_CTEST_COMMAND} ${__conf_types} -D ${mode}${testtype}
           )
+        SET_PROPERTY(TARGET ${mode}${testtype} PROPERTY RULE_LAUNCH_CUSTOM "")
       ENDFOREACH(testtype)
     ENDFOREACH(mode)
   ENDIF("${CMAKE_GENERATOR}" MATCHES Make)

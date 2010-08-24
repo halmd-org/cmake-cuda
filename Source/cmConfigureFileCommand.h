@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmConfigureFileCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.22 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmConfigureFileCommand_h
 #define cmConfigureFileCommand_h
 
@@ -60,9 +55,18 @@ public:
   virtual const char* GetFullDocumentation()
     {
       return
-        "  configure_file(InputFile OutputFile\n"
+        "  configure_file(<input> <output>\n"
         "                 [COPYONLY] [ESCAPE_QUOTES] [@ONLY])\n"
-        "The Input and Output files have to have full paths.  "
+        "Copies a file <input> to file <output> and substitutes variable "
+        "values referenced in the file content.  "
+        "If <input> is a relative path it is evaluated with respect to "
+        "the current source directory.  "
+        "The <input> must be a file, not a directory.  "
+        "If <output> is a relative path it is evaluated with respect to "
+        "the current binary directory.  "
+        "If <output> names an existing directory the input file is placed "
+        "in that directory with its original name.  "
+        "\n"
         "This command replaces any variables in the input file referenced as "
         "${VAR} or @VAR@ with their values as determined by CMake.  If a "
         "variable is not defined, it will be replaced with nothing.  "
@@ -75,15 +79,18 @@ public:
         "This is useful for configuring scripts that use ${VAR}. "
         "Any occurrences of #cmakedefine VAR will be replaced with "
         "either #define VAR or /* #undef VAR */ depending on "
-        "the setting of VAR in CMake";
+        "the setting of VAR in CMake. Any occurrences of #cmakedefine01 VAR "
+        "will be replaced with either #define VAR 1 or #define VAR 0 "
+        "depending on whether VAR evaluates to TRUE or FALSE in CMake";
     }
 
   virtual void FinalPass();
+  virtual bool HasFinalPass() const { return !this->Immediate; }
 private:
   int ConfigureFile();
   
   std::string InputFile;
-  std::string OuputFile;
+  std::string OutputFile;
   bool CopyOnly;
   bool EscapeQuotes;
   bool Immediate;

@@ -1,4 +1,17 @@
 
+#=============================================================================
+# Copyright 2007-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # Function to compile a source file to identify the compiler.  This is
 # used internally by CMake and should not be included by user code.
 # If successful, sets CMAKE_<lang>_COMPILER_ID and CMAKE_<lang>_PLATFORM_ID
@@ -6,6 +19,7 @@
 FUNCTION(CMAKE_DETERMINE_COMPILER_ID lang flagvar src)
   # Make sure the compiler arguments are clean.
   STRING(STRIP "${CMAKE_${lang}_COMPILER_ARG1}" CMAKE_${lang}_COMPILER_ID_ARG1)
+  STRING(REGEX REPLACE " +" ";" CMAKE_${lang}_COMPILER_ID_ARG1 "${CMAKE_${lang}_COMPILER_ID_ARG1}")
 
   # Make sure user-specified compiler flags are used.
   IF(CMAKE_${lang}_FLAGS)
@@ -29,6 +43,11 @@ FUNCTION(CMAKE_DETERMINE_COMPILER_ID lang flagvar src)
     ENDIF(NOT CMAKE_${lang}_COMPILER_ID)
   ENDFOREACH(flags)
 
+  # If the compiler is still unknown, try to query its vendor.
+  IF(NOT CMAKE_${lang}_COMPILER_ID)
+    CMAKE_DETERMINE_COMPILER_ID_VENDOR(${lang})
+  ENDIF()
+
   # if the format is unknown after all files have been checked, put "Unknown" in the cache
   IF(NOT CMAKE_EXECUTABLE_FORMAT)
     SET(CMAKE_EXECUTABLE_FORMAT "Unknown" CACHE INTERNAL "Executable file format")
@@ -44,6 +63,8 @@ FUNCTION(CMAKE_DETERMINE_COMPILER_ID lang flagvar src)
 
   SET(CMAKE_${lang}_COMPILER_ID "${CMAKE_${lang}_COMPILER_ID}" PARENT_SCOPE)
   SET(CMAKE_${lang}_PLATFORM_ID "${CMAKE_${lang}_PLATFORM_ID}" PARENT_SCOPE)
+  SET(MSVC_${lang}_ARCHITECTURE_ID "${MSVC_${lang}_ARCHITECTURE_ID}" 
+    PARENT_SCOPE)
 ENDFUNCTION(CMAKE_DETERMINE_COMPILER_ID)
 
 #-----------------------------------------------------------------------------
@@ -158,7 +179,7 @@ FUNCTION(CMAKE_DETERMINE_COMPILER_ID_CHECK lang file)
     SET(COMPILER_ID)
     SET(PLATFORM_ID)
     FILE(STRINGS ${file}
-      CMAKE_${lang}_COMPILER_ID_STRINGS LIMIT_COUNT 2 REGEX "INFO:")
+      CMAKE_${lang}_COMPILER_ID_STRINGS LIMIT_COUNT 3 REGEX "INFO:")
     SET(HAVE_COMPILER_TWICE 0)
     FOREACH(info ${CMAKE_${lang}_COMPILER_ID_STRINGS})
       IF("${info}" MATCHES ".*INFO:compiler\\[([^]\"]*)\\].*")
@@ -172,12 +193,17 @@ FUNCTION(CMAKE_DETERMINE_COMPILER_ID_CHECK lang file)
         STRING(REGEX REPLACE ".*INFO:platform\\[([^]]*)\\].*" "\\1"
           PLATFORM_ID "${info}")
       ENDIF("${info}" MATCHES ".*INFO:platform\\[([^]\"]*)\\].*")
+      IF("${info}" MATCHES ".*INFO:arch\\[([^]\"]*)\\].*")
+        STRING(REGEX REPLACE ".*INFO:arch\\[([^]]*)\\].*" "\\1"
+          ARCHITECTURE_ID "${info}")
+      ENDIF("${info}" MATCHES ".*INFO:arch\\[([^]\"]*)\\].*")
     ENDFOREACH(info)
 
     # Check if a valid compiler and platform were found.
     IF(COMPILER_ID AND NOT COMPILER_ID_TWICE)
       SET(CMAKE_${lang}_COMPILER_ID "${COMPILER_ID}")
       SET(CMAKE_${lang}_PLATFORM_ID "${PLATFORM_ID}")
+      SET(MSVC_${lang}_ARCHITECTURE_ID "${ARCHITECTURE_ID}")
     ENDIF(COMPILER_ID AND NOT COMPILER_ID_TWICE)
 
     # Check the compiler identification string.
@@ -221,5 +247,42 @@ FUNCTION(CMAKE_DETERMINE_COMPILER_ID_CHECK lang file)
   # Return the information extracted.
   SET(CMAKE_${lang}_COMPILER_ID "${CMAKE_${lang}_COMPILER_ID}" PARENT_SCOPE)
   SET(CMAKE_${lang}_PLATFORM_ID "${CMAKE_${lang}_PLATFORM_ID}" PARENT_SCOPE)
+  SET(MSVC_${lang}_ARCHITECTURE_ID "${MSVC_${lang}_ARCHITECTURE_ID}" 
+    PARENT_SCOPE)
   SET(CMAKE_EXECUTABLE_FORMAT "${CMAKE_EXECUTABLE_FORMAT}" PARENT_SCOPE)
 ENDFUNCTION(CMAKE_DETERMINE_COMPILER_ID_CHECK lang)
+
+#-----------------------------------------------------------------------------
+# Function to query the compiler vendor.
+# This uses a table with entries of the form
+#   list(APPEND CMAKE_${lang}_COMPILER_ID_VENDORS ${vendor})
+#   set(CMAKE_${lang}_COMPILER_ID_VENDOR_FLAGS_${vendor} -some-vendor-flag)
+#   set(CMAKE_${lang}_COMPILER_ID_VENDOR_REGEX_${vendor} "Some Vendor Output")
+# We try running the compiler with the flag for each vendor and
+# matching its regular expression in the output.
+FUNCTION(CMAKE_DETERMINE_COMPILER_ID_VENDOR lang)
+  FOREACH(vendor ${CMAKE_${lang}_COMPILER_ID_VENDORS})
+    SET(flags ${CMAKE_${lang}_COMPILER_ID_VENDOR_FLAGS_${vendor}})
+    SET(regex ${CMAKE_${lang}_COMPILER_ID_VENDOR_REGEX_${vendor}})
+    EXECUTE_PROCESS(
+      COMMAND ${CMAKE_${lang}_COMPILER}
+      ${CMAKE_${lang}_COMPILER_ID_ARG1}
+      ${CMAKE_${lang}_COMPILER_ID_FLAGS_LIST}
+      ${flags}
+      WORKING_DIRECTORY ${CMAKE_${lang}_COMPILER_ID_DIR}
+      OUTPUT_VARIABLE output ERROR_VARIABLE output
+      RESULT_VARIABLE result
+      )
+    IF("${output}" MATCHES "${regex}")
+      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
+        "Checking whether the ${lang} compiler is ${vendor} using \"${flags}\" "
+        "matched \"${regex}\":\n${output}")
+      SET(CMAKE_${lang}_COMPILER_ID "${vendor}" PARENT_SCOPE)
+      BREAK()
+    ELSE()
+      FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
+        "Checking whether the ${lang} compiler is ${vendor} using \"${flags}\" "
+        "did not match \"${regex}\":\n${output}")
+    ENDIF()
+  ENDFOREACH()
+ENDFUNCTION(CMAKE_DETERMINE_COMPILER_ID_VENDOR)

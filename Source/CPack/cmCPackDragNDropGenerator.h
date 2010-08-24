@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCPackDragNDropGenerator.h,v $
-  Language:  C++
-  Date:      $Date: 2009-02-05 03:04:18 $
-  Version:   $Revision: 1.1.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCPackDragNDropGenerator_h
 #define cmCPackDragNDropGenerator_h
@@ -40,8 +35,10 @@ protected:
   bool CopyFile(cmOStringStream& source, cmOStringStream& target);
   bool RunCommand(cmOStringStream& command, std::string* output = 0);
 
+  virtual int CreateDMG(const std::string& installdir,
+    const std::string& outdmg);
+
   std::string InstallPrefix;
 };
 
 #endif
-

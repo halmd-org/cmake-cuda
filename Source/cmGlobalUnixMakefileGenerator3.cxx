@@ -1,22 +1,17 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator3
-  Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-06 21:15:16 $
-  Version:   $Revision: 1.126.2.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
-
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmGlobalUnixMakefileGenerator3.h"
 #include "cmLocalUnixMakefileGenerator3.h"
+#include "cmMakefileTargetGenerator.h"
 #include "cmMakefile.h"
 #include "cmake.h"
 #include "cmGeneratedFileStream.h"
@@ -31,7 +26,7 @@ cmGlobalUnixMakefileGenerator3::cmGlobalUnixMakefileGenerator3()
   this->ToolSupportsColor = true;
   this->ForceVerboseMakefiles = false;
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__VMS)
   this->UseLinkScript = false;
 #else
   this->UseLinkScript = true;
@@ -95,20 +90,28 @@ void cmGlobalUnixMakefileGenerator3
     std::string changeVars;
     if(cname && (path != cname) && (optional==false))
       {
-      const char* cvars = 
-        this->GetCMakeInstance()->GetProperty(
-          "__CMAKE_DELETE_CACHE_CHANGE_VARS_");
-      if(cvars)
-        {
-        changeVars += cvars;
+      std::string cnameString = cname;
+      std::string pathString = path;
+      // get rid of potentially multiple slashes:
+      cmSystemTools::ConvertToUnixSlashes(cnameString);
+      cmSystemTools::ConvertToUnixSlashes(pathString);
+      if (cnameString != pathString)
+        { 
+        const char* cvars = 
+          this->GetCMakeInstance()->GetProperty(
+            "__CMAKE_DELETE_CACHE_CHANGE_VARS_");
+        if(cvars)
+          {
+          changeVars += cvars;
+          changeVars += ";";
+          }
+        changeVars += langComp;
         changeVars += ";";
+        changeVars += cname;
+        this->GetCMakeInstance()->SetProperty(
+          "__CMAKE_DELETE_CACHE_CHANGE_VARS_",
+          changeVars.c_str());
         }
-      changeVars += langComp;
-      changeVars += ";";
-      changeVars += cname;
-      this->GetCMakeInstance()->SetProperty(
-        "__CMAKE_DELETE_CACHE_CHANGE_VARS_",
-        changeVars.c_str());
       }
     mf->AddCacheDefinition(langComp.c_str(), path.c_str(),
                            doc.c_str(), cmCacheManager::FILEPATH);
@@ -142,13 +145,11 @@ void cmGlobalUnixMakefileGenerator3::Generate()
   this->cmGlobalGenerator::Generate();
 
   // initialize progress
-  unsigned int i;
   unsigned long total = 0;
-  for (i = 0; i < this->LocalGenerators.size(); ++i)
+  for(ProgressMapType::const_iterator pmi = this->ProgressMap.begin();
+      pmi != this->ProgressMap.end(); ++pmi)
     {
-    cmLocalUnixMakefileGenerator3 *lg = 
-      static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[i]);
-    total += lg->GetNumberOfProgressActions();
+    total += pmi->second.NumberOfActions;
     }
 
   // write each target's progress.make this loop is done twice. Bascially the
@@ -159,17 +160,21 @@ void cmGlobalUnixMakefileGenerator3::Generate()
   // well. This is because the all targets require more information that is
   // computed in the first loop.
   unsigned long current = 0;
-  for (i = 0; i < this->LocalGenerators.size(); ++i)
+  for(ProgressMapType::iterator pmi = this->ProgressMap.begin();
+      pmi != this->ProgressMap.end(); ++pmi)
     {
-    cmLocalUnixMakefileGenerator3 *lg = 
-      static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[i]);
-    lg->WriteProgressVariables(total,current);
+    pmi->second.WriteProgressVariables(total, current);
     }
-  for (i = 0; i < this->LocalGenerators.size(); ++i)
+  for(unsigned int i = 0; i < this->LocalGenerators.size(); ++i)
     {
     cmLocalUnixMakefileGenerator3 *lg = 
       static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[i]);
-    lg->WriteAllProgressVariable();
+    std::string markFileName = lg->GetMakefile()->GetStartOutputDirectory();
+    markFileName += "/";
+    markFileName += cmake::GetCMakeFilesDirectory();
+    markFileName += "/progress.marks";
+    cmGeneratedFileStream markFile(markFileName.c_str());
+    markFile << this->CountProgressMarksInAll(lg) << "\n";
     }
   
   // write the main makefile
@@ -295,9 +300,11 @@ void cmGlobalUnixMakefileGenerator3::WriteMainCMakefile()
     }
   // Sort the list and remove duplicates.
   std::sort(lfiles.begin(), lfiles.end(), std::less<std::string>());
+#if !defined(__VMS) // The Compaq STL on VMS crashes, so accept duplicates.
   std::vector<std::string>::iterator new_end = 
     std::unique(lfiles.begin(),lfiles.end());
   lfiles.erase(new_end, lfiles.end());
+#endif
 
   // reset lg to the first makefile
   lg = static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[0]);
@@ -339,20 +346,6 @@ void cmGlobalUnixMakefileGenerator3::WriteMainCMakefile()
     << "  \"" 
     << lg->Convert(check.c_str(),
                    cmLocalGenerator::START_OUTPUT).c_str() << "\"\n";
-
-  // add in all the directory information files
-  std::string tmpStr;
-  for (unsigned int i = 0; i < this->LocalGenerators.size(); ++i)
-    {
-    lg = 
-      static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[i]);
-    tmpStr = lg->GetMakefile()->GetStartOutputDirectory();
-    tmpStr += cmake::GetCMakeFilesDirectory();
-    tmpStr += "/CMakeDirectoryInformation.cmake";
-    cmakefileStream << "  \"" << 
-      lg->Convert(tmpStr.c_str(),cmLocalGenerator::HOME_OUTPUT).c_str() 
-                    << "\"\n";
-    }
   cmakefileStream << "  )\n\n";
 
   // CMake must rerun if a byproduct is missing.
@@ -367,6 +360,20 @@ void cmGlobalUnixMakefileGenerator3::WriteMainCMakefile()
     {
     cmakefileStream << "  \"" <<
       lg->Convert(k->c_str(),cmLocalGenerator::HOME_OUTPUT).c_str()
+                    << "\"\n";
+    }
+
+  // add in all the directory information files
+  std::string tmpStr;
+  for (unsigned int i = 0; i < this->LocalGenerators.size(); ++i)
+    {
+    lg = 
+      static_cast<cmLocalUnixMakefileGenerator3 *>(this->LocalGenerators[i]);
+    tmpStr = lg->GetMakefile()->GetStartOutputDirectory();
+    tmpStr += cmake::GetCMakeFilesDirectory();
+    tmpStr += "/CMakeDirectoryInformation.cmake";
+    cmakefileStream << "  \"" << 
+      lg->Convert(tmpStr.c_str(),cmLocalGenerator::HOME_OUTPUT).c_str() 
                     << "\"\n";
     }
   cmakefileStream << "  )\n\n";
@@ -438,7 +445,8 @@ cmGlobalUnixMakefileGenerator3
       {
       // Add this to the list of depends rules in this directory.
       if((!check_all || !l->second.GetPropertyAsBool("EXCLUDE_FROM_ALL")) &&
-         (!check_relink || l->second.NeedRelinkBeforeInstall()))
+         (!check_relink ||
+          l->second.NeedRelinkBeforeInstall(lg->ConfigurationName.c_str())))
         {
         std::string tname = lg->GetRelativeTargetDirectory(l->second);
         tname += "/";
@@ -646,7 +654,7 @@ cmGlobalUnixMakefileGenerator3
 
         // Add a local name for the rule to relink the target before
         // installation.
-        if(t->second.NeedRelinkBeforeInstall())
+        if(t->second.NeedRelinkBeforeInstall(lg->ConfigurationName.c_str()))
           {
           makeTargetName = lg->GetRelativeTargetDirectory(t->second);
           makeTargetName += "/preinstall";
@@ -742,7 +750,7 @@ cmGlobalUnixMakefileGenerator3
                                 cmLocalGenerator::FULL,
                                 cmLocalGenerator::SHELL);
         progCmd << " ";
-        std::vector<int> &progFiles = lg->ProgressFiles[t->first];
+        std::vector<int> &progFiles = this->ProgressMap[&t->second].Marks;
         for (std::vector<int>::iterator i = progFiles.begin();
               i != progFiles.end(); ++i)
           {
@@ -784,8 +792,7 @@ cmGlobalUnixMakefileGenerator3
       //
       std::set<cmTarget *> emitted;
       progCmd << " " 
-              << this->GetTargetTotalNumberOfActions(t->second,
-                                                      emitted);
+              << this->CountProgressMarksInTarget(&t->second, emitted);
       commands.push_back(progCmd.str());
       }
       std::string tmp = cmake::GetCMakeFilesDirectoryPostSlash();
@@ -817,7 +824,7 @@ cmGlobalUnixMakefileGenerator3
                         t->second.GetName(), depends, commands, true);
       
       // Add rules to prepare the target for installation.
-      if(t->second.NeedRelinkBeforeInstall())
+      if(t->second.NeedRelinkBeforeInstall(lg->ConfigurationName.c_str()))
         {
         localName = lg->GetRelativeTargetDirectory(t->second);
         localName += "/preinstall";
@@ -858,46 +865,92 @@ cmGlobalUnixMakefileGenerator3
 }
 
 //----------------------------------------------------------------------------
-int cmGlobalUnixMakefileGenerator3
-::GetTargetTotalNumberOfActions(cmTarget &target,
-                                std::set<cmTarget *> &emitted)
+size_t
+cmGlobalUnixMakefileGenerator3
+::CountProgressMarksInTarget(cmTarget* target,
+                             std::set<cmTarget*>& emitted)
 {
-  // do not double count
-  int result = 0;
-
-  if(emitted.insert(&target).second)
+  size_t count = 0;
+  if(emitted.insert(target).second)
     {
-    cmLocalUnixMakefileGenerator3 *lg = 
-      static_cast<cmLocalUnixMakefileGenerator3 *>
-      (target.GetMakefile()->GetLocalGenerator());
-    result = static_cast<int>(lg->ProgressFiles[target.GetName()].size());
-    
-    TargetDependSet & depends = this->GetTargetDirectDepends(target);
-    
-    TargetDependSet::iterator i;
-    for (i = depends.begin(); i != depends.end(); ++i)
+    count = this->ProgressMap[target].Marks.size();
+    TargetDependSet const& depends = this->GetTargetDirectDepends(*target);
+    for(TargetDependSet::const_iterator di = depends.begin();
+        di != depends.end(); ++di)
       {
-      result += this->GetTargetTotalNumberOfActions(**i, emitted);
+      count += this->CountProgressMarksInTarget(*di, emitted);
       }
     }
-  
-  return result;
+  return count;
 }
 
-unsigned long cmGlobalUnixMakefileGenerator3
-::GetNumberOfProgressActionsInAll(cmLocalUnixMakefileGenerator3 *lg)
+//----------------------------------------------------------------------------
+size_t
+cmGlobalUnixMakefileGenerator3
+::CountProgressMarksInAll(cmLocalUnixMakefileGenerator3* lg)
 {
-  unsigned long result = 0;
-  std::set<cmTarget *> emitted;
-  std::set<cmTarget *>& targets = this->LocalGeneratorToTargetMap[lg];
-  for(std::set<cmTarget *>::iterator t = targets.begin();
+  size_t count = 0;
+  std::set<cmTarget*> emitted;
+  std::set<cmTarget*> const& targets = this->LocalGeneratorToTargetMap[lg];
+  for(std::set<cmTarget*>::const_iterator t = targets.begin();
       t != targets.end(); ++t)
     {
-    result += this->GetTargetTotalNumberOfActions(**t,emitted);
+    count += this->CountProgressMarksInTarget(*t, emitted);
     }
-  return result;
+  return count;
 }
 
+//----------------------------------------------------------------------------
+void
+cmGlobalUnixMakefileGenerator3::RecordTargetProgress(
+  cmMakefileTargetGenerator* tg)
+{
+  TargetProgress& tp = this->ProgressMap[tg->GetTarget()];
+  tp.NumberOfActions = tg->GetNumberOfProgressActions();
+  tp.VariableFile = tg->GetProgressFileNameFull();
+}
+
+//----------------------------------------------------------------------------
+bool
+cmGlobalUnixMakefileGenerator3::ProgressMapCompare
+::operator()(cmTarget* l, cmTarget* r) const
+{
+  // Order by target name.
+  if(int c = strcmp(l->GetName(), r->GetName()))
+    {
+    return c < 0;
+    }
+  // Order duplicate targets by binary directory.
+  return strcmp(l->GetMakefile()->GetCurrentOutputDirectory(),
+                r->GetMakefile()->GetCurrentOutputDirectory()) < 0;
+}
+
+//----------------------------------------------------------------------------
+void
+cmGlobalUnixMakefileGenerator3::TargetProgress
+::WriteProgressVariables(unsigned long total, unsigned long &current)
+{
+  cmGeneratedFileStream fout(this->VariableFile.c_str());
+  for(unsigned long i = 1; i <= this->NumberOfActions; ++i)
+    {
+    fout << "CMAKE_PROGRESS_" << i << " = ";
+    if (total <= 100)
+      {
+      unsigned long num = i + current;
+      fout << num;
+      this->Marks.push_back(num);
+      }
+    else if (((i+current)*100)/total > ((i-1+current)*100)/total)
+      {
+      unsigned long num = ((i+current)*100)/total;
+      fout << num;
+      this->Marks.push_back(num);
+      }
+    fout << "\n";
+    }
+  fout << "\n";
+  current += this->NumberOfActions;
+}
 
 //----------------------------------------------------------------------------
 void

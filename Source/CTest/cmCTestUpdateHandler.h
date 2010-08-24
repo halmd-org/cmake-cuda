@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc.
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestUpdateHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2006-03-10 20:03:09 $
-  Version:   $Revision: 1.8 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc. All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef cmCTestUpdateHandler_h
 #define cmCTestUpdateHandler_h
@@ -46,6 +41,9 @@ public:
     e_UNKNOWN = 0,
     e_CVS,
     e_SVN,
+    e_BZR,
+    e_GIT,
+    e_HG,
     e_LAST
   };
 
@@ -59,11 +57,16 @@ private:
   struct StringPair :
     public std::pair<std::string, std::string>{};
   struct UpdateFiles : public std::vector<StringPair>{};
-  struct AuthorsToUpdatesMap :
-    public std::map<std::string, UpdateFiles>{};
 
   // Determine the type of version control
   int DetermineType(const char* cmd, const char* type);
+
+  // The VCS command to update the working tree.
+  std::string UpdateCommand;
+  int UpdateType;
+
+  int DetectVCS(const char* dir);
+  bool SelectVCS();
 };
 
 #if defined(__sgi) && !defined(__GNUC__)

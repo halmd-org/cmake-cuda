@@ -3,6 +3,19 @@
 # just include it in a project to see various internal CMake
 # variables.
 
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 MESSAGE("CMAKE_SYSTEM is ${CMAKE_SYSTEM} ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_VERSION}")
 MESSAGE("CMAKE_SYSTEM file is ${CMAKE_SYSTEM_INFO_FILE}")
 MESSAGE("CMAKE_C_COMPILER is ${CMAKE_C_COMPILER}")
@@ -14,7 +27,7 @@ MESSAGE("CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS is ${CMAKE_SHARED_LIBRARY_CREATE_
 MESSAGE("CMAKE_DL_LIBS is ${CMAKE_DL_LIBS}")
 MESSAGE("CMAKE_SHARED_LIBRARY_PREFIX is ${CMAKE_SHARED_LIBRARY_PREFIX}")
 MESSAGE("CMAKE_SHARED_LIBRARY_SUFFIX is ${CMAKE_SHARED_LIBRARY_SUFFIX}")
-MESSAGE("CMAKE_COMPILER_IS_GNUGCC = ${CMAKE_COMPILER_IS_GNUGCC}")
+MESSAGE("CMAKE_COMPILER_IS_GNUCC = ${CMAKE_COMPILER_IS_GNUCC}")
 MESSAGE("CMAKE_COMPILER_IS_GNUCXX = ${CMAKE_COMPILER_IS_GNUCXX}")
 
 MESSAGE("CMAKE_CXX_CREATE_SHARED_LIBRARY is ${CMAKE_CXX_CREATE_SHARED_LIBRARY}")

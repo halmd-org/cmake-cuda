@@ -17,6 +17,19 @@
 # AUTHOR
 #  Jan Woetzel <jw -at- mip.informatik.uni-kiel.de>
 
+#=============================================================================
+# Copyright 2004-2009 Kitware, Inc.
+# Copyright 2006      Jan Woetzel
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 # debug message and logging.
 # comment these out for distribution
@@ -46,9 +59,16 @@ IF   (wxWidgets_FOUND)
   ENDIF(wxWidgets_LIBRARY_DIRS)
 
   IF   (wxWidgets_DEFINITIONS)
-    ADD_DEFINITIONS( ${wxWidgets_DEFINITIONS} )
+    SET_PROPERTY(DIRECTORY APPEND
+      PROPERTY COMPILE_DEFINITIONS ${wxWidgets_DEFINITIONS})
     MSG("wxWidgets_DEFINITIONS=${wxWidgets_DEFINITIONS}")
   ENDIF(wxWidgets_DEFINITIONS)
+
+  IF   (wxWidgets_DEFINITIONS_DEBUG)
+    SET_PROPERTY(DIRECTORY APPEND
+      PROPERTY COMPILE_DEFINITIONS_DEBUG ${wxWidgets_DEFINITIONS_DEBUG})
+    MSG("wxWidgets_DEFINITIONS_DEBUG=${wxWidgets_DEFINITIONS_DEBUG}")
+  ENDIF(wxWidgets_DEFINITIONS_DEBUG)
 
   IF   (wxWidgets_CXX_FLAGS)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${wxWidgets_CXX_FLAGS}")

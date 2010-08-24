@@ -1,25 +1,22 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCacheManager.h,v $
-  Language:  C++
-  Date:      $Date: 2008-03-07 16:43:47 $
-  Version:   $Revision: 1.49 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCacheManager_h
 #define cmCacheManager_h
 
 #include "cmStandardIncludes.h"
+#include "cmPropertyMap.h"
 class cmMakefile;
 class cmMarkAsAdvancedCommand;
+class cmake;
 
 /** \class cmCacheManager
  * \brief Control class for cmake's cache
@@ -30,7 +27,7 @@ class cmMarkAsAdvancedCommand;
 class cmCacheManager
 {
 public:
-  cmCacheManager();
+  cmCacheManager(cmake* cm);
   class CacheIterator;
   friend class cmCacheManager::CacheIterator;
   enum CacheEntryType{ BOOL=0, PATH, FILEPATH, STRING, INTERNAL,STATIC, 
@@ -41,7 +38,10 @@ private:
   {
     std::string Value;
     CacheEntryType Type;
-    std::map<cmStdString,cmStdString> Properties;
+    cmPropertyMap Properties;
+    const char* GetProperty(const char*) const;
+    void SetProperty(const char* property, const char* value);
+    void AppendProperty(const char* property, const char* value);
     bool Initialized;
     CacheEntry() : Value(""), Type(UNINITIALIZED), Initialized(false)
       {}
@@ -61,6 +61,7 @@ public:
     bool GetPropertyAsBool(const char*) const ;
     bool PropertyExists(const char*) const;
     void SetProperty(const char* property, const char* value);
+    void AppendProperty(const char* property, const char* value);
     void SetProperty(const char* property, bool value);
     const char* GetValue() const { return this->GetEntry().Value.c_str(); }
     bool GetValueAsBool() const;
@@ -100,6 +101,7 @@ public:
    */
   static CacheEntryType StringToType(const char*);
   static const char* TypeToString(CacheEntryType);
+  static bool IsType(const char*);
   
   ///! Load a cache for given makefile.  Loads from ouput home.
   bool LoadCache(cmMakefile*); 
@@ -149,13 +151,13 @@ public:
   unsigned int GetCacheMinorVersion() { return this->CacheMinorVersion; }
   bool NeedCacheCompatibility(int major, int minor);
 
+  /** Define and document CACHE entry properties.  */
+  static void DefineProperties(cmake *cm);
+
 protected:
   ///! Add an entry into the cache
   void AddCacheEntry(const char* key, const char* value, 
                      const char* helpString, CacheEntryType type);
-
-  ///! Add a BOOL entry into the cache
-  void AddCacheEntry(const char* key, bool, const char* helpString);
 
   ///! Get a cache entry object for a key
   CacheEntry *GetCacheEntry(const char *key);
@@ -166,9 +168,17 @@ protected:
   unsigned int CacheMajorVersion;
   unsigned int CacheMinorVersion;
 private:
+  cmake* CMakeInstance;
   typedef  std::map<cmStdString, CacheEntry> CacheEntryMap;
-  static void OutputHelpString(std::ofstream& fout, 
+  static void OutputHelpString(std::ostream& fout,
                                const std::string& helpString);
+  static void OutputKey(std::ostream& fout, std::string const& key);
+  static void OutputValue(std::ostream& fout, std::string const& value);
+
+  static const char* PersistentProperties[];
+  bool ReadPropertyEntry(std::string const& key, CacheEntry& e);
+  void WritePropertyEntries(std::ostream& os, CacheIterator const& i);
+
   CacheEntryMap Cache;
   // Only cmake and cmMakefile should be able to add cache values
   // the commands should never use the cmCacheManager directly

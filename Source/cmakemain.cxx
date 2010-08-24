@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmakemain.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:55 $
-  Version:   $Revision: 1.80.2.4 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 // include these first, otherwise there will be problems on Windows 
 // with GetCurrentDirectory() being redefined 
 #ifdef CMAKE_BUILD_WITH_CMAKE
@@ -61,6 +56,14 @@ static const char * cmDocumentationDescription[][3] =
   {0,0,0}
 };
 
+#define CMAKE_BUILD_OPTIONS                                             \
+  "  <dir>          = Project binary directory to be built.\n"          \
+  "  --target <tgt> = Build <tgt> instead of default targets.\n"        \
+  "  --config <cfg> = For multi-configuration tools, choose <cfg>.\n"   \
+  "  --clean-first  = Build target 'clean' first, then build.\n"        \
+  "                   (To clean only, use --target 'clean'.)\n"         \
+  "  --             = Pass remaining options to the native tool.\n"
+
 //----------------------------------------------------------------------------
 static const char * cmDocumentationOptions[][3] =
 {
@@ -68,7 +71,7 @@ static const char * cmDocumentationOptions[][3] =
   {"-E", "CMake command mode.",
    "For true platform independence, CMake provides a list of commands "
    "that can be used on all systems. Run with -E help for the usage "
-   "information. Commands availble are: chdir, copy, copy_if_different "
+   "information. Commands available are: chdir, copy, copy_if_different "
    "copy_directory, compare_files, echo, echo_append, environment, "
    "make_directory, md5sum, remove_directory, remove, tar, time, "
    "touch, touch_nocreate, write_regv, delete_regv, comspec, "
@@ -85,6 +88,11 @@ static const char * cmDocumentationOptions[][3] =
    "variables being created. If A is specified, then it will display also "
    "advanced variables. If H is specified, it will also display help for "
    "each variable."},
+  {"--build <dir>", "Build a CMake-generated project binary tree.",
+   "This abstracts a native build tool's command-line interface with the "
+   "following options:\n"
+   CMAKE_BUILD_OPTIONS
+   "Run cmake --build with no options for quick help."},
   {"-N", "View mode only.",
    "Only load the cache. Do not actually run configure and generate steps."},
   {"-P <file>", "Process script mode.",
@@ -231,6 +239,7 @@ static const char * cmDocumentationNOTE[][3] =
 #endif
 
 int do_cmake(int ac, char** av);
+static int do_build(int ac, char** av);
 
 static cmMakefile* cmakemainGetMakefile(void *clientdata)
 {
@@ -302,6 +311,10 @@ int main(int ac, char** av)
 {
   cmSystemTools::EnableMSVCDebugHook();
   cmSystemTools::FindExecutableDirectory(av[0]);
+  if(ac > 1 && strcmp(av[1], "--build") == 0)
+    {
+    return do_build(ac, av);
+    }
   int ret = do_cmake(ac, av);
 #ifdef CMAKE_BUILD_WITH_CMAKE
   cmDynamicLoader::FlushCache();
@@ -410,7 +423,7 @@ int do_cmake(int ac, char** av)
   std::vector<std::string> args;
   for(int i =0; i < ac; ++i)
     {
-    if(strcmp(av[i], "-i") == 0)
+    if(!command && strcmp(av[i], "-i") == 0)
       {
       wiz = true;
       }
@@ -529,3 +542,85 @@ int do_cmake(int ac, char** av)
     }
 }
 
+//----------------------------------------------------------------------------
+static int do_build(int ac, char** av)
+{
+#ifndef CMAKE_BUILD_WITH_CMAKE
+  std::cerr << "This cmake does not support --build\n";
+  return -1;
+#else
+  std::string target;
+  std::string config = "Debug";
+  std::string dir;
+  std::vector<std::string> nativeOptions;
+  bool clean = false;
+
+  enum Doing { DoingNone, DoingDir, DoingTarget, DoingConfig, DoingNative};
+  Doing doing = DoingDir;
+  for(int i=2; i < ac; ++i)
+    {
+    if(doing == DoingNative)
+      {
+      nativeOptions.push_back(av[i]);
+      }
+    else if(strcmp(av[i], "--target") == 0)
+      {
+      doing = DoingTarget;
+      }
+    else if(strcmp(av[i], "--config") == 0)
+      {
+      doing = DoingConfig;
+      }
+    else if(strcmp(av[i], "--clean-first") == 0)
+      {
+      clean = true;
+      doing = DoingNone;
+      }
+    else if(strcmp(av[i], "--") == 0)
+      {
+      doing = DoingNative;
+      }
+    else
+      {
+      switch (doing)
+        {
+        case DoingDir:
+          dir = av[i];
+          doing = DoingNone;
+          break;
+        case DoingTarget:
+          target = av[i];
+          doing = DoingNone;
+          break;
+        case DoingConfig:
+          config = av[i];
+          doing = DoingNone;
+          break;
+        default:
+          std::cerr << "Unknown argument " << av[i] << std::endl;
+          dir = "";
+          break;
+        }
+      }
+    }
+  if(dir.empty())
+    {
+    std::cerr <<
+      "Usage: cmake --build <dir> [options] [-- [native-options]]\n"
+      "Options:\n"
+      CMAKE_BUILD_OPTIONS
+      ;
+    return 1;
+    }
+
+  // Hack for vs6 that passes ".\Debug" as "$(IntDir)" value:
+  //
+  if (cmSystemTools::StringStartsWith(config.c_str(), ".\\"))
+    {
+    config = config.substr(2);
+    }
+
+  cmake cm;
+  return cm.Build(dir, target, config, nativeOptions, clean);
+#endif
+}

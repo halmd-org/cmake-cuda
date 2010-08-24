@@ -1,7 +1,18 @@
+#=============================================================================
+# CMake - Cross Platform Makefile Generator
+# Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+
 # If the cmake version includes cpack, use it
 IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   IF(EXISTS "${CMAKE_ROOT}/Modules/InstallRequiredSystemLibraries.cmake")
-    SET(CMAKE_INSTALL_MFC_LIBRARIES 1)
     OPTION(CMAKE_INSTALL_DEBUG_LIBRARIES 
       "Install Microsoft runtime debug libraries with CMake." FALSE)
     MARK_AS_ADVANCED(CMAKE_INSTALL_DEBUG_LIBRARIES)
@@ -16,21 +27,9 @@ IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   SET(CPACK_PACKAGE_VENDOR "Kitware")
   SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Copyright.txt")
   SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/Copyright.txt")
-  SET(CPACK_PACKAGE_VERSION_MAJOR "${CMake_VERSION_MAJOR}")
-  SET(CPACK_PACKAGE_VERSION_MINOR "${CMake_VERSION_MINOR}")
-# if version date is set then use that as the patch 
-  IF(CMake_VERSION_DATE)
-    SET(CPACK_PACKAGE_VERSION_PATCH "${CMake_VERSION_DATE}")
-  ELSE(CMake_VERSION_DATE)
-    SET(CPACK_PACKAGE_VERSION_PATCH "${CMake_VERSION_PATCH}")
-  ENDIF(CMake_VERSION_DATE)
+  SET(CPACK_PACKAGE_VERSION "${CMake_VERSION}")
   SET(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
-  SET(CPACK_SOURCE_PACKAGE_FILE_NAME
-    "cmake-${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
-  IF(CMake_VERSION_RC)
-    SET(CPACK_SOURCE_PACKAGE_FILE_NAME
-      "${CPACK_SOURCE_PACKAGE_FILE_NAME}-RC-${CMake_VERSION_RC}")
-  ENDIF(CMake_VERSION_RC)
+  SET(CPACK_SOURCE_PACKAGE_FILE_NAME "cmake-${CMake_VERSION}")
   IF(NOT DEFINED CPACK_SYSTEM_NAME)
     # make sure package is not Cygwin-unknown, for Cygwin just
     # cygwin is good for the system name
@@ -67,22 +66,11 @@ IF(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
 # cygwin specific packaging stuff
   IF(CYGWIN)
     
-    # if we are on cygwin and have cpack, then force the 
-    # doc, data and man dirs to conform to cygwin style directories
-    SET(CMAKE_DOC_DIR "/share/doc/${CPACK_PACKAGE_FILE_NAME}")
-    SET(CMAKE_DATA_DIR "/share/${CPACK_PACKAGE_FILE_NAME}")
-    SET(CMAKE_MAN_DIR "/share/man")
-    # let the user know we just forced these values
-    MESSAGE(STATUS "Setup for Cygwin packaging")
-    MESSAGE(STATUS "Override cache CMAKE_DOC_DIR = ${CMAKE_DOC_DIR}")
-    MESSAGE(STATUS "Override cache CMAKE_DATA_DIR = ${CMAKE_DATA_DIR}")
-    MESSAGE(STATUS "Override cache CMAKE_MAN_DIR = ${CMAKE_MAN_DIR}")
-    
     # setup the cygwin package name
     SET(CPACK_PACKAGE_NAME cmake)
     # setup the name of the package for cygwin cmake-2.4.3
     SET(CPACK_PACKAGE_FILE_NAME
-      "${CPACK_PACKAGE_NAME}-${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+      "${CPACK_PACKAGE_NAME}-${CMake_VERSION}")
     # the source has the same name as the binary
     SET(CPACK_SOURCE_PACKAGE_FILE_NAME ${CPACK_PACKAGE_FILE_NAME})
     # Create a cygwin version number in case there are changes for cygwin

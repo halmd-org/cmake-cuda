@@ -1,25 +1,21 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator3
-  Module:    $RCSfile: cmGlobalUnixMakefileGenerator3.h,v $
-  Language:  C++
-  Date:      $Date: 2009-03-27 15:56:15 $
-  Version:   $Revision: 1.55.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2005 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGlobalUnixMakefileGenerator3_h
 #define cmGlobalUnixMakefileGenerator3_h
 
 #include "cmGlobalGenerator.h"
 
 class cmGeneratedFileStream;
+class cmMakefileTargetGenerator;
 class cmLocalUnixMakefileGenerator3;
 
 /** \class cmGlobalUnixMakefileGenerator3
@@ -113,11 +109,8 @@ public:
    const char *targetName,
    const char* config, bool ignoreErrors, bool fast);
 
-  // returns some progress informaiton
-  int GetTargetTotalNumberOfActions(cmTarget & target,
-                                    std::set<cmTarget *> &emitted);
-  unsigned long GetNumberOfProgressActionsInAll
-  (cmLocalUnixMakefileGenerator3 *lg);
+  /** Record per-target progress information.  */
+  void RecordTargetProgress(cmMakefileTargetGenerator* tg);
 
   /**
    * If true, the CMake variable CMAKE_VERBOSE_MAKEFILES doesn't have effect
@@ -177,6 +170,24 @@ protected:
   std::string EmptyRuleHackCommand;
 
   bool ForceVerboseMakefiles;
+
+  // Store per-target progress counters.
+  struct TargetProgress
+  {
+    TargetProgress(): NumberOfActions(0) {}
+    unsigned long NumberOfActions;
+    std::string VariableFile;
+    std::vector<int> Marks;
+    void WriteProgressVariables(unsigned long total, unsigned long& current);
+  };
+  struct ProgressMapCompare { bool operator()(cmTarget*,cmTarget*) const; };
+  typedef std::map<cmTarget*, TargetProgress,
+                   ProgressMapCompare> ProgressMapType;
+  ProgressMapType ProgressMap;
+
+  size_t CountProgressMarksInTarget(cmTarget* target,
+                                    std::set<cmTarget*>& emitted);
+  size_t CountProgressMarksInAll(cmLocalUnixMakefileGenerator3* lg);
 };
 
 #endif

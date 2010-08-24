@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestMemCheckCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-15 19:39:59 $
-  Version:   $Revision: 1.4.12.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestMemCheckCommand_h
 #define cmCTestMemCheckCommand_h
 
@@ -53,7 +48,7 @@ public:
    */
   virtual const char* GetTerseDocumentation()
     {
-    return "Tests the repository.";
+    return "Run tests with a dynamic analysis tool.";
     }
 
   /**
@@ -62,10 +57,24 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ctest_memcheck([BUILD build_dir] [RETURN_VALUE res])\n"
-      "Performs a memory checking of tests in the given build directory and "
-      "stores results in MemCheck.xml. The second argument is a variable "
-      "that will hold value.";
+      "  ctest_memcheck([BUILD build_dir] [RETURN_VALUE res] [APPEND]\n"
+      "             [START start number] [END end number]\n"
+      "             [STRIDE stride number] [EXCLUDE exclude regex ]\n"
+      "             [INCLUDE include regex] \n" 
+      "             [EXCLUDE_LABEL exclude regex] \n"
+      "             [INCLUDE_LABEL label regex] \n"
+      "             [PARALLEL_LEVEL level] )\n"
+      "Tests the given build directory and stores results in MemCheck.xml. "
+      "The second argument is a variable that will hold value. Optionally, "
+      "you can specify the starting test number START, the ending test number "
+      "END, the number of tests to skip between each test STRIDE, a regular "
+      "expression for tests to run INCLUDE, or a regular expression for tests "
+      "not to run EXCLUDE. EXCLUDE_LABEL and INCLUDE_LABEL are regular "
+      "expressions for tests to be included or excluded by the test "
+      "property LABEL. PARALLEL_LEVEL should be set to a positive number "
+      "representing the number of tests to be run in parallel."
+      "\n"
+      CTEST_COMMAND_APPEND_OPTION_DOCS;
     }
 
   cmTypeMacro(cmCTestMemCheckCommand, cmCTestTestCommand);

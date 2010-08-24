@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDocumentation.h,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:46 $
-  Version:   $Revision: 1.33.2.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef _cmDocumentation_h
 #define _cmDocumentation_h
 
@@ -62,6 +57,8 @@ public:
   
   /** Print help of the given type.  */
   bool PrintDocumentation(Type ht, std::ostream& os, const char* docname=0);
+
+  void SetShowGenerators(bool showGen) { this->ShowGenerators = showGen; }
   
   /** Set the program name for standard document generation.  */
   void SetName(const char* name);
@@ -163,6 +160,8 @@ private:
   const char* GetDocName(bool fallbackToNameString = true) const;
   const char* GetDefaultDocName(Type ht) const;
   bool IsOption(const char* arg) const;
+
+  bool ShowGenerators;
 
   std::string NameString;
   std::string DocName;

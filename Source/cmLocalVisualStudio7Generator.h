@@ -1,29 +1,25 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmLocalVisualStudio7Generator.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-01 16:35:39 $
-  Version:   $Revision: 1.50.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmLocalVisualStudio7Generator_h
 #define cmLocalVisualStudio7Generator_h
 
 #include "cmLocalVisualStudioGenerator.h"
+#include "cmVisualStudioGeneratorOptions.h"
 
 class cmTarget;
 class cmSourceFile;
 class cmCustomCommand;
 class cmSourceGroup;
-struct cmVS7FlagTable;
+
 
 class cmLocalVisualStudio7GeneratorOptions;
 class cmLocalVisualStudio7GeneratorFCInfo;
@@ -68,23 +64,30 @@ public:
 
   void SetExtraFlagTable(cmVS7FlagTable const* table)
     { this->ExtraFlagTable = table; }
+  virtual std::string GetTargetDirectory(cmTarget const&) const;
+  cmSourceFile* CreateVCProjBuildRule();
+  void WriteStampFiles();
+  // Compute the maximum length full path to the intermediate
+  // files directory for any configuration.  This is used to construct
+  // object file names that do not produce paths that are too long.
+  void ComputeMaxDirectoryLength(std::string& maxdir,
+                                 cmTarget& target);
+
+  virtual void ReadAndStoreExternalGUID(const char* name,
+                                        const char* path);
 private:
-  typedef cmLocalVisualStudio7GeneratorOptions Options;
+  typedef cmVisualStudioGeneratorOptions Options;
   typedef cmLocalVisualStudio7GeneratorFCInfo FCInfo;
-  void ReadAndStoreExternalGUID(const char* name,
-                                const char* path);
   std::string GetBuildTypeLinkerFlags(std::string rootLinkerFlags,
                                       const char* configName);
   void FixGlobalTargets();
   void WriteProjectFiles();
-  void WriteStampFiles();
   void WriteVCProjHeader(std::ostream& fout, const char *libName,
                          cmTarget &tgt, std::vector<cmSourceGroup> &sgs);
   void WriteVCProjFooter(std::ostream& fout);
   void CreateSingleVCProj(const char *lname, cmTarget &tgt);
   void WriteVCProjFile(std::ostream& fout, const char *libName, 
                        cmTarget &tgt);
-  cmSourceFile* CreateVCProjBuildRule();
   void WriteConfigurations(std::ostream& fout,
                            const char *libName, cmTarget &tgt);
   void WriteConfiguration(std::ostream& fout,
@@ -99,7 +102,6 @@ private:
                        cmTarget& t, bool debug);
   void OutputLibraryDirectories(std::ostream& fout,
                                 std::vector<std::string> const& dirs);
-  void OutputModuleDefinitionFile(std::ostream& fout, cmTarget &target);
   void WriteProjectStart(std::ostream& fout, const char *libName,
                          cmTarget &tgt, std::vector<cmSourceGroup> &sgs);
   void WriteProjectStartFortran(std::ostream& fout, const char *libName,
@@ -118,10 +120,12 @@ private:
   void WriteGroup(const cmSourceGroup *sg, 
                   cmTarget& target, std::ostream &fout,
                   const char *libName, std::vector<std::string> *configs);
-  virtual std::string GetTargetDirectory(cmTarget const&) const;
 
   friend class cmLocalVisualStudio7GeneratorFCInfo;
   friend class cmLocalVisualStudio7GeneratorInternals;
+
+  class EventWriter;
+  friend class EventWriter;
 
   cmVS7FlagTable const* ExtraFlagTable;
   std::string ModuleDefinitionFile;
@@ -131,30 +135,6 @@ private:
   cmLocalVisualStudio7GeneratorInternals* Internal;
 };
 
-// This is a table mapping XML tag IDE names to command line options
-struct cmVS7FlagTable
-{
-  const char* IDEName;  // name used in the IDE xml file
-  const char* commandFlag; // command line flag
-  const char* comment;     // comment
-  const char* value; // string value
-  unsigned int special; // flags for special handling requests
-  enum
-  {
-    UserValue    = (1<<0), // flag contains a user-specified value
-    UserIgnored  = (1<<1), // ignore any user value
-    UserRequired = (1<<2), // match only when user value is non-empty
-    Continue     = (1<<3), // continue looking for matching entries
-    SemicolonAppendable = (1<<4), // a flag that if specified multiple times
-                                  // should have its value appended to the
-                                  // old value with semicolons (e.g.
-                                  // /NODEFAULTLIB: => 
-                                  // IgnoreDefaultLibraryNames)
-
-    UserValueIgnored  = UserValue | UserIgnored,
-    UserValueRequired = UserValue | UserRequired
-  };
-};
 
 #endif
 

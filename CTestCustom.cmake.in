@@ -12,19 +12,34 @@ SET(CTEST_CUSTOM_WARNING_EXCEPTION
   "not sorted slower link editing will result"
   "stl_deque.h:479"
   "Utilities.cmzlib."
-  "Utilities.cmxmlrpc."
+  "Utilities.cmbzip2."
   "Source.CTest.Curl"
-  "Utilities.cmcurl"
   "Source.CursesDialog.form"
+  "Utilities.cmcurl"
+  "Utilities.cmexpat."
+  "Utilities.cmlibarchive"
+  "/usr/include.*warning.*shadowed declaration is here"
   "/usr/bin/ld.*warning.*-..*directory.name.*bin.*does not exist"
   "Redeclaration of .send..... with a different storage class specifier"
-  "Utilities.cmexpat."
   "is not used for resolving any symbol"
   "Clock skew detected"
   "remark\\(1209"
+  "LINK : warning LNK4089: all references to.*ADVAPI32.dll.*discarded by /OPT:REF"
+  "LINK : warning LNK4089: all references to.*USER32.dll.*discarded by /OPT:REF"
+  "Warning: library was too large for page size.*"
+  "Warning: public.*_archive_.*in module.*archive_*clashes with prior module.*archive_.*"
+  "Warning: public.*BZ2_bz.*in module.*bzlib.*clashes with prior module.*bzlib.*"
+  "Warning: public.*_archive.*clashes with prior module.*"
+  "Warning: LINN32: Last line.*is less.*"
+  "warning.*directory name.*CMake-Xcode.*/bin/.*does not exist.*"
   "stl_deque.h:1051"
+  "(Lexer|Parser).*warning.*conversion.*may (alter its value|change the sign)"
+  "[Qq]t([Cc]ore|[Gg]ui).*warning.*conversion.*may alter its value"
   "Parser.cxx.*warning.*2111-D.*statement is unreachable"
+  "warning:.*is.*very unsafe.*consider using.*"
+  "warning:.*is.*misused, please use.*"
   "CMakeSetupManifest.xml.*manifest authoring warning.*Unrecognized Element"
+  "cc-3968 CC: WARNING File.*" # "implicit" truncation by static_cast
   )
 
 IF(NOT "@CMAKE_GENERATOR@" MATCHES "Xcode")
@@ -50,4 +65,7 @@ SET(CTEST_CUSTOM_COVERAGE_EXCLUDE
 
   # Exclude try_compile sources from coverage results:
   "/CMakeFiles/CMakeTmp/"
+
+  # Exclude Qt source files from coverage results:
+  "[A-Za-z]./[Qq]t/qt-.+-opensource-src"
   )

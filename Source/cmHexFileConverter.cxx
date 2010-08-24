@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmHexFileConverter.cxx,v $
-  Language:  C++
-  Date:      $Date: 2007-07-20 12:36:16 $
-  Version:   $Revision: 1.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmHexFileConverter.h"
 
 #include <stdio.h>
@@ -68,7 +63,7 @@ static bool OutputBin(FILE* file, const char * buf,
       success = false;
       break;
       }
-    outBuf[outBufCount] = convertedByte & 0xff;
+    outBuf[outBufCount] = static_cast<char>(convertedByte & 0xff);
     outBufCount++;
     }
   if (success)
@@ -177,7 +172,10 @@ cmHexFileConverter::FileType cmHexFileConverter::DetermineFileType(
     return Binary;
     }
 
-  fgets(buf, 1024, inFile);
+  if(!fgets(buf, 1024, inFile))
+    {
+    buf[0] = 0;
+    }
   fclose(inFile);
   FileType type = Binary;
   unsigned int minLineLength = 0;

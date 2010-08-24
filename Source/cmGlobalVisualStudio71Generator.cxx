@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudio71Generator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.48.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "windows.h" // this must be first to define GetCurrentDirectory
 #include "cmGlobalVisualStudio71Generator.h"
 #include "cmLocalVisualStudio7Generator.h"
@@ -41,6 +36,8 @@ cmLocalGenerator *cmGlobalVisualStudio71Generator::CreateLocalGenerator()
 //----------------------------------------------------------------------------
 void cmGlobalVisualStudio71Generator::AddPlatformDefinitions(cmMakefile* mf)
 {
+  this->cmGlobalVisualStudio7Generator::AddPlatformDefinitions(mf);
+  mf->RemoveDefinition("MSVC70");
   mf->AddDefinition("MSVC71", "1");
 }
 
@@ -105,19 +102,15 @@ void cmGlobalVisualStudio71Generator
 { 
   // Write out the header for a SLN file
   this->WriteSLNHeader(fout);
-  
-  // collect the set of targets for this project by 
-  // tracing depends of all targets.
-  // also collect the set of targets that are explicitly
-  // in this project. 
-  cmGlobalGenerator::TargetDependSet projectTargets;
-  cmGlobalGenerator::TargetDependSet originalTargets;
-  this->GetTargetSets(projectTargets,
-                      originalTargets,
-                      root, generators);
+
+  // Collect all targets under this root generator and the transitive
+  // closure of their dependencies.
+  TargetDependSet projectTargets;
+  TargetDependSet originalTargets;
+  this->GetTargetSets(projectTargets, originalTargets, root, generators);
   OrderedTargetDependSet orderedProjectTargets(projectTargets);
-  this->WriteTargetsToSolution(fout, root, orderedProjectTargets,
-                               originalTargets);
+
+  this->WriteTargetsToSolution(fout, root, orderedProjectTargets);
   // Write out the configurations information for the solution
   fout << "Global\n";
   // Write out the configurations for the solution
@@ -164,7 +157,12 @@ cmGlobalVisualStudio71Generator::WriteProject(std::ostream& fout,
     ext = ".vfproj"; 
     project = "Project(\"{6989167D-11E4-40FE-8C1A-2192A86A7E90}\") = \"";
     }
-  
+  const char* targetExt = t.GetProperty("GENERATOR_FILE_NAME_EXT");
+  if(targetExt)
+    {
+    ext = targetExt;
+    }
+
   fout << project
        << dspname << "\", \""
        << this->ConvertToSolutionPath(dir)
@@ -250,9 +248,8 @@ void cmGlobalVisualStudio71Generator
 ::WriteExternalProject(std::ostream& fout, 
                        const char* name,
                        const char* location,
-                       const std::vector<std::string>& depends)
+                       const std::set<cmStdString>& depends)
 { 
-  std::cout << "WriteExternalProject vs71\n";
   fout << "Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"" 
        << name << "\", \""
        << this->ConvertToSolutionPath(location) << "\", \"{"
@@ -264,7 +261,7 @@ void cmGlobalVisualStudio71Generator
   if(!depends.empty())
     {
     fout << "\tProjectSection(ProjectDependencies) = postProject\n";
-    std::vector<std::string>::const_iterator it;
+    std::set<cmStdString>::const_iterator it;
     for(it = depends.begin(); it != depends.end(); ++it)
       {
       if(it->size() > 0)

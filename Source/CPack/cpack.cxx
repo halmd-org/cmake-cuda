@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cpack.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:18 $
-  Version:   $Revision: 1.42.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmSystemTools.h"
 
 // Need these for documentation support.
@@ -359,10 +354,11 @@ int main (int argc, char *argv[])
             "CPack project name not specified" << std::endl);
           parsed = 0;
           }
-        if ( parsed && !(mf->GetDefinition("CPACK_PACKAGE_VERSION")
-            || mf->GetDefinition("CPACK_PACKAGE_VERSION_MAJOR") &&
-            mf->GetDefinition("CPACK_PACKAGE_VERSION_MINOR")
-            && mf->GetDefinition("CPACK_PACKAGE_VERSION_PATCH")) )
+        if (parsed &&
+            !(mf->GetDefinition("CPACK_PACKAGE_VERSION") ||
+              (mf->GetDefinition("CPACK_PACKAGE_VERSION_MAJOR") &&
+               mf->GetDefinition("CPACK_PACKAGE_VERSION_MINOR") &&
+               mf->GetDefinition("CPACK_PACKAGE_VERSION_PATCH"))))
           {
           cmCPack_Log(&log, cmCPackLog::LOG_ERROR,
             "CPack project version not specified" << std::endl

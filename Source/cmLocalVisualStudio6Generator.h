@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmLocalVisualStudio6Generator.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-29 22:30:34 $
-  Version:   $Revision: 1.23 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmLocalVisualStudio6Generator_h
 #define cmLocalVisualStudio6Generator_h
 
@@ -54,14 +49,6 @@ public:
    */
   void SetBuildType(BuildType, const char* libName, cmTarget&);
 
-  /**
-   * Return array of created DSP names in a STL vector.
-   * Each executable must have its own dsp.
-   */
-  std::vector<std::string> GetCreatedProjectNames() 
-    {
-    return this->CreatedProjectNames;
-    }
   virtual std::string GetTargetDirectory(cmTarget const& target) const;
   void GetTargetObjectFileDirectories(cmTarget* target,
                                       std::vector<std::string>& 
@@ -69,8 +56,7 @@ public:
 private:
   std::string DSPHeaderTemplate;
   std::string DSPFooterTemplate;
-  std::vector<std::string> CreatedProjectNames;
-  
+
   void CreateSingleDSP(const char *lname, cmTarget &tgt);
   void WriteDSPFile(std::ostream& fout, const char *libName, 
                     cmTarget &tgt);
@@ -93,6 +79,10 @@ private:
                              const cmCustomCommand& origCommand);
   void WriteGroup(const cmSourceGroup *sg, cmTarget& target,
                   std::ostream &fout, const char *libName);
+  class EventWriter;
+  friend class EventWriter;
+  cmsys::auto_ptr<cmCustomCommand>
+  MaybeCreateOutputDir(cmTarget& target, const char* config);
   std::string CreateTargetRules(cmTarget &target, 
                                 const char* configName, 
                                 const char *libName);

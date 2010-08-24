@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSetTargetPropertiesCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-10-24 15:18:54 $
-  Version:   $Revision: 1.31.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSetTargetsPropertiesCommand_h
 #define cmSetTargetsPropertiesCommand_h
 
@@ -148,13 +143,6 @@ public:
         "VS_SCC_PROJECTNAME, VS_SCC_LOCALPATH, VS_SCC_PROVIDER can be set "
         "to add support for source control bindings in a  Visual Studio "
         "project file.\n"
-        "When a library is built CMake by default generates code to remove "
-        "any existing library using all possible names.  This is needed "
-        "to support libraries that switch between STATIC and SHARED by "
-        "a user option.  However when using OUTPUT_NAME to build a static "
-        "and shared library of the same name using different logical target "
-        "names the two targets will remove each other's files.  This can be "
-        "prevented by setting the CLEAN_DIRECT_OUTPUT property to 1.\n"
         "The PRE_INSTALL_SCRIPT and POST_INSTALL_SCRIPT properties are the "
         "old way to specify CMake scripts to run before and after "
         "installing a target.  They are used only when the old "

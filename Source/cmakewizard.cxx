@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmakewizard.cxx,v $
-  Language:  C++
-  Date:      $Date: 2006-03-15 16:02:07 $
-  Version:   $Revision: 1.23 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmakewizard.h"
 #include "cmake.h"
 #include "cmCacheManager.h"
@@ -33,8 +28,10 @@ void cmakewizard::AskUser(const char* key,
   printf("Current Value: %s\n", iter.GetValue());
   printf("New Value (Enter to keep current value): ");
   char buffer[4096];
-  buffer[0] = 0;
-  fgets(buffer, sizeof(buffer)-1, stdin);
+  if(!fgets(buffer, sizeof(buffer)-1, stdin))
+    {
+    buffer[0] = 0;
+    }
 
   if(strlen(buffer) > 0)
     {
@@ -70,8 +67,10 @@ bool cmakewizard::AskAdvanced()
 {
   printf("Would you like to see advanced options? [No]:");
   char buffer[4096];
-  buffer[0] = 0;
-  fgets(buffer, sizeof(buffer)-1, stdin);
+  if(!fgets(buffer, sizeof(buffer)-1, stdin))
+    {
+    buffer[0] = 0;
+    }
   if(buffer[0])
     {
     if(buffer[0] == 'y' || buffer[0] == 'Y')

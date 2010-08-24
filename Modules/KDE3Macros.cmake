@@ -1,5 +1,19 @@
 #
 
+#=============================================================================
+# Copyright 2006-2009 Kitware, Inc.
+# Copyright 2006 Alexander Neundorf <neundorf@kde.org>
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 # See FindKDE3.cmake for documentation.
 #
 # this file contains the following macros:
@@ -308,7 +322,11 @@ MACRO(KDE3_INSTALL_LIBTOOL_FILE _target)
    FILE(APPEND ${_laname} "# The name that we can dlopen(3).\n")
    FILE(APPEND ${_laname} "dlname='${_soname}'\n")
    FILE(APPEND ${_laname} "# Names of this library\n")
-   FILE(APPEND ${_laname} "library_names='${_soname} ${_soname} ${_soname}'\n")
+   IF(CYGWIN)
+     FILE(APPEND ${_laname} "library_names='${_soname}'\n")
+   ELSE(CYGWIN)
+     FILE(APPEND ${_laname} "library_names='${_soname} ${_soname} ${_soname}'\n")
+   ENDIF(CYGWIN)
    FILE(APPEND ${_laname} "# The name of the static archive\n")
    FILE(APPEND ${_laname} "old_library=''\n")
    FILE(APPEND ${_laname} "# Libraries that this one depends upon.\n")

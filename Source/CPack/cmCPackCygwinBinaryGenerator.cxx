@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCPackCygwinBinaryGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-03-13 01:54:27 $
-  Version:   $Revision: 1.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "cmCPackCygwinBinaryGenerator.h"
 
@@ -30,7 +25,6 @@
 //----------------------------------------------------------------------
 cmCPackCygwinBinaryGenerator::cmCPackCygwinBinaryGenerator()
 {
-  this->Compress = false;
 }
 
 //----------------------------------------------------------------------
@@ -43,18 +37,6 @@ int cmCPackCygwinBinaryGenerator::InitializeInternal()
 {
   this->SetOptionIfNotSet("CPACK_PACKAGING_INSTALL_PREFIX", "/usr");
   this->SetOptionIfNotSet("CPACK_INCLUDE_TOPLEVEL_DIRECTORY", "0");
-  std::vector<std::string> path;
-  std::string pkgPath = cmSystemTools::FindProgram("bzip2", path, false);
-  if ( pkgPath.empty() )
-    {
-    cmCPackLogger(cmCPackLog::LOG_ERROR, "Cannot find BZip2" << std::endl);
-    return 0;
-    }
-  this->SetOptionIfNotSet("CPACK_INSTALLER_PROGRAM", pkgPath.c_str());
-  cmCPackLogger(cmCPackLog::LOG_VERBOSE, "Found Compress program: "
-    << pkgPath.c_str()
-    << std::endl);
-
   return this->Superclass::InitializeInternal();
 }
 
@@ -90,6 +72,7 @@ int cmCPackCygwinBinaryGenerator::CompressFiles(const char* outFileName,
   // add the manifest file to the list of all files
   std::vector<std::string> filesWithManifest = files;
   filesWithManifest.push_back(manifestFile);
+  
   // create the bzip2 tar file 
   return this->Superclass::CompressFiles(outFileName, toplevel, 
                                          filesWithManifest);

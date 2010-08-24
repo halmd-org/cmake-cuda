@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCursesLongMessageForm.cxx,v $
-  Language:  C++
-  Date:      $Date: 2006-11-29 22:25:46 $
-  Version:   $Revision: 1.16 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "../cmCacheManager.h"
 #include "../cmSystemTools.h"
 #include "../cmake.h"
@@ -80,8 +75,7 @@ void cmCursesLongMessageForm::UpdateStatusBar()
 
   char version[cmCursesMainForm::MAX_WIDTH];
   char vertmp[128];
-  sprintf(vertmp,"CMake Version %d.%d - %s", cmVersion::GetMajorVersion(),
-          cmVersion::GetMinorVersion(),cmVersion::GetReleaseVersion().c_str());
+  sprintf(vertmp,"CMake Version %s", cmVersion::GetCMakeVersion());
   int sideSpace = (width-strlen(vertmp));
   for(int i=0; i<sideSpace; i++) { version[i] = ' '; }
   sprintf(version+sideSpace, "%s", vertmp);

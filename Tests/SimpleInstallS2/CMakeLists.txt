@@ -33,7 +33,7 @@ IF(STAGE2)
     )
   SET(t1NAMES test1 test1${CMAKE_DEBUG_POSTFIX} test1rel)
   SET(t2NAMES test2 test2${CMAKE_DEBUG_POSTFIX})
-  SET(t4NAMES test4 test4${CMAKE_DEBUG_POSTFIX})
+  SET(t4NAMES test4out test4out${CMAKE_DEBUG_POSTFIX})
 
   # Make sure the install script ran.
   SET(CMAKE_INSTALL_SCRIPT_DID_RUN 0)
@@ -165,6 +165,10 @@ ELSE(STAGE2)
   ADD_LIBRARY(test3 MODULE lib3.cxx)
   ADD_LIBRARY(test4 SHARED lib4.cxx)
 
+  # Test <ARCHIVE|LIBRARY|RUNTIME>_OUTPUT_NAME properties.
+  SET_PROPERTY(TARGET test4 PROPERTY ARCHIVE_OUTPUT_NAME test4out)
+  SET_PROPERTY(TARGET test4 PROPERTY LIBRARY_OUTPUT_NAME test4out)
+
   ADD_EXECUTABLE (SimpleInstall inst.cxx foo.c foo.h)
   TARGET_LINK_LIBRARIES(SimpleInstall test1 test2 test4)
   SET(install_target SimpleInstall)
@@ -270,6 +274,9 @@ ELSE(STAGE2)
   # Test empty directory installation.
   INSTALL(DIRECTORY DESTINATION MyTest/share/empty)
 
+  # Test optional directory installation.
+  INSTALL(DIRECTORY does-not-exist DESTINATION MyTest/share OPTIONAL)
+
   # Test user-specified install scripts, with and without COMPONENT.
   INSTALL(
     SCRIPT InstallScript1.cmake
@@ -357,13 +364,20 @@ SET(CPACK_PACKAGE_EXECUTABLES "SimpleInstall" "Simple Install")
 SET(CMAKE_INSTALL_MFC_LIBRARIES 1)
 SET(CMAKE_INSTALL_DEBUG_LIBRARIES 1)
 INCLUDE(InstallRequiredSystemLibraries)
-INCLUDE(CPack)
 
 IF(CTEST_TEST_CPACK)
   SET(PACKAGE_TARGET --build-target package)
+
+  # Avoid settings that require the .zip file command line tools...
+  # (just build an NSIS installer without component support)
+  #
+  SET(CPACK_BINARY_ZIP OFF)
+  SET(CPACK_MONOLITHIC_INSTALL ON)
 ELSE(CTEST_TEST_CPACK)
   SET(PACKAGE_TARGET)
 ENDIF(CTEST_TEST_CPACK)
+
+INCLUDE(CPack)
 
 ADD_CUSTOM_COMMAND(
   TARGET ${install_target}

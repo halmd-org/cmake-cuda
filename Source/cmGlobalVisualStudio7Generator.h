@@ -1,26 +1,21 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudio7Generator.h,v $
-  Language:  C++
-  Date:      $Date: 2009-02-04 16:44:17 $
-  Version:   $Revision: 1.45.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGlobalVisualStudio7Generator_h
 #define cmGlobalVisualStudio7Generator_h
 
 #include "cmGlobalVisualStudioGenerator.h"
 
 class cmTarget;
-struct cmVS7FlagTable;
+struct cmIDEFlagTable;
 
 /** \class cmGlobalVisualStudio7Generator
  * \brief Write a Unix makefiles.
@@ -97,13 +92,14 @@ public:
   ///! What is the configurations directory variable called?
   virtual const char* GetCMakeCFGInitDirectory()  { return "$(OutDir)"; }
 
-  struct TargetCompare
-  {
-    bool operator()(cmTarget const* l, cmTarget const* r);
-  };
+  /** Return true if the target project file should have the option
+      LinkLibraryDependencies and link to .sln dependencies. */
+  virtual bool NeedLinkLibraryDependencies(cmTarget&) { return false; }
 
 protected:
-  static cmVS7FlagTable const* GetExtraFlagTableVS7();
+  virtual const char* GetIDEVersion() { return "7.0"; }
+
+  static cmIDEFlagTable const* GetExtraFlagTableVS7();
   virtual void OutputSLNFile(cmLocalGenerator* root, 
                              std::vector<cmLocalGenerator*>& generators);
   virtual void WriteSLNFile(std::ostream& fout, cmLocalGenerator* root,
@@ -119,17 +115,10 @@ protected:
   virtual void WriteSLNHeader(std::ostream& fout);
   virtual void AddPlatformDefinitions(cmMakefile* mf);
 
-  class OrderedTargetDependSet: public std::multiset<cmTarget*, TargetCompare>
-  {
-  public:
-    OrderedTargetDependSet(cmGlobalGenerator::TargetDependSet const&);
-  };
-
   virtual void WriteTargetsToSolution(
     std::ostream& fout,
     cmLocalGenerator* root,
-    OrderedTargetDependSet const& projectTargets,
-    cmGlobalGenerator::TargetDependSet& originalTargets);
+    OrderedTargetDependSet const& projectTargets);
   virtual void WriteTargetDepends(
     std::ostream& fout,
     OrderedTargetDependSet const& projectTargets);
@@ -138,16 +127,12 @@ protected:
     cmLocalGenerator* root,
     OrderedTargetDependSet const& projectTargets);
   
-  void AddAllBuildDepends(cmLocalGenerator* root,
-                          cmTarget* target,
-                          cmGlobalGenerator::TargetDependSet& targets);
-                                       
   void GenerateConfigurations(cmMakefile* mf);
 
   virtual void WriteExternalProject(std::ostream& fout, 
                                     const char* name, 
                                     const char* path,
-                                    const std::vector<std::string>&
+                                    const std::set<cmStdString>&
                                     dependencies);
 
   std::string ConvertToSolutionPath(const char* path);

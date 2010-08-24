@@ -1,25 +1,21 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: QCMakeCacheView.h,v $
-  Language:  C++
-  Date:      $Date: 2008-06-25 13:51:50 $
-  Version:   $Revision: 1.17.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #ifndef QCMakeCacheView_h
 #define QCMakeCacheView_h
 
 #include "QCMake.h"
 #include <QTreeView>
+#include <QSet>
 #include <QStandardItemModel>
 #include <QItemDelegate>
 
@@ -41,7 +37,7 @@ public:
   // get whether to show advanced entries
   bool showAdvanced() const;
 
-  QSize sizeHint(int) { return QSize(200,200); }
+  QSize sizeHint() const { return QSize(200,200); }
 
 public slots:
   // set whether to show advanced entries
@@ -70,7 +66,8 @@ public:
   // properties, and the advanced flag
   enum { HelpRole = Qt::ToolTipRole,
          TypeRole = Qt::UserRole, 
-         AdvancedRole };
+         AdvancedRole,
+         StringsRole};
 
   enum ViewType { FlatView, GroupView };
 
@@ -110,6 +107,10 @@ public:
   // return flags (overloaded to modify flag based on EditEnabled flag)
   Qt::ItemFlags flags (const QModelIndex& index) const;
   QModelIndex buddy(const QModelIndex& idx) const;
+  
+  // get the data in the model for this property
+  void getPropertyData(const QModelIndex& idx1,
+                       QCMakeProperty& prop) const;
 
 protected:
   bool EditEnabled;
@@ -119,9 +120,6 @@ protected:
   // set the data in the model for this property
   void setPropertyData(const QModelIndex& idx1, 
                        const QCMakeProperty& p, bool isNew);
-  // get the data in the model for this property
-  void getPropertyData(const QModelIndex& idx1,
-                       QCMakeProperty& prop) const;
 
   // breaks up he property list into groups
   // where each group has the same prefix up to the first underscore
@@ -146,10 +144,22 @@ public:
   bool editorEvent (QEvent* event, QAbstractItemModel* model, 
        const QStyleOptionViewItem& option, const QModelIndex& index);
   bool eventFilter(QObject* object, QEvent* event);
+  void setModelData(QWidget * editor, QAbstractItemModel * model, const QModelIndex & index ) const;
+  QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const;
+
+  QSet<QCMakeProperty> changes() const;
+  void clearChanges();
+
 protected slots:
   void setFileDialogFlag(bool);
 protected:
   bool FileDialogFlag;
+  // record a change to an item in the model.
+  // this simply saves the item in the set of changes
+  void recordChange(QAbstractItemModel* model, const QModelIndex& index);
+
+  // properties changed by user via this delegate
+  QSet<QCMakeProperty> mChanges;
 };
 
 #endif

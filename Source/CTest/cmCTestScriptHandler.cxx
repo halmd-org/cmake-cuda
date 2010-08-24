@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestScriptHandler.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-12-02 12:07:40 $
-  Version:   $Revision: 1.43.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "cmCTestScriptHandler.h"
 
@@ -117,7 +112,7 @@ void cmCTestScriptHandler::Initialize()
   this->CTestCmd = "";
   this->UpdateCmd = "";
   this->CTestEnv = "";
-  this->InitCache = "";
+  this->InitialCache = "";
   this->CMakeCmd = "";
   this->CMOutFile = "";
   this->ExtraUpdates.clear();
@@ -236,6 +231,7 @@ int cmCTestScriptHandler::ExecuteScript(const std::string& total_script_arg)
   // now pass through all the other arguments
   std::vector<cmStdString> &initArgs = 
     this->CTest->GetInitialCommandLineArguments();
+  //*** need to make sure this does not have the current script ***
   for(size_t i=1; i < initArgs.size(); ++i)
     {
     argv.push_back(initArgs[i].c_str());
@@ -272,15 +268,49 @@ int cmCTestScriptHandler::ExecuteScript(const std::string& total_script_arg)
   // Properly handle output of the build command
   cmsysProcess_WaitForExit(cp, 0);
   int result = cmsysProcess_GetState(cp);
-
   int retVal = 0;
+  bool failed = false;
   if(result == cmsysProcess_State_Exited)
     {
     retVal = cmsysProcess_GetExitValue(cp);
     }
-  else
+  else if(result == cmsysProcess_State_Exception)
     {
-    abort();
+    retVal = cmsysProcess_GetExitException(cp);
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "\tThere was an exception: "
+               << cmsysProcess_GetExceptionString(cp) << " " << 
+               retVal << std::endl);
+    failed = true;
+    }
+  else if(result == cmsysProcess_State_Expired)
+    {
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "\tThere was a timeout"
+               << std::endl);
+    failed = true;
+    }
+  else if(result == cmsysProcess_State_Error)
+    {
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "\tError executing ctest: "
+               << cmsysProcess_GetErrorString(cp) << std::endl);
+    failed = true;
+    }
+  cmsysProcess_Delete(cp);
+  if(failed)
+    {
+    cmOStringStream message;
+    message << "Error running command: [";
+    message << result << "] ";
+    for(std::vector<const char*>::iterator i = argv.begin();
+        i != argv.end(); ++i)
+      {
+      if(*i)
+        {
+        message  << *i << " ";
+        }
+      }
+    cmCTestLog(this->CTest, ERROR_MESSAGE,
+               message.str() << argv[0] << std::endl);
+    return -1;
     }
   return retVal;
 }
@@ -300,8 +330,13 @@ void cmCTestScriptHandler::CreateCMake()
   this->GlobalGenerator->SetCMakeInstance(this->CMake);
 
   this->LocalGenerator = this->GlobalGenerator->CreateLocalGenerator();
-  this->LocalGenerator->SetGlobalGenerator(this->GlobalGenerator);
   this->Makefile = this->LocalGenerator->GetMakefile();
+
+  // Set CMAKE_CURRENT_SOURCE_DIR and CMAKE_CURRENT_BINARY_DIR.
+  // Also, some commands need Makefile->GetCurrentDirectory().
+  std::string cwd = cmSystemTools::GetCurrentWorkingDirectory();
+  this->Makefile->SetStartDirectory(cwd.c_str());
+  this->Makefile->SetStartOutputDirectory(cwd.c_str());
 
   // remove all cmake commands which are not scriptable, since they can't be 
   // used in ctest scripts
@@ -335,6 +370,9 @@ void cmCTestScriptHandler::GetCommandDocumentation(
 // cmake instance and generators, and then reads in the script
 int cmCTestScriptHandler::ReadInScript(const std::string& total_script_arg)
 {
+  // Reset the error flag so that the script is read in no matter what
+  cmSystemTools::ResetErrorOccuredFlag();
+
   // if the argument has a , in it then it needs to be broken into the fist
   // argument (which is the script) and the second argument which will be
   // passed into the scripts as S_ARG
@@ -345,7 +383,6 @@ int cmCTestScriptHandler::ReadInScript(const std::string& total_script_arg)
     script = total_script_arg.substr(0,total_script_arg.find(","));
     script_arg = total_script_arg.substr(total_script_arg.find(",")+1);
     }
-
   // make sure the file exists
   if (!cmSystemTools::FileExists(script.c_str()))
     {
@@ -380,25 +417,19 @@ int cmCTestScriptHandler::ReadInScript(const std::string& total_script_arg)
   f->CTestScriptHandler = this;
   this->Makefile->AddFunctionBlocker(f);
 
-  /* Execute CMakeDetermineSystem and CMakeSystemSpecificInformation, so 
+
+  /* Execute CTestScriptMode.cmake, which loads CMakeDetermineSystem and 
+  CMakeSystemSpecificInformation, so 
   that variables like CMAKE_SYSTEM and also the search paths for libraries,
   header and executables are set correctly and can be used. Makes new-style
   ctest scripting easier. */
   std::string systemFile = 
-      this->Makefile->GetModulesFile("CMakeDetermineSystem.cmake");
+      this->Makefile->GetModulesFile("CTestScriptMode.cmake");
   if (!this->Makefile->ReadListFile(0, systemFile.c_str()) ||
       cmSystemTools::GetErrorOccuredFlag())
-    {
-    return 2;
-    }
-
-  systemFile = 
-      this->Makefile->GetModulesFile("CMakeSystemSpecificInformation.cmake");
-  if (!this->Makefile->ReadListFile(0, systemFile.c_str()) ||
-      cmSystemTools::GetErrorOccuredFlag())
-    {
-    cmCTestLog(this->CTest, DEBUG, "Error in read: "  << systemFile.c_str()
-               << std::endl);
+    {  
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "Error in read:" 
+               << systemFile.c_str() << "\n");
     return 2;
     }
 
@@ -406,9 +437,13 @@ int cmCTestScriptHandler::ReadInScript(const std::string& total_script_arg)
   if (!this->Makefile->ReadListFile(0, script.c_str()) ||
     cmSystemTools::GetErrorOccuredFlag())
     {
-    cmCTestLog(this->CTest, DEBUG, "Error in read script: "
+    cmCTestLog(this->CTest, ERROR_MESSAGE, "Error in read script: "
                << script.c_str()
                << std::endl);
+    // Reset the error flag so that it can run more than 
+    // one script with an error when you 
+    // use ctest_run_script
+    cmSystemTools::ResetErrorOccuredFlag();
     return 2;
     }
 
@@ -448,7 +483,7 @@ int cmCTestScriptHandler::ExtractVariables()
     }
   this->CTestEnv
     = this->Makefile->GetSafeDefinition("CTEST_ENVIRONMENT");
-  this->InitCache
+  this->InitialCache
     = this->Makefile->GetSafeDefinition("CTEST_INITIAL_CACHE");
   this->CMakeCmd
     = this->Makefile->GetSafeDefinition("CTEST_CMAKE_COMMAND");
@@ -548,6 +583,10 @@ void cmCTestScriptHandler::SleepInSeconds(unsigned int secondsToWait)
 int cmCTestScriptHandler::RunConfigurationScript
 (const std::string& total_script_arg, bool pscope)
 {
+#ifdef CMAKE_BUILD_WITH_CMAKE
+  cmSystemTools::SaveRestoreEnvironment sre;
+#endif
+
   int result;
 
   this->ScriptStartTime =
@@ -839,24 +878,14 @@ int cmCTestScriptHandler::RunConfigurationDashboard()
     }
 
   // put the initial cache into the bin dir
-  if (!this->InitCache.empty())
+  if (!this->InitialCache.empty())
     {
-    std::string cacheFile = this->BinaryDir;
-    cacheFile += "/CMakeCache.txt";
-    cmGeneratedFileStream fout(cacheFile.c_str());
-    if(!fout)
+    if (!this->WriteInitialCache(this->BinaryDir.c_str(), 
+         this->InitialCache.c_str()))
       {
       this->RestoreBackupDirectories();
       return 9;
       }
-
-    fout.write(this->InitCache.c_str(), this->InitCache.size());
-
-    // Make sure the operating system has finished writing the file
-    // before closing it.  This will ensure the file is finished before
-    // the check below.
-    fout.flush();
-    fout.close();
     }
 
   // do an initial cmake to setup the DartConfig file
@@ -936,7 +965,8 @@ int cmCTestScriptHandler::RunConfigurationDashboard()
         }
       cmCTestLog(this->CTest, ERROR_MESSAGE,
         "Unable to run ctest:" << std::endl
-        << output.c_str() << std::endl);
+        << "command: " << command.c_str() << std::endl
+        << "output: " << output.c_str() << std::endl);
       if (!res)
         {
         return 11;
@@ -955,6 +985,30 @@ int cmCTestScriptHandler::RunConfigurationDashboard()
   return 0;
 }
 
+//-------------------------------------------------------------------------
+bool cmCTestScriptHandler::WriteInitialCache(const char* directory, 
+                                             const char* text)
+{
+  std::string cacheFile = directory;
+  cacheFile += "/CMakeCache.txt";
+  cmGeneratedFileStream fout(cacheFile.c_str());
+  if(!fout)
+    {
+    return false;
+    }
+
+  if (text!=0)
+    {
+    fout.write(text, strlen(text));
+    }
+
+  // Make sure the operating system has finished writing the file
+  // before closing it.  This will ensure the file is finished before
+  // the check below.
+  fout.flush();
+  fout.close();
+  return true;
+}
 
 //-------------------------------------------------------------------------
 void cmCTestScriptHandler::RestoreBackupDirectories()
@@ -979,12 +1033,16 @@ void cmCTestScriptHandler::RestoreBackupDirectories()
 }
 
 bool cmCTestScriptHandler::RunScript(cmCTest* ctest, const char *sname, 
-                                     bool InProcess)
+                                     bool InProcess, int* returnValue)
 {
   cmCTestScriptHandler* sh = new cmCTestScriptHandler();
   sh->SetCTestInstance(ctest);
   sh->AddConfigurationScript(sname,InProcess);
-  sh->ProcessHandler();
+  int res = sh->ProcessHandler();
+  if(returnValue)
+    {
+    *returnValue = res;
+    }
   delete sh;
   return true;
 }

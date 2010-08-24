@@ -1,6 +1,6 @@
 #
 # This script launches a GUI test using Squish.  You should not call
-# the script directly; instead, you should acces it via the
+# the script directly; instead, you should access it via the
 # SQUISH_ADD_TEST macro that is defined in FindSquish.cmake.
 #
 # This script starts the Squish server, launches the test on the
@@ -8,6 +8,19 @@
 # fail (including if the tests do not pass) then a fatal error is
 # raised.
 #
+
+#=============================================================================
+# Copyright 2008-2009 Kitware, Inc.
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
 
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 

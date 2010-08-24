@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestSubmitHandler.h,v $
-  Language:  C++
-  Date:      $Date: 2008-02-29 19:58:33 $
-  Version:   $Revision: 1.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestSubmitHandler_h
 #define cmCTestSubmitHandler_h
 
@@ -39,7 +34,13 @@ public:
   int ProcessHandler();
 
   void Initialize();
-  
+
+  /** Specify a set of parts (by name) to submit.  */
+  void SelectParts(std::set<cmCTest::Part> const& parts);
+
+  /** Specify a set of files to submit.  */
+  void SelectFiles(cmCTest::SetOfStrings const& files);
+
 private:
   void SetLogFile(std::ostream* ost) { this->LogFile = ost; }
 
@@ -60,6 +61,11 @@ private:
                       const cmStdString& remoteprefix, 
                       const cmStdString& url);
 
+  bool SubmitUsingCP( const cmStdString& localprefix, 
+                      const std::set<cmStdString>& files,
+                      const cmStdString& remoteprefix, 
+                      const cmStdString& url);
+
   bool TriggerUsingHTTP(const std::set<cmStdString>& files,
                         const cmStdString& remoteprefix, 
                         const cmStdString& url);
@@ -69,6 +75,8 @@ private:
                        const cmStdString& remoteprefix, 
                        const cmStdString& url);
 
+  void ParseResponse(std::vector<char>);
+
   std::string GetSubmitResultsPrefix();
 
   cmStdString   HTTPProxy;
@@ -77,7 +85,11 @@ private:
   cmStdString   FTPProxy;
   int           FTPProxyType;
   std::ostream* LogFile;
+  bool SubmitPart[cmCTest::PartCount];
   bool CDash;
+  bool HasWarnings;
+  bool HasErrors;
+  cmCTest::SetOfStrings Files;
 };
 
 #endif

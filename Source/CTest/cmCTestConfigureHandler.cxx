@@ -1,25 +1,21 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestConfigureHandler.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-30 16:17:36 $
-  Version:   $Revision: 1.14 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 
 #include "cmCTestConfigureHandler.h"
 
 #include "cmCTest.h"
 #include "cmGeneratedFileStream.h"
 #include "cmake.h"
+#include "cmXMLSafe.h"
 #include <cmsys/Process.h>
 
 
@@ -67,7 +63,7 @@ int cmCTestConfigureHandler::ProcessHandler()
   if ( !this->CTest->GetShowOnly() )
     {
     cmGeneratedFileStream os;
-    if ( !this->StartResultingXML("Configure", os) )
+    if(!this->StartResultingXML(cmCTest::PartConfigure, "Configure", os))
       {
       cmCTestLog(this->CTest, ERROR_MESSAGE, "Cannot open configure file"
         << std::endl);
@@ -92,13 +88,13 @@ int cmCTestConfigureHandler::ProcessHandler()
 
     if ( os )
       {
-      this->CTest->StartXML(os);
+      this->CTest->StartXML(os, this->AppendXML);
       os << "<Configure>\n"
          << "\t<StartDateTime>" << start_time << "</StartDateTime>"
          << std::endl
          << "\t<StartConfigureTime>" << start_time_time
          << "</StartConfigureTime>\n";
-           
+
       if ( res == cmsysProcess_State_Exited && retVal )
         {
         os << retVal;
@@ -106,7 +102,7 @@ int cmCTestConfigureHandler::ProcessHandler()
       os << "<ConfigureCommand>" << cCommand.c_str() << "</ConfigureCommand>"
         << std::endl;
       cmCTestLog(this->CTest, DEBUG, "End" << std::endl);
-      os << "<Log>" << cmCTest::MakeXMLSafe(output) << "</Log>" << std::endl;
+      os << "<Log>" << cmXMLSafe(output) << "</Log>" << std::endl;
       std::string end_time = this->CTest->CurrentTime();
       os << "\t<ConfigureStatus>" << retVal << "</ConfigureStatus>\n"
          << "\t<EndDateTime>" << end_time << "</EndDateTime>\n"
@@ -129,7 +125,7 @@ int cmCTestConfigureHandler::ProcessHandler()
   if (! res || retVal )
     {
     cmCTestLog(this->CTest, ERROR_MESSAGE,
-      "Error(s) when updating the project" << std::endl);
+      "Error(s) when configuring the project" << std::endl);
     return -1;
     }
   return 0;

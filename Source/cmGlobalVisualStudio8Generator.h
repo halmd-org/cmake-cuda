@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmGlobalVisualStudio8Generator.h,v $
-  Language:  C++
-  Date:      $Date: 2008-02-15 16:49:58 $
-  Version:   $Revision: 1.13 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmGlobalVisualStudio8Generator_h
 #define cmGlobalVisualStudio8Generator_h
 
@@ -43,6 +38,8 @@ public:
   ///! Create a local generator appropriate to this Global Generator
   virtual cmLocalGenerator *CreateLocalGenerator();
 
+  std::string const& GetPlatformName() const { return this->PlatformName; }
+
   /**
    * Override Configure and Generate to add the build-system check
    * target.
@@ -63,14 +60,19 @@ public:
    */
   virtual std::string GetUserMacrosRegKeyBase();
 
+  /** Return true if the target project file should have the option
+      LinkLibraryDependencies and link to .sln dependencies. */
+  virtual bool NeedLinkLibraryDependencies(cmTarget& target);
+
 protected:
+  virtual const char* GetIDEVersion() { return "8.0"; }
 
   virtual bool VSLinksDependencies() const { return false; }
 
-  static cmVS7FlagTable const* GetExtraFlagTableVS8();
+  void AddCheckTarget();
+
+  static cmIDEFlagTable const* GetExtraFlagTableVS8();
   virtual void AddPlatformDefinitions(cmMakefile* mf);
-  virtual void WriteSLNFile(std::ostream& fout, cmLocalGenerator* root,
-                            std::vector<cmLocalGenerator*>& generators);
   virtual void WriteSLNHeader(std::ostream& fout);
   virtual void WriteSolutionConfigurations(std::ostream& fout);
   virtual void WriteProjectConfigurations(std::ostream& fout,

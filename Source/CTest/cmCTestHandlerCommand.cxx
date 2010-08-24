@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestHandlerCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:28:01 $
-  Version:   $Revision: 1.11 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCTestHandlerCommand.h"
 
 #include "cmCTest.h"
@@ -33,15 +28,46 @@ cmCTestHandlerCommand::cmCTestHandlerCommand()
   this->Arguments[ct_BUILD] = "BUILD";
   this->Arguments[ct_SUBMIT_INDEX] = "SUBMIT_INDEX";
   this->Last = ct_LAST;
+  this->AppendXML = false;
 }
 
 bool cmCTestHandlerCommand
 ::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
-  if ( !this->ProcessArguments(args, (unsigned int)this->Last, 
-                               &*this->Arguments.begin(),this->Values) )
+  // Allocate space for argument values.
+  this->Values.clear();
+  this->Values.resize(this->Last, 0);
+
+  // Process input arguments.
+  this->ArgumentDoing = ArgumentDoingNone;
+  for(unsigned int i=0; i < args.size(); ++i)
     {
-    return false;
+    // Check this argument.
+    if(!this->CheckArgumentKeyword(args[i]) &&
+       !this->CheckArgumentValue(args[i]))
+      {
+      cmOStringStream e;
+      e << "called with unknown argument \"" << args[i] << "\".";
+      this->SetError(e.str().c_str());
+      return false;
+      }
+
+    // Quit if an argument is invalid.
+    if(this->ArgumentDoing == ArgumentDoingError)
+      {
+      return false;
+      }
+    }
+
+  // Set the config type of this ctest to the current value of the
+  // CTEST_CONFIGURATION_TYPE script variable if it is defined.
+  // The current script value trumps the -C argument on the command
+  // line.
+  const char* ctestConfigType =
+    this->Makefile->GetDefinition("CTEST_CONFIGURATION_TYPE");
+  if (ctestConfigType)
+    {
+    this->CTest->SetConfigType(ctestConfigType);
     }
 
   cmCTestLog(this->CTest, DEBUG, "Initialize handler" << std::endl;);
@@ -54,9 +80,9 @@ bool cmCTestHandlerCommand
     return false;
     }
 
-  cmCTestLog(this->CTest, DEBUG, "Populate Custom Vectors" << std::endl;);
-  handler->PopulateCustomVectors(this->Makefile);
+  handler->SetAppendXML(this->AppendXML);
 
+  handler->PopulateCustomVectors(this->Makefile);
   if ( this->Values[ct_BUILD] )
     {
     this->CTest->SetCTestConfiguration("BuildDirectory",
@@ -65,9 +91,19 @@ bool cmCTestHandlerCommand
     }
   else
     {
-    this->CTest->SetCTestConfiguration("BuildDirectory",
-      cmSystemTools::CollapseFullPath(
-        this->Makefile->GetDefinition("CTEST_BINARY_DIRECTORY")).c_str());
+    const char* bdir = 
+      this->Makefile->GetSafeDefinition("CTEST_BINARY_DIRECTORY");
+    if(bdir)
+      {
+      this->
+        CTest->SetCTestConfiguration("BuildDirectory",
+          cmSystemTools::CollapseFullPath(bdir).c_str());
+      }
+    else
+      {
+      cmCTestLog(this->CTest, ERROR_MESSAGE,
+                 "CTEST_BINARY_DIRECTORY not set" << std::endl;);
+      }
     }
   if ( this->Values[ct_SOURCE] )
     {
@@ -81,7 +117,7 @@ bool cmCTestHandlerCommand
     {
     this->CTest->SetCTestConfiguration("SourceDirectory",
       cmSystemTools::CollapseFullPath(
-        this->Makefile->GetDefinition("CTEST_SOURCE_DIRECTORY")).c_str());
+        this->Makefile->GetSafeDefinition("CTEST_SOURCE_DIRECTORY")).c_str());
     }
   if ( this->Values[ct_SUBMIT_INDEX] )
     {
@@ -98,7 +134,6 @@ bool cmCTestHandlerCommand
       handler->SetSubmitIndex(atoi(this->Values[ct_SUBMIT_INDEX]));
       }
     }
-
   std::string current_dir = cmSystemTools::GetCurrentWorkingDirectory();
   cmSystemTools::ChangeDirectory(
     this->CTest->GetCTestConfiguration("BuildDirectory").c_str());
@@ -114,57 +149,49 @@ bool cmCTestHandlerCommand
   return true;
 }
 
-bool cmCTestHandlerCommand::ProcessArguments(
-  std::vector<std::string> const& args, int last, const char** strings,
-  std::vector<const char*>& values)
+//----------------------------------------------------------------------------
+bool cmCTestHandlerCommand::CheckArgumentKeyword(std::string const& arg)
 {
-  int state = 0;
-  int cc;
-  values.resize(last);
-  for ( cc = 0; cc < last; ++ cc )
+  // Look for non-value arguments common to all commands.
+  if(arg == "APPEND")
     {
-    values[cc] = 0;
+    this->ArgumentDoing = ArgumentDoingNone;
+    this->AppendXML = true;
+    return true;
     }
 
-  for(size_t i=0; i < args.size(); ++i)
+  // Check for a keyword in our argument/value table.
+  for(unsigned int k=0; k < this->Arguments.size(); ++k)
     {
-    if ( state > 0 && state < last )
+    if(this->Arguments[k] && arg == this->Arguments[k])
       {
-      values[state] = args[i].c_str();
-      cmCTestLog(this->CTest, DEBUG, "Set " << strings[state] << " to "
-        << args[i].c_str() << std::endl);
-      state = 0;
-      }
-    else
-      {
-      bool found = false;
-      for ( cc = 0; cc < last; ++ cc )
-        {
-        if ( strings[cc] && args[i] == strings[cc] )
-          {
-          state = cc;
-          if ( values[state] )
-            {
-            cmOStringStream ostr;
-            ostr << "called with incorrect number of arguments. "
-              << strings[state] << " specified twice.";
-            this->SetError(ostr.str().c_str());
-            return false;
-            }
-          found = true;
-          break;
-          }
-        }
-      if ( !found )
-        {
-        cmOStringStream str;
-        str
-          << "called with incorrect number of arguments. Extra argument is: "
-          << args[i].c_str() << ".";
-        this->SetError(str.str().c_str());
-        return false;
-        }
+      this->ArgumentDoing = ArgumentDoingKeyword;
+      this->ArgumentIndex = k;
+      return true;
       }
     }
-  return true;
+  return false;
+}
+
+//----------------------------------------------------------------------------
+bool cmCTestHandlerCommand::CheckArgumentValue(std::string const& arg)
+{
+  if(this->ArgumentDoing == ArgumentDoingKeyword)
+    {
+    this->ArgumentDoing = ArgumentDoingNone;
+    unsigned int k = this->ArgumentIndex;
+    if(this->Values[k])
+      {
+      cmOStringStream e;
+      e << "Called with more than one value for " << this->Arguments[k];
+      this->Makefile->IssueMessage(cmake::FATAL_ERROR, e.str());
+      this->ArgumentDoing = ArgumentDoingError;
+      return true;
+      }
+    this->Values[k] = arg.c_str();
+    cmCTestLog(this->CTest, DEBUG, "Set " << this->Arguments[k]
+               << " to " << arg << "\n");
+    return true;
+    }
+  return false;
 }

@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSubdirCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.21 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSubdirCommand_h
 #define cmSubdirCommand_h
 
@@ -65,7 +60,8 @@ public:
     return
       "Add a list of subdirectories to the build.\n"
       "  subdirs(dir1 dir2 ..."
-      "[EXCLUDE_FROM_ALL exclude_dir1 exclude_dir2 ...] [PREORDER] )\n"
+      "[EXCLUDE_FROM_ALL exclude_dir1 exclude_dir2 ...]\n"
+      "          [PREORDER] )\n"
       "Add a list of subdirectories to the build. The add_subdirectory "
       "command should be used instead of subdirs although subdirs will "
       "still work. "

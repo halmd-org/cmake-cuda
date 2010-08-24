@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmDependsJava.h,v $
-  Language:  C++
-  Date:      $Date: 2005-10-12 17:52:29 $
-  Version:   $Revision: 1.5 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmDependsJava_h
 #define cmDependsJava_h
 
@@ -36,7 +31,8 @@ protected:
   // Implement writing/checking methods required by superclass.
   virtual bool WriteDependencies(const char *src, const char *file,
     std::ostream& makeDepends, std::ostream& internalDepends);
-  virtual bool CheckDependencies(std::istream& internalDepends);
+  virtual bool CheckDependencies(std::istream& internalDepends,
+                  std::map<std::string, DependencyVector >& validDeps);
 
 private:
   cmDependsJava(cmDependsJava const&); // Purposely not implemented.

@@ -2,8 +2,6 @@
 cmake_minimum_required (VERSION 2.6)
 PROJECT (FunctionTest)
 
-SET(CMAKE_C_FLAGS "${CMAKE_ANSI_CFLAGS} ${CMAKE_C_FLAGS}")
-
 FUNCTION(FAILED testname)
   MESSAGE(SEND_ERROR "${testname} failed ${ARGN}")
 ENDFUNCTION(FAILED)
@@ -130,6 +128,41 @@ IF(DEFINED SUBDIR_DEFINED)
   PASS("Subdir Define Test" "(${SUBDIR_DEFINED})")
 ELSE(DEFINED SUBDIR_DEFINED)
   FAILED("Subdir Define Test" "(${SUBDIR_DEFINED})")
+ENDIF(DEFINED SUBDIR_DEFINED)
+
+# Test function-scoped directory.
+FUNCTION(ADD_SUBDIR2 dir)
+  ADD_SUBDIRECTORY("${dir}" "${dir}2")
+  # The parent scope sets in the subdir should be visible here.
+  IF(DEFINED SUBDIR_UNDEFINED)
+    FAILED("Subdir Function Undefine Test 1" "(${SUBDIR_UNDEFINED})")
+  ELSE(DEFINED SUBDIR_UNDEFINED)
+    PASS("Subdir Function Undefine Test 1" "(${SUBDIR_UNDEFINED})")
+  ENDIF(DEFINED SUBDIR_UNDEFINED)
+  IF(DEFINED SUBDIR_DEFINED)
+    PASS("Subdir Function Define Test 1" "(${SUBDIR_DEFINED})")
+  ELSE(DEFINED SUBDIR_DEFINED)
+    FAILED("Subdir Function Define Test 1" "(${SUBDIR_DEFINED})")
+  ENDIF(DEFINED SUBDIR_DEFINED)
+ENDFUNCTION(ADD_SUBDIR2)
+
+# Reset test variables.
+SET(SUBDIR_UNDEFINED 1)
+SET(SUBDIR_DEFINED)
+
+# Run test function.
+ADD_SUBDIR2(SubDirScope)
+
+# The parent scope sets in the subdir should not be visible here.
+IF(DEFINED SUBDIR_UNDEFINED)
+  PASS("Subdir Function Undefine Test 2" "(${SUBDIR_UNDEFINED})")
+ELSE(DEFINED SUBDIR_UNDEFINED)
+  FAILED("Subdir Function Undefine Test 2" "(${SUBDIR_UNDEFINED})")
+ENDIF(DEFINED SUBDIR_UNDEFINED)
+IF(DEFINED SUBDIR_DEFINED)
+  FAILED("Subdir Function Define Test 2" "(${SUBDIR_DEFINED})")
+ELSE(DEFINED SUBDIR_DEFINED)
+  PASS("Subdir Function Define Test 2" "(${SUBDIR_DEFINED})")
 ENDIF(DEFINED SUBDIR_DEFINED)
 
 ADD_EXECUTABLE(FunctionTest functionTest.c)

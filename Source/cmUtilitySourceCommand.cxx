@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmUtilitySourceCommand.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-01-23 15:27:59 $
-  Version:   $Revision: 1.25 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmUtilitySourceCommand.h"
 
 // cmUtilitySourceCommand
@@ -56,7 +51,7 @@ bool cmUtilitySourceCommand
     {
     haveCacheValue = (cacheValue &&
      (strstr(cacheValue, "(IntDir)") == 0 ||
-      intDir && strcmp(intDir, "$(IntDir)") == 0) &&
+      (intDir && strcmp(intDir, "$(IntDir)") == 0)) &&
      (this->Makefile->GetCacheMajorVersion() != 0 &&
       this->Makefile->GetCacheMinorVersion() != 0 ));
     }

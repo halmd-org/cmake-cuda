@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSystemTools.h,v $
-  Language:  C++
-  Date:      $Date: 2008-09-03 13:43:18 $
-  Version:   $Revision: 1.150.2.3 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSystemTools_h
 #define cmSystemTools_h
 
@@ -59,13 +54,7 @@ public:
 
   ///! Escape quotes in a string.
   static std::string EscapeQuotes(const char* str);
-  
-  /**
-   * Given a string, replace any escape sequences with the corresponding
-   * characters.
-   */
-  static std::string RemoveEscapes(const char*);
-  
+
   typedef  void (*ErrorCallback)(const char*, const char*, bool&, void*);
   /**
    *  Set the function used by GUI's to display error messages
@@ -144,6 +133,14 @@ public:
     const char *name,
     const std::vector<std::string>& sourceExts);
 
+  /**
+   * Check if the given file exists in one of the parent directory of the
+   * given file or directory and if it does, return the name of the file.
+   * Toplevel specifies the top-most directory to where it will look.
+   */
+  static std::string FileExistsInParentDirectories(const char* fname,
+    const char* directory, const char* toplevel);
+
   static void Glob(const char *directory, const char *regexp,
                    std::vector<std::string>& files);
   static void GlobDirs(const char *fullPath, std::vector<std::string>& files);
@@ -165,6 +162,10 @@ public:
   static bool cmCopyFile(const char* source, const char* destination);
   static bool CopyFileIfDifferent(const char* source, 
     const char* destination);
+
+  /** Rename a file or directory within a single disk volume (atomic
+      if possible).  */
+  static bool RenameFile(const char* oldname, const char* newname);
 
   ///! Compute the md5sum of a file
   static bool ComputeFileMD5(const char* source, char* md5out);
@@ -233,6 +234,10 @@ public:
   static void ParseWindowsCommandLine(const char* command,
                                       std::vector<std::string>& args);
 
+  /** Parse arguments out of a unix command line string.  */
+  static void ParseUnixCommandLine(const char* command,
+                                   std::vector<std::string>& args);
+
   /** Compute an escaped version of the given argument for use in a
       windows shell.  See kwsys/System.h.in for details.  */
   static std::string EscapeWindowsShellArgument(const char* arg,
@@ -262,6 +267,17 @@ public:
     OBJECT_FILE_FORMAT,
     UNKNOWN_FILE_FORMAT
   };
+
+  enum CompareOp {
+    OP_LESS,
+    OP_GREATER,
+    OP_EQUAL
+  };
+
+  /**
+   * Compare versions
+   */
+  static bool VersionCompare(CompareOp op, const char* lhs, const char* rhs);
 
   /**
    * Determine the file type based on the extension
@@ -325,33 +341,49 @@ public:
   */
   static std::string RelativePath(const char* local, const char* remote);
 
-  /** Put a string into the environment
-      of the form var=value */
-  static bool PutEnv(const char* value);
-
 #ifdef CMAKE_BUILD_WITH_CMAKE
   /** Remove an environment variable */
   static bool UnsetEnv(const char* value);
 
   /** Get the list of all environment variables */
   static std::vector<std::string> GetEnvironmentVariables();
+
+  /** Append multiple variables to the current environment.
+      Return the original environment, as it was before the
+      append. */
+  static std::vector<std::string> AppendEnv(
+    std::vector<std::string>* env);
+
+  /** Restore the full environment to "env" - use after
+      AppendEnv to put the environment back to the way it
+      was. */
+  static void RestoreEnv(const std::vector<std::string>& env);
+
+  /** Helper class to save and restore the environment.
+      Instantiate this class as an automatic variable on
+      the stack. Its constructor saves a copy of the current
+      environment and then its destructor restores the
+      original environment. */
+  class SaveRestoreEnvironment
+  {
+  public:
+    SaveRestoreEnvironment();
+    virtual ~SaveRestoreEnvironment();
+  private:
+    std::vector<std::string> Env;
+  };
 #endif
 
   /** Setup the environment to enable VS 8 IDE output.  */
   static void EnableVSConsoleOutput();
 
-  /** Make string XML safe */
-  static std::string MakeXMLSafe(const char* str);
-
   /** Create tar */
   static bool ListTar(const char* outFileName,
-                      std::vector<cmStdString>& files, 
                       bool gzip, bool verbose);
   static bool CreateTar(const char* outFileName,
                         const std::vector<cmStdString>& files, bool gzip,
-                        bool verbose);
-  static bool ExtractTar(const char* inFileName,
-                         const std::vector<cmStdString>& files, bool gzip, 
+                        bool bzip2, bool verbose);
+  static bool ExtractTar(const char* inFileName, bool gzip, 
                          bool verbose);
   // This should be called first thing in main
   // it will keep child processes from inheriting the
@@ -403,6 +435,9 @@ public:
       given.  */
   static bool CheckRPath(std::string const& file,
                          std::string const& newRPath);
+
+  /** Remove a directory; repeat a few times in case of locked files.  */
+  static bool RepeatedRemoveDirectory(const char* dir);
 
 private:
   static bool s_ForceUnixPaths;

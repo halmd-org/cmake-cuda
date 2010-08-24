@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCommands.cxx,v $
-  Language:  C++
-  Date:      $Date: 2008-07-13 21:55:23 $
-  Version:   $Revision: 1.123.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmCommands.h"
 #if defined(CMAKE_BUILD_WITH_CMAKE)
 #include "cmAuxSourceDirectoryCommand.cxx"
@@ -33,7 +28,6 @@
 #include "cmQTWrapUICommand.cxx"
 #include "cmRemoveCommand.cxx"
 #include "cmRemoveDefinitionsCommand.cxx"
-#include "cmSetDirectoryPropertiesCommand.cxx"
 #include "cmSourceGroupCommand.cxx"
 #include "cmSubdirDependsCommand.cxx"
 #include "cmUseMangledMesaCommand.cxx"
@@ -75,7 +69,6 @@ void GetPredefinedCommands(std::list<cmCommand*>&
   commands.push_back(new cmQTWrapUICommand);
   commands.push_back(new cmRemoveCommand);
   commands.push_back(new cmRemoveDefinitionsCommand);
-  commands.push_back(new cmSetDirectoryPropertiesCommand);
   commands.push_back(new cmSourceGroupCommand);
   commands.push_back(new cmSubdirDependsCommand);
   commands.push_back(new cmUseMangledMesaCommand);

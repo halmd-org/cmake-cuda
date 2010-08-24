@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmInstallExportGenerator.cxx,v $
-  Language:  C++
-  Date:      $Date: 2009-01-13 18:03:52 $
-  Version:   $Revision: 1.8.2.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #include "cmInstallExportGenerator.h"
 
 #include <stdio.h>
@@ -191,7 +186,7 @@ cmInstallExportGenerator::GenerateScriptConfigs(std::ostream& os,
     files.push_back(i->second);
     std::string config_test = this->CreateConfigTest(i->first.c_str());
     os << indent << "IF(" << config_test << ")\n";
-    this->AddInstallRule(os, cmTarget::INSTALL_FILES, files, false, 0,
+    this->AddInstallRule(os, cmTarget::INSTALL_FILES, files, false,
                          this->FilePermissions.c_str(), 0, 0, 0,
                          indent.Next());
     os << indent << "ENDIF(" << config_test << ")\n";
@@ -230,6 +225,6 @@ void cmInstallExportGenerator::GenerateScriptActions(std::ostream& os,
   // Install the main export file.
   std::vector<std::string> files;
   files.push_back(this->MainImportFile);
-  this->AddInstallRule(os, cmTarget::INSTALL_FILES, files, false, 0,
+  this->AddInstallRule(os, cmTarget::INSTALL_FILES, files, false,
                        this->FilePermissions.c_str(), 0, 0, 0, indent);
 }

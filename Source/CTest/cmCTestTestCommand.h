@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmCTestTestCommand.h,v $
-  Language:  C++
-  Date:      $Date: 2008-12-02 12:07:40 $
-  Version:   $Revision: 1.6.12.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmCTestTestCommand_h
 #define cmCTestTestCommand_h
 
@@ -51,7 +46,7 @@ public:
    */
   virtual const char* GetTerseDocumentation()
     {
-    return "Tests the repository.";
+    return "Run tests in the project build tree.";
     }
 
   /**
@@ -60,16 +55,29 @@ public:
   virtual const char* GetFullDocumentation()
     {
     return
-      "  ctest_test([BUILD build_dir]\n"
+      "  ctest_test([BUILD build_dir] [APPEND]\n"
       "             [START start number] [END end number]\n"
       "             [STRIDE stride number] [EXCLUDE exclude regex ]\n"
-      "             [INCLUDE include regex] [RETURN_VALUE res] )\n"
+      "             [INCLUDE include regex] [RETURN_VALUE res] \n" 
+      "             [EXCLUDE_LABEL exclude regex] \n"
+      "             [INCLUDE_LABEL label regex] \n"
+      "             [PARALLEL_LEVEL level] \n"
+      "             [SCHEDULE_RANDOM on] \n"
+      "             [STOP_TIME time of day]) \n"
       "Tests the given build directory and stores results in Test.xml. The "
       "second argument is a variable that will hold value. Optionally, "
       "you can specify the starting test number START, the ending test number "
       "END, the number of tests to skip between each test STRIDE, a regular "
       "expression for tests to run INCLUDE, or a regular expression for tests "
-      "to not run EXCLUDE.";
+      "to not run EXCLUDE. EXCLUDE_LABEL and INCLUDE_LABEL are regular "
+      "expression for test to be included or excluded by the test "
+      "property LABEL. PARALLEL_LEVEL should be set to a positive number "
+      "representing the number of tests to be run in parallel. "
+      "SCHEDULE_RANDOM will launch tests in a random order, and is "
+      "typically used to detect implicit test dependencies. STOP_TIME is the "
+      "time of day at which the tests should all stop running."
+      "\n"
+      CTEST_COMMAND_APPEND_OPTION_DOCS;
     }
 
   cmTypeMacro(cmCTestTestCommand, cmCTestHandlerCommand);
@@ -86,6 +94,11 @@ protected:
     ctt_STRIDE,
     ctt_EXCLUDE,
     ctt_INCLUDE,
+    ctt_EXCLUDE_LABEL,
+    ctt_INCLUDE_LABEL,
+    ctt_PARALLEL_LEVEL,
+    ctt_SCHEDULE_RANDOM,
+    ctt_STOP_TIME,
     ctt_LAST
   };
 };

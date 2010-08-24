@@ -1,16 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  KWSys - Kitware System Library
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   KWSys - Kitware System Library
-  Module:    $RCSfile: kwsysPrivate.h,v $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.kitware.com/Copyright.htm for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef KWSYS_NAMESPACE
 # error "Do not include kwsysPrivate.h outside of kwsys c and cxx files."
 #endif
@@ -22,7 +20,7 @@
   Define KWSYS_HEADER macro to help the c and cxx files include kwsys
   headers from the configured namespace directory.  The macro can be
   used like this:
-  
+
   #include KWSYS_HEADER(Directory.hxx)
   #include KWSYS_HEADER(std/vector)
 */

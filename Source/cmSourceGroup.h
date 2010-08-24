@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmSourceGroup.h,v $
-  Language:  C++
-  Date:      $Date: 2008-05-23 20:09:39 $
-  Version:   $Revision: 1.19.12.1 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmSourceGroup_h
 #define cmSourceGroup_h
 
@@ -37,7 +32,8 @@ class cmSourceGroupInternals;
 class cmSourceGroup
 {
 public:
-  cmSourceGroup(const char* name, const char* regex);
+  cmSourceGroup(const char* name, const char* regex,
+                const char* parentName=0);
   cmSourceGroup(cmSourceGroup const& r);
   ~cmSourceGroup();
   cmSourceGroup& operator=(cmSourceGroup const&);
@@ -66,6 +62,11 @@ public:
    * Get the name of this group.
    */
   const char* GetName() const;
+
+  /**
+   * Get the full path name for group.
+   */
+  const char* GetFullName() const;
   
   /**
    * Check if the given name matches this group's regex.
@@ -107,6 +108,8 @@ private:
    * The name of the source group.
    */
   std::string Name;
+  // Full path to group
+  std::string FullName;
   
   /**
    * The regular expression matching the files in the group.

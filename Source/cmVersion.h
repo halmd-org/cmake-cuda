@@ -1,19 +1,14 @@
-/*=========================================================================
+/*============================================================================
+  CMake - Cross Platform Makefile Generator
+  Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
 
-  Program:   CMake - Cross-Platform Makefile Generator
-  Module:    $RCSfile: cmVersion.h,v $
-  Language:  C++
-  Date:      $Date: 2005-06-17 13:49:06 $
-  Version:   $Revision: 1.2 $
+  Distributed under the OSI-approved BSD License (the "License");
+  see accompanying file Copyright.txt for details.
 
-  Copyright (c) 2002 Kitware, Inc., Insight Consortium.  All rights reserved.
-  See Copyright.txt or http://www.cmake.org/HTML/Copyright.html for details.
-
-     This software is distributed WITHOUT ANY WARRANTY; without even 
-     the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR 
-     PURPOSE.  See the above copyright notices for more information.
-
-=========================================================================*/
+  This software is distributed WITHOUT ANY WARRANTY; without even the
+  implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  See the License for more information.
+============================================================================*/
 #ifndef cmVersion_h
 #define cmVersion_h
 
@@ -30,12 +25,15 @@ public:
   /**
    * Return major and minor version numbers for cmake.
    */
-  static unsigned int GetMajorVersion() { return CMake_VERSION_MAJOR; }
-  static unsigned int GetMinorVersion() { return CMake_VERSION_MINOR; }
-  static unsigned int GetPatchVersion() { return CMake_VERSION_PATCH; }
-  static std::string GetReleaseVersion();
-  static std::string GetCMakeVersion();
+  static unsigned int GetMajorVersion();
+  static unsigned int GetMinorVersion();
+  static unsigned int GetPatchVersion();
+  static unsigned int GetTweakVersion();
+  static const char* GetCMakeVersion();
 };
+
+#define CMake_VERSION_ENCODE(major, minor, patch) \
+  ((major)*0x10000u + (minor)*0x100u + (patch))
 
 #endif
 
