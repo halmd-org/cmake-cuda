@@ -1,9 +1,23 @@
-
 # This file is used by EnableLanguage in cmGlobalGenerator to
 # determine that that selected CUDA compiler can actually compile
 # and link the most basic of programs.   If not, a fatal error
 # is set and cmake stops processing commands and will not generate
 # any makefiles or projects.
+
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+# Copyright 2008-2010 Peter Colberg
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 IF(NOT CMAKE_CUDA_COMPILER_WORKS)
   MESSAGE(STATUS "Check for working CUDA compiler: ${CMAKE_CUDA_COMPILER}")
   FILE(WRITE ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/testCUDACompiler.cu

@@ -7,6 +7,20 @@
 #  CUDA_INCLUDE_DIR
 #
 
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+# Copyright 2008-2010 Peter Colberg
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 FIND_PATH(CUDA_INSTALL_PREFIX bin/nvcc
   $ENV{CUDA_INSTALL_PREFIX}
   /usr/local/cuda

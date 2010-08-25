@@ -1,9 +1,23 @@
-
 # This file sets the basic flags for the NVIDIA CUDA language in CMake.
 # It also loads the available platform file for the system-compiler
 # if it exists.
 # It also loads a system - compiler - processor (or target hardware)
 # specific file, which is mainly useful for crosscompiling and embedded systems.
+
+#=============================================================================
+# Copyright 2002-2009 Kitware, Inc.
+# Copyright 2008-2010 Peter Colberg
+#
+# Distributed under the OSI-approved BSD License (the "License");
+# see accompanying file Copyright.txt for details.
+#
+# This software is distributed WITHOUT ANY WARRANTY; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the License for more information.
+#=============================================================================
+# (To distributed this file outside of CMake, substitute the full
+#  License text for the above reference.)
+
 
 # some compilers use different extensions (e.g. sdcc uses .rel)
 # so set the extension here first so it can be overridden by the compiler specific file
