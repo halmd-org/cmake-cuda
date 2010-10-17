@@ -1,11 +1,6 @@
-# This file sets the basic flags for the NVIDIA CUDA language in CMake.
-# It also loads the available platform file for the system-compiler
-# if it exists.
-# It also loads a system - compiler - processor (or target hardware)
-# specific file, which is mainly useful for crosscompiling and embedded systems.
 
 #=============================================================================
-# Copyright 2002-2009 Kitware, Inc.
+# Copyright 2004-2009 Kitware, Inc.
 # Copyright 2008-2010 Peter Colberg
 #
 # Distributed under the OSI-approved BSD License (the "License");
@@ -18,6 +13,11 @@
 # (To distributed this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+# This file sets the basic flags for the CUDA C language in CMake.
+# It also loads the available platform file for the system-compiler
+# if it exists.
+# It also loads a system - compiler - processor (or target hardware)
+# specific file, which is mainly useful for crosscompiling and embedded systems.
 
 # some compilers use different extensions (e.g. sdcc uses .rel)
 # so set the extension here first so it can be overridden by the compiler specific file
@@ -27,13 +27,39 @@ ELSE(UNIX)
   SET(CMAKE_CUDA_OUTPUT_EXTENSION .obj)
 ENDIF(UNIX)
 
+# Load compiler-specific information.
+IF(CMAKE_CUDA_COMPILER_ID)
+  INCLUDE(Compiler/${CMAKE_CUDA_COMPILER_ID}-CUDA OPTIONAL)
+ENDIF(CMAKE_CUDA_COMPILER_ID)
 
+SET(CMAKE_BASE_NAME)
 GET_FILENAME_COMPONENT(CMAKE_BASE_NAME ${CMAKE_CUDA_COMPILER} NAME_WE)
 
 
-# load the system-specific files
+# load a hardware specific file, mostly useful for embedded compilers
+IF(CMAKE_SYSTEM_PROCESSOR)
+  IF(CMAKE_CUDA_COMPILER_ID)
+    INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_CUDA_COMPILER_ID}-CUDA-${CMAKE_SYSTEM_PROCESSOR} OPTIONAL RESULT_VARIABLE _INCLUDED_FILE)
+  ENDIF(CMAKE_CUDA_COMPILER_ID)
+  IF (NOT _INCLUDED_FILE)
+    INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_BASE_NAME}-${CMAKE_SYSTEM_PROCESSOR} OPTIONAL)
+  ENDIF (NOT _INCLUDED_FILE)
+ENDIF(CMAKE_SYSTEM_PROCESSOR)
+
+# load the system- and compiler specific files
+IF(CMAKE_CUDA_COMPILER_ID)
+  INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_CUDA_COMPILER_ID}-CUDA OPTIONAL RESULT_VARIABLE _INCLUDED_FILE)
+ENDIF(CMAKE_CUDA_COMPILER_ID)
 IF (NOT _INCLUDED_FILE)
-  INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_BASE_NAME} OPTIONAL)
+  INCLUDE(Platform/${CMAKE_SYSTEM_NAME}-${CMAKE_BASE_NAME} OPTIONAL
+          RESULT_VARIABLE _INCLUDED_FILE)
+ENDIF (NOT _INCLUDED_FILE)
+# We specify the compiler information in the system file for some
+# platforms, but this language may not have been enabled when the file
+# was first included.  Include it again to get the language info.
+# Remove this when all compiler info is removed from system files.
+IF (NOT _INCLUDED_FILE)
+  INCLUDE(Platform/${CMAKE_SYSTEM_NAME} OPTIONAL)
 ENDIF (NOT _INCLUDED_FILE)
 
 
@@ -58,7 +84,7 @@ ENDIF(CMAKE_USER_MAKE_RULES_OVERRIDE_CUDA)
 IF(NOT CMAKE_MODULE_EXISTS)
   SET(CMAKE_SHARED_MODULE_CUDA_FLAGS ${CMAKE_SHARED_LIBRARY_CUDA_FLAGS})
 ENDIF(NOT CMAKE_MODULE_EXISTS)
-# Create a set of shared library variable specific to CUDA
+# Create a set of shared library variable specific to CUDA C
 # For 90% of the systems, these are the same flags as the C versions
 # so if these are not set just copy the flags from the c version
 IF(NOT CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS)
@@ -84,6 +110,14 @@ ENDIF(NOT CMAKE_SHARED_LIBRARY_RUNTIME_CUDA_FLAG_SEP)
 IF(NOT CMAKE_SHARED_LIBRARY_RPATH_LINK_CUDA_FLAG)
   SET(CMAKE_SHARED_LIBRARY_RPATH_LINK_CUDA_FLAG ${CMAKE_SHARED_LIBRARY_RPATH_LINK_C_FLAG})
 ENDIF(NOT CMAKE_SHARED_LIBRARY_RPATH_LINK_CUDA_FLAG)
+
+IF(NOT DEFINED CMAKE_EXE_EXPORTS_CUDA_FLAG)
+  SET(CMAKE_EXE_EXPORTS_CUDA_FLAG ${CMAKE_EXE_EXPORTS_C_FLAG})
+ENDIF()
+
+IF(NOT DEFINED CMAKE_SHARED_LIBRARY_SONAME_CUDA_FLAG)
+  SET(CMAKE_SHARED_LIBRARY_SONAME_CUDA_FLAG ${CMAKE_SHARED_LIBRARY_SONAME_C_FLAG})
+ENDIF()
 
 IF(NOT CMAKE_EXECUTABLE_RUNTIME_CUDA_FLAG)
   SET(CMAKE_EXECUTABLE_RUNTIME_CUDA_FLAG ${CMAKE_SHARED_LIBRARY_RUNTIME_CUDA_FLAG})
@@ -118,14 +152,6 @@ IF(NOT CMAKE_SHARED_MODULE_CUDA_FLAGS)
   SET(CMAKE_SHARED_MODULE_CUDA_FLAGS ${CMAKE_SHARED_MODULE_C_FLAGS})
 ENDIF(NOT CMAKE_SHARED_MODULE_CUDA_FLAGS)
 
-IF(NOT CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG)
-  SET(CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG ${CMAKE_SHARED_MODULE_RUNTIME_FLAG})
-ENDIF(NOT CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG)
-
-IF(NOT CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG_SEP)
-  SET(CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG_SEP ${CMAKE_SHARED_MODULE_RUNTIME_FLAG_SEP})
-ENDIF(NOT CMAKE_SHARED_MODULE_RUNTIME_CUDA_FLAG_SEP)
-
 # Initialize CUDA link type selection flags from C versions.
 FOREACH(type SHARED_LIBRARY SHARED_MODULE EXE)
   IF(NOT CMAKE_${type}_LINK_STATIC_CUDA_FLAGS)
@@ -142,7 +168,7 @@ ENDFOREACH(type)
 # on the initial values computed in the platform/*.cmake files
 # use _INIT variables so that this only happens the first time
 # and you can set these flags in the cmake cache
-SET(CMAKE_CUDA_FLAGS_INIT "$ENV{NVCCFLAGS} ${CMAKE_CUDA_FLAGS_INIT}")
+SET(CMAKE_CUDA_FLAGS_INIT "$ENV{CUDACCFLAGS} ${CMAKE_CUDA_FLAGS_INIT}")
 # avoid just having a space as the initial value for the cache
 IF(CMAKE_CUDA_FLAGS_INIT STREQUAL " ")
   SET(CMAKE_CUDA_FLAGS_INIT)
@@ -164,7 +190,7 @@ ENDIF(NOT CMAKE_NOT_USING_CONFIG_FLAGS)
 
 IF(CMAKE_CUDA_STANDARD_LIBRARIES_INIT)
   SET(CMAKE_CUDA_STANDARD_LIBRARIES "${CMAKE_CUDA_STANDARD_LIBRARIES_INIT}"
-    CACHE STRING "Libraries linked by default with all CUDA applications.")
+    CACHE STRING "Libraries linked by default with all CUDA C applications.")
   MARK_AS_ADVANCED(CMAKE_CUDA_STANDARD_LIBRARIES)
 ENDIF(CMAKE_CUDA_STANDARD_LIBRARIES_INIT)
 
@@ -173,7 +199,6 @@ INCLUDE(CMakeCommonLanguageInclude)
 # now define the following rules:
 # CMAKE_CUDA_CREATE_SHARED_LIBRARY
 # CMAKE_CUDA_CREATE_SHARED_MODULE
-# CMAKE_CUDA_CREATE_STATIC_LIBRARY
 # CMAKE_CUDA_COMPILE_OBJECT
 # CMAKE_CUDA_LINK_EXECUTABLE
 
@@ -186,7 +211,7 @@ INCLUDE(CMakeCommonLanguageInclude)
 # <FLAGS>
 # <LINK_FLAGS>
 
-# NVCC compiler information
+# CUDA compiler information
 # <CMAKE_CUDA_COMPILER>
 # <CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS>
 # <CMAKE_CUDA_SHARED_MODULE_CREATE_FLAGS>
@@ -197,7 +222,7 @@ INCLUDE(CMakeCommonLanguageInclude)
 # <CMAKE_RANLIB>
 
 
-# create a shared CUDA library
+# create a shared CUDA C library
 IF(NOT CMAKE_CUDA_CREATE_SHARED_LIBRARY)
   SET(CMAKE_CUDA_CREATE_SHARED_LIBRARY
       "<CMAKE_CUDA_COMPILER> <CMAKE_SHARED_LIBRARY_CUDA_FLAGS> <LANGUAGE_COMPILE_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_CUDA_FLAGS> <CMAKE_SHARED_LIBRARY_SONAME_CUDA_FLAG><TARGET_SONAME> -o <TARGET> <OBJECTS> <LINK_LIBRARIES>")
@@ -209,14 +234,13 @@ IF(NOT CMAKE_CUDA_CREATE_SHARED_MODULE)
 ENDIF(NOT CMAKE_CUDA_CREATE_SHARED_MODULE)
 
 
-# create a CUDA static library
-IF(NOT CMAKE_CUDA_CREATE_STATIC_LIBRARY)
-  SET(CMAKE_CUDA_CREATE_STATIC_LIBRARY
-      "<CMAKE_AR> cr <TARGET> <LINK_FLAGS> <OBJECTS> "
-      "<CMAKE_RANLIB> <TARGET> ")
-ENDIF(NOT CMAKE_CUDA_CREATE_STATIC_LIBRARY)
+# Create a static archive incrementally for large object file counts.
+# If CMAKE_CUDA_CREATE_STATIC_LIBRARY is set it will override these.
+SET(CMAKE_CUDA_ARCHIVE_CREATE "<CMAKE_AR> cr <TARGET> <LINK_FLAGS> <OBJECTS>")
+SET(CMAKE_CUDA_ARCHIVE_APPEND "<CMAKE_AR> r  <TARGET> <LINK_FLAGS> <OBJECTS>")
+SET(CMAKE_CUDA_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
 
-# compile a CUDA file into an object file
+# compile a CUDA C file into an object file
 IF(NOT CMAKE_CUDA_COMPILE_OBJECT)
   SET(CMAKE_CUDA_COMPILE_OBJECT
     "<CMAKE_CUDA_COMPILER>  <DEFINES> <FLAGS> -o <OBJECT> -c <SOURCE>")
@@ -226,14 +250,6 @@ IF(NOT CMAKE_CUDA_LINK_EXECUTABLE)
   SET(CMAKE_CUDA_LINK_EXECUTABLE
     "<CMAKE_CUDA_COMPILER>  <FLAGS> <CMAKE_CUDA_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> <LINK_LIBRARIES>")
 ENDIF(NOT CMAKE_CUDA_LINK_EXECUTABLE)
-
-IF(NOT CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE)
-  SET (CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE "<CMAKE_CUDA_COMPILER> <FLAGS> -E <SOURCE> > <PREPROCESSED_SOURCE>")
-ENDIF(NOT CMAKE_CUDA_CREATE_PREPROCESSED_SOURCE)
-
-IF(NOT CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE)
-  SET (CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE "<CMAKE_CUDA_COMPILER> <FLAGS> -ptx <SOURCE> -o <ASSEMBLY_SOURCE>")
-ENDIF(NOT CMAKE_CUDA_CREATE_ASSEMBLY_SOURCE)
 
 MARK_AS_ADVANCED(
 CMAKE_BUILD_TOOL
