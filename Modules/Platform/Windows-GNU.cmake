@@ -9,7 +9,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # This module is shared by multiple languages; use include blocker.
@@ -49,6 +49,13 @@ set(CMAKE_CREATE_WIN32_EXE  "-mwindows")
 set(CMAKE_GNULD_IMAGE_VERSION
   "-Wl,--major-image-version,<TARGET_VERSION_MAJOR>,--minor-image-version,<TARGET_VERSION_MINOR>")
 
+# Check if GNU ld is too old to support @FILE syntax.
+set(__WINDOWS_GNU_LD_RESPONSE 1)
+execute_process(COMMAND ld -v OUTPUT_VARIABLE _help ERROR_VARIABLE _help)
+if("${_help}" MATCHES "GNU ld .* 2\\.1[1-6]")
+  set(__WINDOWS_GNU_LD_RESPONSE 0)
+endif()
+
 macro(__windows_compiler_gnu lang)
 
   if(MSYS OR MINGW)
@@ -68,8 +75,24 @@ macro(__windows_compiler_gnu lang)
   endif()
 
   set(CMAKE_SHARED_LIBRARY_${lang}_FLAGS "") # No -fPIC on Windows
-  set(CMAKE_${lang}_USE_RESPONSE_FILE_FOR_OBJECTS 1)
-  set(CMAKE_${lang}_RESPONSE_FILE_LINK_FLAG "-Wl,@")
+  set(CMAKE_${lang}_USE_RESPONSE_FILE_FOR_OBJECTS ${__WINDOWS_GNU_LD_RESPONSE})
+
+  # We prefer "@" for response files but it is not supported by gcc 3.
+  execute_process(COMMAND ${CMAKE_${lang}_COMPILER} --version OUTPUT_VARIABLE _ver ERROR_VARIABLE _ver)
+  if("${_ver}" MATCHES "\\(GCC\\) 3\\.")
+    if("${lang}" STREQUAL "Fortran")
+      # The GNU Fortran compiler reports an error:
+      #   no input files; unwilling to write output files
+      # when the response file is passed with "-Wl,@".
+      set(CMAKE_Fortran_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+    else()
+      # Use "-Wl,@" to pass the response file to the linker.
+      set(CMAKE_${lang}_RESPONSE_FILE_LINK_FLAG "-Wl,@")
+    endif()
+  elseif(CMAKE_${lang}_USE_RESPONSE_FILE_FOR_OBJECTS)
+    # Use "@" to pass the response file to the front-end.
+    set(CMAKE_${lang}_RESPONSE_FILE_LINK_FLAG "@")
+  endif()
 
   # Binary link rules.
   set(CMAKE_${lang}_CREATE_SHARED_MODULE
@@ -78,4 +101,21 @@ macro(__windows_compiler_gnu lang)
     "<CMAKE_${lang}_COMPILER> <CMAKE_SHARED_LIBRARY_${lang}_FLAGS> <LINK_FLAGS> <CMAKE_SHARED_LIBRARY_CREATE_${lang}_FLAGS> -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <OBJECTS> <LINK_LIBRARIES>")
   set(CMAKE_${lang}_LINK_EXECUTABLE
     "<CMAKE_${lang}_COMPILER> <FLAGS> <CMAKE_${lang}_LINK_FLAGS> <LINK_FLAGS> <OBJECTS>  -o <TARGET> -Wl,--out-implib,<TARGET_IMPLIB> ${CMAKE_GNULD_IMAGE_VERSION} <LINK_LIBRARIES>")
+
+  # Support very long lists of object files.
+  if("${CMAKE_${lang}_RESPONSE_FILE_LINK_FLAG}" STREQUAL "@")
+    foreach(rule CREATE_SHARED_MODULE CREATE_SHARED_LIBRARY LINK_EXECUTABLE)
+      # The gcc/collect2/ld toolchain does not use response files
+      # internally so we cannot pass long object lists.  Instead pass
+      # the object file list in a response file to the archiver to put
+      # them in a temporary archive.  Hand the archive to the linker.
+      string(REPLACE "<OBJECTS>" "-Wl,--whole-archive <OBJECT_DIR>/objects.a -Wl,--no-whole-archive"
+        CMAKE_${lang}_${rule} "${CMAKE_${lang}_${rule}}")
+      set(CMAKE_${lang}_${rule}
+        "<CMAKE_COMMAND> -E remove -f <OBJECT_DIR>/objects.a"
+        "<CMAKE_AR> cr <OBJECT_DIR>/objects.a <OBJECTS>"
+        "${CMAKE_${lang}_${rule}}"
+        )
+    endforeach()
+  endif()
 endmacro()

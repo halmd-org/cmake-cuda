@@ -43,14 +43,15 @@ cmCPackDebGenerator::~cmCPackDebGenerator()
 int cmCPackDebGenerator::InitializeInternal()
 {
   this->SetOptionIfNotSet("CPACK_PACKAGING_INSTALL_PREFIX", "/usr");
-
+  if (cmSystemTools::IsOff(this->GetOption("CPACK_SET_DESTDIR")))
+    {
+    this->SetOption("CPACK_SET_DESTDIR", "I_ON");
+    }
   return this->Superclass::InitializeInternal();
 }
 
 //----------------------------------------------------------------------
-int cmCPackDebGenerator::CompressFiles(const char* outFileName,
-  const char* toplevel,
-  const std::vector<std::string>& files)
+int cmCPackDebGenerator::PackageFiles()
 {
   this->ReadListFile("CPackDeb.cmake");
   const char* cmakeExecutable = this->GetOption("CMAKE_COMMAND");
@@ -87,10 +88,24 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
 
   // optional entries
   const char* debian_pkg_dep = this->GetOption("CPACK_DEBIAN_PACKAGE_DEPENDS");
-  const char* debian_pkg_rec = 
+  const char* debian_pkg_rec =
                             this->GetOption("CPACK_DEBIAN_PACKAGE_RECOMMENDS");
-  const char* debian_pkg_sug = 
+  const char* debian_pkg_sug =
                               this->GetOption("CPACK_DEBIAN_PACKAGE_SUGGESTS");
+  const char* debian_pkg_url =
+                              this->GetOption("CPACK_DEBIAN_PACKAGE_HOMEPAGE");
+  const char* debian_pkg_predep =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_PREDEPENDS");
+  const char* debian_pkg_enhances =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_ENHANCES");
+  const char* debian_pkg_breaks =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_BREAKS");
+  const char* debian_pkg_conflicts =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_CONFLICTS");
+  const char* debian_pkg_provides =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_PROVIDES");
+  const char* debian_pkg_replaces =
+                    this->GetOption("CPACK_DEBIAN_PACKAGE_REPLACES");
 
     { // the scope is needed for cmGeneratedFileStream
     cmGeneratedFileStream out(ctlfilename.c_str());
@@ -99,17 +114,45 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
     out << "Section: " << debian_pkg_section << "\n";
     out << "Priority: " << debian_pkg_priority << "\n";
     out << "Architecture: " << debian_pkg_arch << "\n";
-    if(debian_pkg_dep)
+    if(debian_pkg_dep && *debian_pkg_dep)
       {
       out << "Depends: " << debian_pkg_dep << "\n";
       }
-    if(debian_pkg_rec)
+    if(debian_pkg_rec && *debian_pkg_rec)
       {
       out << "Recommends: " << debian_pkg_rec << "\n";
       }
-    if(debian_pkg_sug)
+    if(debian_pkg_sug && *debian_pkg_sug)
       {
       out << "Suggests: " << debian_pkg_sug << "\n";
+      }
+    if(debian_pkg_url && *debian_pkg_url)
+      {
+      out << "Homepage: " << debian_pkg_url << "\n";
+      }
+    if (debian_pkg_predep && *debian_pkg_predep)
+      {
+      out << "Pre-Depends: " << debian_pkg_predep << "\n";
+      }
+    if (debian_pkg_enhances && *debian_pkg_enhances)
+      {
+      out << "Enhances: " << debian_pkg_enhances << "\n";
+      }
+    if (debian_pkg_breaks && *debian_pkg_breaks)
+      {
+      out << "Breaks: " << debian_pkg_breaks << "\n";
+      }
+    if (debian_pkg_conflicts && *debian_pkg_conflicts)
+      {
+      out << "Conflicts: " << debian_pkg_conflicts << "\n";
+      }
+    if (debian_pkg_provides && *debian_pkg_provides)
+      {
+      out << "Provides: " << debian_pkg_provides << "\n";
+      }
+    if (debian_pkg_replaces && *debian_pkg_replaces)
+      {
+      out << "Replaces: " << debian_pkg_replaces << "\n";
       }
     unsigned long totalSize = 0;
     {
@@ -121,7 +164,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
         totalSize += cmSystemTools::FileLength(fileIt->c_str());
         }
     }
-    out << "Installed-Size: " << totalSize << "\n";
+    out << "Installed-Size: " << (totalSize + 1023) / 1024 << "\n";
     out << "Maintainer: " << maintainer << "\n";
     out << "Description: " << desc << "\n";
     out << std::endl;
@@ -135,7 +178,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
   // now add all directories which have to be compressed
   // collect all top level install dirs for that
   // e.g. /opt/bin/foo, /usr/bin/bar and /usr/bin/baz would give /usr and /opt
-  int topLevelLength = strlen(toplevel);
+  size_t topLevelLength = toplevel.length();
   std::set<std::string> installDirs;
   for (std::vector<std::string>::const_iterator fileIt = files.begin(); 
        fileIt != files.end(); ++ fileIt )
@@ -154,7 +197,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
   std::string output;
   int retVal = -1;
   int res = cmSystemTools::RunSingleCommand(cmd.c_str(), &output,
-    &retVal, toplevel, this->GeneratorVerbose, 0);
+    &retVal, toplevel.c_str(), this->GeneratorVerbose, 0);
 
   if ( !res || retVal )
     {
@@ -190,7 +233,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
       //std::string output;
       //int retVal = -1;
       res = cmSystemTools::RunSingleCommand(cmd.c_str(), &output,
-        &retVal, toplevel, this->GeneratorVerbose, 0);
+        &retVal, toplevel.c_str(), this->GeneratorVerbose, 0);
       // debian md5sums entries are like this:
       // 014f3604694729f3bf19263bac599765  usr/bin/ccmake
       // thus strip the full path (with the trailing slash)
@@ -231,7 +274,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
       }
     }
   res = cmSystemTools::RunSingleCommand(cmd.c_str(), &output,
-    &retVal, toplevel, this->GeneratorVerbose, 0);
+    &retVal, toplevel.c_str(), this->GeneratorVerbose, 0);
 
   if ( !res || retVal )
     {
@@ -257,7 +300,7 @@ int cmCPackDebGenerator::CompressFiles(const char* outFileName,
   arFiles.push_back(topLevelString + "debian-binary");
   arFiles.push_back(topLevelString + "control.tar.gz");
   arFiles.push_back(topLevelString + "data.tar.gz");
-  res = ar_append(outFileName, arFiles);
+  res = ar_append(packageFileNames[0].c_str(), arFiles);
   if ( res!=0 )
     {
     std::string tmpFile = this->GetOption("CPACK_TOPLEVEL_DIRECTORY");
@@ -371,7 +414,7 @@ static const char * ar_rname(const char *path)
 typedef struct ar_hdr HDR;
 static char ar_hb[sizeof(HDR) + 1];        /* real header */
 
-static int ar_already_written;
+static size_t ar_already_written;
 
 /* copy_ar --
  *      Copy size bytes from one file to another - taking care to handle the
@@ -431,7 +474,7 @@ static int put_arobj(CF *cfp, struct stat *sb)
 
  /* If not truncating names and the name is too long or contains
   * a space, use extended format 1.   */
-  unsigned int lname = strlen(name);
+  size_t lname = strlen(name);
   uid_t uid = sb->st_uid;
   gid_t gid = sb->st_gid;
   if (uid > USHRT_MAX) {
@@ -441,7 +484,7 @@ static int put_arobj(CF *cfp, struct stat *sb)
     gid = USHRT_MAX;
     }
   if (lname > sizeof(hdr->ar_name) || strchr(name, ' '))
-    (void)sprintf(ar_hb, HDR1, AR_EFMT1, lname,
+    (void)sprintf(ar_hb, HDR1, AR_EFMT1, (int)lname,
                   (long int)sb->st_mtime, uid, gid, sb->st_mode,
                   (long long)sb->st_size + lname, ARFMAG);
     else {

@@ -576,7 +576,7 @@ unsigned int cmELFInternalImpl<Types>::GetDynamicEntryCount()
       return i;
       }
     }
-  return this->DynamicSectionEntries.size();
+  return static_cast<unsigned int>(this->DynamicSectionEntries.size());
 }
 
 //----------------------------------------------------------------------------
@@ -687,7 +687,8 @@ cmELFInternalImpl<Types>::GetDynamicSectionString(int tag)
       // The value has been read successfully.  Report it.
       se.Position = static_cast<unsigned long>(strtab.sh_offset + first);
       se.Size = last - first;
-      se.IndexInSection = static_cast<int>(di - this->DynamicSectionEntries.begin());
+      se.IndexInSection =
+        static_cast<int>(di - this->DynamicSectionEntries.begin());
       return &se;
       }
     }

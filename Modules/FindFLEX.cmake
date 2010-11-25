@@ -6,6 +6,10 @@
 #  FLEX_VERSION - the version of flex
 #  FLEX_LIBRARIES - The flex libraries
 #
+# The minimum required version of flex can be specified using the
+# standard syntax, e.g. FIND_PACKAGE(FLEX 2.5.13)
+#
+#
 # If flex is found on the system, the module provides the macro:
 #  FLEX_TARGET(Name FlexInput FlexOutput [COMPILE_FLAGS <string>])
 # which creates a custom command  to generate the <FlexOutput> file from
@@ -55,7 +59,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 FIND_PROGRAM(FLEX_EXECUTABLE flex DOC "path to the flex executable")
@@ -74,7 +78,11 @@ IF(FLEX_EXECUTABLE)
     RESULT_VARIABLE FLEX_version_result
     OUTPUT_STRIP_TRAILING_WHITESPACE)
   IF(NOT ${FLEX_version_result} EQUAL 0)
-    MESSAGE(SEND_ERROR "Command \"${FLEX_EXECUTABLE} --version\" failed with output:\n${FLEX_version_error}")
+    IF(FLEX_FIND_REQUIRED)
+      MESSAGE(SEND_ERROR "Command \"${FLEX_EXECUTABLE} --version\" failed with output:\n${FLEX_version_output}\n${FLEX_version_error}")
+    ELSE()
+      MESSAGE("Command \"${FLEX_EXECUTABLE} --version\" failed with output:\n${FLEX_version_output}\n${FLEX_version_error}\nFLEX_VERSION will not be available")
+    ENDIF()
   ELSE()
     STRING(REGEX REPLACE "^flex (.*)$" "\\1"
       FLEX_VERSION "${FLEX_version_output}")
@@ -135,7 +143,8 @@ IF(FLEX_EXECUTABLE)
 
 ENDIF(FLEX_EXECUTABLE)
 
-INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(FLEX DEFAULT_MSG FLEX_EXECUTABLE)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(FLEX REQUIRED_VARS FLEX_EXECUTABLE
+                                       VERSION_VAR FLEX_VERSION)
 
 # FindFLEX.cmake ends here

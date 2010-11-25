@@ -129,6 +129,9 @@ IF(BUILD_TESTING)
   ADD_TEST_MACRO(MathTest MathTest)
   ADD_TEST_MACRO(Simple Simple)
   ADD_TEST_MACRO(PreOrder PreOrder)
+  ADD_TEST_MACRO(MissingSourceFile MissingSourceFile)
+  SET_TESTS_PROPERTIES(MissingSourceFile PROPERTIES
+    PASS_REGULAR_EXPRESSION "CMake Error at CMakeLists.txt:3 \\(add_executable\\):[ \r\n]*Cannot find source file \"MissingSourceFile.c\"")
   ADD_TEST_MACRO(COnly COnly)
   ADD_TEST_MACRO(CxxOnly CxxOnly)
   ADD_TEST_MACRO(IPO COnly/COnly)
@@ -150,6 +153,9 @@ IF(BUILD_TESTING)
   ADD_TEST_MACRO(ExportImport ExportImport)
   ADD_TEST_MACRO(Unset Unset)
   ADD_TEST_MACRO(PolicyScope PolicyScope)
+  ADD_TEST_MACRO(EmptyLibrary EmptyLibrary)
+  SET_TESTS_PROPERTIES(EmptyLibrary PROPERTIES
+    PASS_REGULAR_EXPRESSION "CMake Error: CMake can not determine linker language for target:test")
   ADD_TEST_MACRO(CrossCompile CrossCompile)
   SET_TESTS_PROPERTIES(CrossCompile PROPERTIES
     PASS_REGULAR_EXPRESSION "TRY_RUN.. invoked in cross-compiling mode")
@@ -404,7 +410,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
    #  --test-command t4
    #--test-command "${CMAKE_COMMAND}"
    #"-DCONFIGURATION=\${CTEST_CONFIGURATION_TYPE}"
-   #-P "${CMAKE_BINARY_DIR}/Tests/SimpleExclude/run.cmake"
+   #-P "${CMake_BINARY_DIR}/Tests/SimpleExclude/run.cmake"
    #)
 
 #  ADD_TEST(SameName  ${CMAKE_CTEST_COMMAND}
@@ -1051,7 +1057,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       --build-target install
 #     --build-target package
       --build-options "-DCMAKE_INSTALL_PREFIX:PATH=${BundleTestInstallDir}"
-       "-DCMake_SOURCE_DIR:PATH=${CMAKE_SOURCE_DIR}"
+       "-DCMake_SOURCE_DIR:PATH=${CMake_SOURCE_DIR}"
       --test-command
       ${BundleTestInstallDir}/Applications/SecondBundleExe.app/Contents/MacOS/SecondBundleExe)
     LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleTest")
@@ -1315,6 +1321,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --output-log "${CMake_BINARY_DIR}/Tests/CTestTestParallel/testOutput.log"
     )
 
+  ADD_TEST(CTestTestPrintLabels ${CMAKE_CTEST_COMMAND} --print-labels)
+  SET_TESTS_PROPERTIES(CTestTestPrintLabels PROPERTIES LABELS "Label1;Label2")
+  SET_TESTS_PROPERTIES(CTestTestPrintLabels PROPERTIES PASS_REGULAR_EXPRESSION
+    "All Labels:.*  Label1.*  Label2")
+
   CONFIGURE_FILE(
     "${CMake_SOURCE_DIR}/Tests/CTestTestResourceLock/test.cmake.in"
     "${CMake_BINARY_DIR}/Tests/CTestTestResourceLock/test.cmake"
@@ -1373,7 +1384,29 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     )
   SET_TESTS_PROPERTIES(CTestTestTimeout PROPERTIES
     PASS_REGULAR_EXPRESSION "TestTimeout *\\.+ *\\*\\*\\*Timeout.*CheckChild *\\.+ *Passed")
-  
+
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestDepends/test.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestDepends/test.cmake"
+    @ONLY ESCAPE_QUOTES)
+  ADD_TEST(CTestTestDepends ${CMAKE_CTEST_COMMAND}
+    -C "\${CTestTest_CONFIG}"
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestDepends/test.cmake" -V
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestDepends/testOutput.log"
+    )
+
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestCycle/test.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestCycle/test.cmake"
+    @ONLY ESCAPE_QUOTES)
+  ADD_TEST(CTestTestCycle ${CMAKE_CTEST_COMMAND}
+    -C "\${CTestTest_CONFIG}"
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestCycle/test.cmake" -V
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestCycle/testOutput.log"
+    )
+  SET_TESTS_PROPERTIES(CTestTestCycle PROPERTIES
+    PASS_REGULAR_EXPRESSION "a cycle exists in the test dependency graph")
+
   CONFIGURE_FILE(
     "${CMake_SOURCE_DIR}/Tests/CTestTestRunScript/test.cmake.in"
     "${CMake_BINARY_DIR}/Tests/CTestTestRunScript/test.cmake"
@@ -1410,9 +1443,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   set(regex "${regex}|Error message was: ")
   set(regex "${regex}([Cc]ould *n.t resolve host")
   set(regex "${regex}|[Cc]ould *n.t connect to host")
+  set(regex "${regex}|Empty reply from server")
   set(regex "${regex}|The requested URL returned error")
   set(regex "${regex}|libcurl was built with SSL disabled. https: not supported)")
   set(regex "${regex}|Submission method .xmlrpc. not compiled into CTest")
+  set(regex "${regex}|Submission problem")
   set(regex "${regex}|Submission successful)")
 
   set(ctest_coverage_labels_args "")
@@ -1470,6 +1505,17 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       --output-log "${CMake_BINARY_DIR}/Tests/CTestTest2/testOutput.log"
       )
 
+    CONFIGURE_FILE("${CMake_SOURCE_DIR}/Tests/CTestTestChecksum/test.cmake.in"
+      "${CMake_BINARY_DIR}/Tests/CTestTestChecksum/test.cmake" @ONLY
+      ESCAPE_QUOTES)
+    ADD_TEST(CTestTestChecksum ${CMAKE_CTEST_COMMAND}
+      -S "${CMake_BINARY_DIR}/Tests/CTestTestChecksum/test.cmake" -V
+      --output-log
+      "${CMake_BINARY_DIR}/Tests/CTestTestChecksum/testOutput.log"
+      )
+    SET_TESTS_PROPERTIES(CTestTestChecksum PROPERTIES PASS_REGULAR_EXPRESSION
+      "Submission failed: Checksum failed for file")
+
     # these tests take a long time, make sure they have it
     # if timeouts have not already been set
     GET_TEST_PROPERTY(CTestTest TIMEOUT PREVIOUS_TIMEOUT)
@@ -1484,36 +1530,6 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
         PROPERTIES TIMEOUT ${CMAKE_LONG_TEST_TIMEOUT})
     ENDIF ("${PREVIOUS_TIMEOUT}" MATCHES NOTFOUND)
   ENDIF (CTEST_TEST_CTEST AND CMAKE_RUN_LONG_TESTS AND CMAKE_TESTS_CDASH_SERVER)
-
-  IF(NOT DEFINED CTEST_RUN_CTestSubmitLargeOutput)
-    SET(CTEST_RUN_CTestSubmitLargeOutput OFF)
-
-    IF (CMAKE_TESTS_CDASH_SERVER AND "${server}" STREQUAL "localhost")
-      SET(CTEST_RUN_CTestSubmitLargeOutput ON)
-    ENDIF (CMAKE_TESTS_CDASH_SERVER AND "${server}" STREQUAL "localhost")
-  ENDIF(NOT DEFINED CTEST_RUN_CTestSubmitLargeOutput)
-
-  IF(CTEST_RUN_CTestSubmitLargeOutput)
-    CONFIGURE_FILE(
-      "${CMake_SOURCE_DIR}/Tests/CTestSubmitLargeOutput/test.cmake.in"
-      "${CMake_BINARY_DIR}/Tests/CTestSubmitLargeOutput/test.cmake"
-      @ONLY ESCAPE_QUOTES
-      )
-    ADD_TEST(CTestSubmitLargeOutput ${CMAKE_CTEST_COMMAND}
-      -S "${CMake_BINARY_DIR}/Tests/CTestSubmitLargeOutput/test.cmake" -V
-      --output-log "${CMake_BINARY_DIR}/Tests/CTestSubmitLargeOutput/testOutput.log"
-      )
-
-    # This test only passes if it fails to submit properly...
-    #
-    SET_TESTS_PROPERTIES(CTestSubmitLargeOutput PROPERTIES
-      PASS_REGULAR_EXPRESSION "Errors occurred during submission")
-
-    # Give this test plenty of time to run on slower machines:
-    #
-    SET_TESTS_PROPERTIES(CTestSubmitLargeOutput PROPERTIES
-      TIMEOUT ${CMAKE_LONG_TEST_TIMEOUT})
-  ENDIF(CTEST_RUN_CTestSubmitLargeOutput)
 
   IF (CMAKE_RUN_LONG_TESTS AND TEST_KDE4_STABLE_BRANCH)
     IF(UNIX)
@@ -1555,10 +1571,10 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   IF("${CMAKE_TEST_GENERATOR}" MATCHES Xcode)
     SET(CMAKE_SKIP_BOOTSTRAP_TEST 1)
   ENDIF("${CMAKE_TEST_GENERATOR}" MATCHES Xcode)
-  IF(EXISTS "${CMAKE_BINARY_DIR}/CMakeLists.txt")
+  IF(EXISTS "${CMake_BINARY_DIR}/CMakeLists.txt")
     # If there is CMakeLists.txt in the binary tree, assume in-source build
     SET(CMAKE_SKIP_BOOTSTRAP_TEST 1)
-  ENDIF(EXISTS "${CMAKE_BINARY_DIR}/CMakeLists.txt")
+  ENDIF(EXISTS "${CMake_BINARY_DIR}/CMakeLists.txt")
   SET(bootstrap "")
   IF(CMAKE_RUN_LONG_TESTS AND NOT CMAKE_SKIP_BOOTSTRAP_TEST)
     IF(UNIX)
@@ -1619,8 +1635,16 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     ENDIF()
   ENDIF()
 
-  IF(NOT CMAKE_TEST_GENERATOR MATCHES "Xcode")
-    INCLUDE(FindJava)
+  if(NOT DEFINED CTEST_RUN_Java)
+    if(APPLE)
+      set(CTEST_RUN_Java OFF)
+    else()
+      set(CTEST_RUN_Java ON)
+    endif()
+  endif()
+
+  IF(CTEST_RUN_Java)
+    find_package(Java QUIET)
     IF(JAVA_COMPILE AND JAVA_RUNTIME AND JAVA_ARCHIVE AND NOT MINGW)
       GET_FILENAME_COMPONENT(JNIPATH ${JAVA_COMPILE} PATH)
       FIND_FILE(JNI_H jni.h
@@ -1643,7 +1667,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
         ENDIF("${JNI_FILE}" MATCHES "JDK1_2")
       ENDIF(JNI_H)
     ENDIF(JAVA_COMPILE AND JAVA_RUNTIME AND JAVA_ARCHIVE AND NOT MINGW)
-  ENDIF(NOT CMAKE_TEST_GENERATOR MATCHES "Xcode")
+  ENDIF(CTEST_RUN_Java)
 
   # add some cross compiler tests, for now only with makefile based generators
   IF(CMAKE_TEST_GENERATOR MATCHES "Makefiles" OR CMAKE_TEST_GENERATOR MATCHES "KDevelop")
@@ -1730,14 +1754,14 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
 
   # If this is not an in-source build, provide a target to wipe out
   # all the test build directories.
-  IF(NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeLists.txt")
+  IF(NOT EXISTS "${CMake_BINARY_DIR}/CMakeLists.txt")
     CONFIGURE_FILE(${CMake_SOURCE_DIR}/Tests/test_clean.cmake.in
                    ${CMake_BINARY_DIR}/Tests/test_clean.cmake @ONLY)
     ADD_CUSTOM_TARGET(test_clean
       COMMAND ${CMAKE_COMMAND} -P ${CMake_BINARY_DIR}/Tests/test_clean.cmake
       COMMENT "Removing test build directories."
       )
-  ENDIF(NOT EXISTS "${CMAKE_BINARY_DIR}/CMakeLists.txt")
+  ENDIF(NOT EXISTS "${CMake_BINARY_DIR}/CMakeLists.txt")
 
   ADD_TEST(CMakeWizardTest ${CMAKE_CMAKE_COMMAND}
     -D build_dir:STRING=${CMAKE_CURRENT_BINARY_DIR}/CMakeWizardTest

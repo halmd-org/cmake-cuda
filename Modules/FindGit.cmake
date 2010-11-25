@@ -17,7 +17,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # Look for 'git' or 'eg' (easy git)
@@ -42,5 +42,5 @@ mark_as_advanced(GIT_EXECUTABLE)
 # Handle the QUIETLY and REQUIRED arguments and set GIT_FOUND to TRUE if
 # all listed variables are TRUE
 
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 find_package_handle_standard_args(Git DEFAULT_MSG GIT_EXECUTABLE)

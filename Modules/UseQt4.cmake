@@ -13,7 +13,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 ADD_DEFINITIONS(${QT_DEFINITIONS})
@@ -27,9 +27,9 @@ INCLUDE_DIRECTORIES(${QT_INCLUDE_DIR})
 SET(QT_LIBRARIES "")
 
 IF (QT_USE_QTMAIN)
-  IF (WIN32)
+  IF (Q_WS_WIN)
     SET(QT_LIBRARIES ${QT_LIBRARIES} ${QT_QTMAIN_LIBRARY})
-  ENDIF (WIN32)
+  ENDIF (Q_WS_WIN)
 ENDIF (QT_USE_QTMAIN)
 
 IF(QT_DONT_USE_QTGUI)

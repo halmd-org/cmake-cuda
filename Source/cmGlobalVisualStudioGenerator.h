@@ -61,7 +61,6 @@ public:
   
   // return true if target is fortran only
   bool TargetIsFortranOnly(cmTarget& t);
-  const char* GetUtilityForTarget(cmTarget& target, const char*);
 
   /** Get the top-level registry key for this VS version.  */
   std::string GetRegistryBase();
@@ -69,16 +68,6 @@ public:
   /** Return true if the generated build tree may contain multiple builds.
       i.e. "Can I build Debug and Release in the same tree?" */
   virtual bool IsMultiConfig() { return true; }
-
-protected:
-  void FixUtilityDepends();
-
-  // Does this VS version link targets to each other if there are
-  // dependencies in the SLN file?  This was done for VS versions
-  // below 8.
-  virtual bool VSLinksDependencies() const { return true; }
-
-  virtual const char* GetIDEVersion() = 0;
 
   struct TargetCompare
   {
@@ -90,14 +79,26 @@ protected:
     OrderedTargetDependSet(cmGlobalGenerator::TargetDependSet const&);
   };
 
-  virtual void GetTargetSets(TargetDependSet& projectTargets,
-                             TargetDependSet& originalTargets,
-                             cmLocalGenerator* root, GeneratorVector const&);
+protected:
+  // Does this VS version link targets to each other if there are
+  // dependencies in the SLN file?  This was done for VS versions
+  // below 8.
+  virtual bool VSLinksDependencies() const { return true; }
+
+  virtual const char* GetIDEVersion() = 0;
+
+  virtual bool ComputeTargetDepends();
+  class VSDependSet: public std::set<cmStdString> {};
+  class VSDependMap: public std::map<cmTarget*, VSDependSet> {};
+  VSDependMap VSTargetDepends;
+  void ComputeVSTargetDepends(cmTarget&);
 
   bool CheckTargetLinks(cmTarget& target, const char* name);
-private:
-  void FixUtilityDependsForTarget(cmTarget& target);
-  void CreateUtilityDependTarget(cmTarget& target);
+  std::string GetUtilityForTarget(cmTarget& target, const char*);
+  virtual std::string WriteUtilityDepend(cmTarget*) = 0;
+  std::string GetUtilityDepend(cmTarget* target);
+  typedef std::map<cmTarget*, cmStdString> UtilityDependsMap;
+  UtilityDependsMap UtilityDepends;
 };
 
 #endif

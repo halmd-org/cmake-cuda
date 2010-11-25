@@ -4,9 +4,6 @@
 #
 # ---- Variables and Macros
 #  SQUISH_FOUND                    If false, don't try to use Squish
-#  SQUISH_VERSION_MAJOR            The major version of Squish found
-#  SQUISH_VERSION_MINOR            The minor version of Squish found
-#  SQUISH_VERSION_PATCH            The patch version of Squish found
 #
 #  SQUISH_INSTALL_DIR              The Squish installation directory (containing bin, lib, etc)
 #  SQUISH_SERVER_EXECUTABLE        The squishserver executable
@@ -36,7 +33,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 SET(SQUISH_INSTALL_DIR_STRING "Directory containing the bin, doc, and lib directories for Squish; this should be the root of the installation directory.")

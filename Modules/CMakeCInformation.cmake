@@ -9,7 +9,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # This file sets the basic flags for the C language in CMake.
@@ -25,6 +25,8 @@ IF(UNIX)
 ELSE(UNIX)
   SET(CMAKE_C_OUTPUT_EXTENSION .obj)
 ENDIF(UNIX)
+
+SET(_INCLUDED_FILE 0)
 
 # Load compiler-specific information.
 IF(CMAKE_C_COMPILER_ID)

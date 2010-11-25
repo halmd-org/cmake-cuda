@@ -3,7 +3,7 @@
 # match any additional copyright holder notices.
 set(notice_regex "
 #=============================================================================
-# Copyright (20[0-9][0-9]-)?20[0-9][0-9] Kitware[^\n]+(
+# Copyright (20[0-9][0-9]-)?20[0-9][0-9] [^\n]+(
 # Copyright (20[0-9][0-9]-)?20[0-9][0-9] [^\n]+)*
 #
 # Distributed under the OSI-approved BSD License \\(the \"License\"\\);
@@ -13,7 +13,7 @@ set(notice_regex "
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE\\.
 # See the License for more information\\.
 #=============================================================================
-# \\(To distributed this file outside of CMake, substitute the full
+# \\(To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.\\)
 ")
 string(REPLACE "\n" "\r?\n" notice_regex "${notice_regex}")

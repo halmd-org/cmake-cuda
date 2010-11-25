@@ -83,7 +83,8 @@ void cmCTestRunTest::CompressOutput()
     reinterpret_cast<unsigned char*>(
     const_cast<char*>(this->ProcessOutput.c_str()));
   //zlib makes the guarantee that this is the maximum output size
-  int outSize = static_cast<int>(this->ProcessOutput.size() * 1.001 + 13);
+  int outSize = static_cast<int>(
+    static_cast<double>(this->ProcessOutput.size()) * 1.001 + 13.0);
   unsigned char* out = new unsigned char[outSize];
 
   strm.zalloc = Z_NULL;
@@ -263,7 +264,17 @@ bool cmCTestRunTest::EndTest(size_t completed, size_t total, bool started)
     {
     *this->TestHandler->LogFile << "Test time = " << buf << std::endl;
     }
+
+  // Set the working directory to the tests directory
+  std::string oldpath = cmSystemTools::GetCurrentWorkingDirectory();
+  cmSystemTools::ChangeDirectory(this->TestProperties->Directory.c_str());
+
   this->DartProcessing();
+
+  // restore working directory
+  cmSystemTools::ChangeDirectory(oldpath.c_str());
+
+
   // if this is doing MemCheck then all the output needs to be put into
   // Output since that is what is parsed by cmCTestMemCheckHandler
   if(!this->TestHandler->MemCheck && started)
@@ -342,13 +353,14 @@ bool cmCTestRunTest::EndTest(size_t completed, size_t total, bool started)
 //----------------------------------------------------------------------
 void cmCTestRunTest::ComputeWeightedCost()
 {
-  int prev = this->TestProperties->PreviousRuns;
-  float avgcost = this->TestProperties->Cost;
+  double prev = static_cast<double>(this->TestProperties->PreviousRuns);
+  double avgcost = static_cast<double>(this->TestProperties->Cost);
   double current = this->TestResult.ExecutionTime;
 
   if(this->TestResult.Status == cmCTestTestHandler::COMPLETED)
     {
-    this->TestProperties->Cost = ((prev * avgcost) + current) / (prev + 1);
+    this->TestProperties->Cost =
+      static_cast<float>(((prev * avgcost) + current) / (prev + 1.0));
     this->TestProperties->PreviousRuns++;
     }
 }
@@ -469,7 +481,7 @@ void cmCTestRunTest::ComputeArguments()
       this->TestProperties->Args[1].c_str());
     ++j; //skip the executable (it will be actualCommand)
     }
-  this->TestCommand
+  std::string testCommand
     = cmSystemTools::ConvertToOutputPath(this->ActualCommand.c_str());
 
   //Prepends memcheck args to our command string
@@ -477,22 +489,24 @@ void cmCTestRunTest::ComputeArguments()
   for(std::vector<std::string>::iterator i = this->Arguments.begin();
       i != this->Arguments.end(); ++i)
     {
-    this->TestCommand += " ";
-    this->TestCommand += cmSystemTools::EscapeSpaces(i->c_str());
+    testCommand += " \"";
+    testCommand += *i;
+    testCommand += "\"";
     }
 
   for(;j != this->TestProperties->Args.end(); ++j)
     {
-    this->TestCommand += " ";
-    this->TestCommand += cmSystemTools::EscapeSpaces(j->c_str());
+    testCommand += " \"";
+    testCommand += *j;
+    testCommand += "\"";
     this->Arguments.push_back(*j);
     }
-  this->TestResult.FullCommandLine = this->TestCommand;
+  this->TestResult.FullCommandLine = testCommand;
 
   cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, std::endl
              << this->Index << ": "
              << (this->TestHandler->MemCheck?"MemCheck":"Test") 
-             << " command: " << this->TestCommand
+             << " command: " << testCommand
              << std::endl);
 }
 
@@ -569,7 +583,7 @@ double cmCTestRunTest::ResolveTimeout()
     {
     stop_time += 24*60*60;
     }
-  int stop_timeout = (stop_time - current_time) % (24*60*60);
+  int stop_timeout = static_cast<int>(stop_time - current_time) % (24*60*60);
   this->CTest->LastStopTimeout = stop_timeout;
 
   if(stop_timeout <= 0 || stop_timeout > this->CTest->LastStopTimeout)

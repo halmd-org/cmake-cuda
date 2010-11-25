@@ -304,6 +304,7 @@ cmCTest::cmCTest()
   this->ShowOnly               = false;
   this->RunConfigurationScript = false;
   this->UseHTTP10              = false;
+  this->PrintLabels            = false;
   this->CompressTestOutput     = true;
   this->ComputedCompressOutput = false;
   this->TestModel              = cmCTest::EXPERIMENTAL;
@@ -410,10 +411,14 @@ std::string cmCTest::GetCDashVersion()
   //First query the server.  If that fails, fall back to the local setting
   std::string response;
   std::string url = "http://";
-  url += this->GetCTestConfiguration("DropSite") + "/CDash/api/getversion.php";
-  
+  url += this->GetCTestConfiguration("DropSite");
+
+  std::string cdashUri = this->GetCTestConfiguration("DropLocation");
+  cdashUri = cdashUri.substr(0, cdashUri.find("/submit.php"));
+
+  url += cdashUri + "/api/getversion.php";
   int res = cmCTest::HTTPRequest(url, cmCTest::HTTP_GET, response, "", "", 3);
-  
+
   return res ? this->GetCTestConfiguration("CDashVersion") : response;
 #else
   return this->GetCTestConfiguration("CDashVersion");
@@ -484,10 +489,6 @@ int cmCTest::Initialize(const char* binary_dir, cmCTestStartCommand* command)
       << std::endl);
     return 0;
     }
-
-  // call this so that the information is cached up front
-  // and not the first time EndTest is called.
-  this->ShouldCompressTestOutput();
 
   if ( this->ProduceXML )
     {
@@ -1169,7 +1170,7 @@ int cmCTest::RunMakeCommand(const char* command, std::string* output,
         if ( tick % tick_line_len == 0 && tick > 0 )
           {
           cmCTestLog(this, HANDLER_OUTPUT, "  Size: "
-            << int((output->size() / 1024.0) + 1) << "K" << std::endl
+            << int((double(output->size()) / 1024.0) + 1) << "K" << std::endl
             << "    " << std::flush);
           }
         }
@@ -1181,7 +1182,7 @@ int cmCTest::RunMakeCommand(const char* command, std::string* output,
       }
     }
   cmCTestLog(this, OUTPUT, " Size of output: "
-    << int(output->size() / 1024.0) << "K" << std::endl);
+    << int(double(output->size()) / 1024.0) << "K" << std::endl);
 
   cmsysProcess_WaitForExit(cp, 0);
 
@@ -1873,6 +1874,11 @@ void cmCTest::HandleCommandLineArguments(size_t &i,
     this->CompressTestOutput = false;
     }
 
+  if(this->CheckArgument(arg, "--print-labels"))
+    {
+    this->PrintLabels = true;
+    }
+
   if(this->CheckArgument(arg, "--http1.0"))
     {
     this->UseHTTP10 = true;
@@ -2121,7 +2127,7 @@ int cmCTest::Run(std::vector<std::string> &args, std::string* output)
       i++;
       std::string targ = args[i];
       // AddTestsForDashboard parses the dashborad type and converts it
-      // into the seperate stages
+      // into the separate stages
       if (!this->AddTestsForDashboardType(targ))
         {
         performSomeTest = false;

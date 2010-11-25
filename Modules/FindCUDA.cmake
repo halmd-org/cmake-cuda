@@ -165,7 +165,7 @@
 #     and will link in the resulting object file automatically.
 #
 #     This script will also generate a separate cmake script that is used at
-#     build time to invoke nvcc.  This is for serveral reasons.
+#     build time to invoke nvcc.  This is for several reasons.
 #
 #       1. nvcc can return negative numbers as return values which confuses
 #       Visual Studio into thinking that the command succeeded.  The script now
@@ -497,29 +497,6 @@ endif()
 # Always set this convenience variable
 set(CUDA_VERSION_STRING "${CUDA_VERSION}")
 
-# Here we need to determine if the version we found is acceptable.  We will
-# assume that is unless CUDA_FIND_VERSION_EXACT or CUDA_FIND_VERSION is
-# specified.  The presence of either of these options checks the version
-# string and signals if the version is acceptable or not.
-set(_cuda_version_acceptable TRUE)
-#
-if(CUDA_FIND_VERSION_EXACT AND NOT CUDA_VERSION VERSION_EQUAL CUDA_FIND_VERSION)
-  set(_cuda_version_acceptable FALSE)
-endif()
-#
-if(CUDA_FIND_VERSION       AND     CUDA_VERSION VERSION_LESS  CUDA_FIND_VERSION)
-  set(_cuda_version_acceptable FALSE)
-endif()
-#
-if(NOT _cuda_version_acceptable)
-  set(_cuda_error_message "Requested CUDA version ${CUDA_FIND_VERSION}, but found unacceptable version ${CUDA_VERSION}")
-  if(CUDA_FIND_REQUIRED)
-    message("${_cuda_error_message}")
-  elseif(NOT CUDA_FIND_QUIETLY)
-    message("${_cuda_error_message}")
-  endif()
-endif()
-
 # CUDA_TOOLKIT_INCLUDE
 find_path(CUDA_TOOLKIT_INCLUDE
   device_functions.h # Header included in toolkit
@@ -537,11 +514,19 @@ set (CUDA_INCLUDE_DIRS ${CUDA_TOOLKIT_INCLUDE})
 
 macro(FIND_LIBRARY_LOCAL_FIRST _var _names _doc)
   if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(_cuda_64bit_lib_dir "${CUDA_TOOLKIT_ROOT_DIR}/lib64")
+    # CUDA 3.2+ on Windows moved the library directoryies, so we need the new
+    # and old paths.
+    set(_cuda_64bit_lib_dir
+      "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64"
+      "${CUDA_TOOLKIT_ROOT_DIR}/lib64"
+      )
   endif()
+  # CUDA 3.2+ on Windows moved the library directories, so we need to new
+  # (lib/Win32) and the old path (lib).
   find_library(${_var}
     NAMES ${_names}
     PATHS ${_cuda_64bit_lib_dir}
+          "${CUDA_TOOLKIT_ROOT_DIR}/lib/Win32"
           "${CUDA_TOOLKIT_ROOT_DIR}/lib"
     ENV CUDA_LIB_PATH
     DOC ${_doc}
@@ -601,9 +586,20 @@ macro(FIND_CUDA_HELPER_LIBS _name)
   mark_as_advanced(CUDA_${_name}_LIBRARY)
 endmacro(FIND_CUDA_HELPER_LIBS)
 
+#######################
+# Disable emulation for v3.1 onward
+if(CUDA_VERSION VERSION_GREATER "3.0")
+  if(CUDA_BUILD_EMULATION)
+    message(FATAL_ERROR "CUDA_BUILD_EMULATION is not supported in version 3.1 and onwards.  You must disable it to proceed.  You have version ${CUDA_VERSION}.")
+  endif()
+endif()
+
 # Search for cufft and cublas libraries.
-find_cuda_helper_libs(cufftemu)
-find_cuda_helper_libs(cublasemu)
+if(CUDA_VERSION VERSION_LESS "3.1")
+  # Emulation libraries aren't available in version 3.1 onward.
+  find_cuda_helper_libs(cufftemu)
+  find_cuda_helper_libs(cublasemu)
+endif()
 find_cuda_helper_libs(cufft)
 find_cuda_helper_libs(cublas)
 
@@ -616,8 +612,10 @@ else()
 endif()
 
 ########################
-# Look for the SDK stuff
+# Look for the SDK stuff.  As of CUDA 3.0 NVSDKCUDA_ROOT has been replaced with
+# NVSDKCOMPUTE_ROOT with the old CUDA C contents moved into the C subdirectory
 find_path(CUDA_SDK_ROOT_DIR common/inc/cutil.h
+  "$ENV{NVSDKCOMPUTE_ROOT}/C"
   "$ENV{NVSDKCUDA_ROOT}"
   "[HKEY_LOCAL_MACHINE\\SOFTWARE\\NVIDIA Corporation\\Installed Products\\NVIDIA SDK 10\\Compute;InstallDir]"
   "/Developer/GPU\ Computing/C"
@@ -686,13 +684,15 @@ set(CUDA_TOOLKIT_ROOT_DIR_INTERNAL "${CUDA_TOOLKIT_ROOT_DIR}" CACHE INTERNAL
 set(CUDA_SDK_ROOT_DIR_INTERNAL "${CUDA_SDK_ROOT_DIR}" CACHE INTERNAL
   "This is the value of the last time CUDA_SDK_ROOT_DIR was set successfully." FORCE)
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(CUDA DEFAULT_MSG
-  CUDA_TOOLKIT_ROOT_DIR
-  CUDA_NVCC_EXECUTABLE
-  CUDA_INCLUDE_DIRS
-  CUDA_CUDART_LIBRARY
-  _cuda_version_acceptable
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
+find_package_handle_standard_args(CUDA
+  REQUIRED_VARS
+    CUDA_TOOLKIT_ROOT_DIR
+    CUDA_NVCC_EXECUTABLE
+    CUDA_INCLUDE_DIRS
+    CUDA_CUDART_LIBRARY
+  VERSION_VAR
+    CUDA_VERSION
   )
 
 
@@ -811,7 +811,7 @@ endfunction()
 ##############################################################################
 # This helper macro populates the following variables and setups up custom
 # commands and targets to invoke the nvcc compiler to generate C or PTX source
-# dependant upon the format parameter.  The compiler is invoked once with -M
+# dependent upon the format parameter.  The compiler is invoked once with -M
 # to generate a dependency file and a second time with -cuda or -ptx to generate
 # a .cpp or .ptx file.
 # INPUT:
@@ -943,8 +943,8 @@ macro(CUDA_WRAP_SRCS cuda_target format generated_files)
     # we convert the strings to lists (like we want).
 
     if(CUDA_PROPAGATE_HOST_FLAGS)
-      # nvcc chokes on -g3, so replace it with -g
-      if(CMAKE_COMPILER_IS_GNUCC)
+      # nvcc chokes on -g3 in versions previous to 3.0, so replace it with -g
+      if(CMAKE_COMPILER_IS_GNUCC AND CUDA_VERSION VERSION_LESS "3.0")
         string(REPLACE "-g3" "-g" _cuda_C_FLAGS "${CMAKE_${CUDA_C_OR_CXX}_FLAGS_${config_upper}}")
       else()
         set(_cuda_C_FLAGS "${CMAKE_${CUDA_C_OR_CXX}_FLAGS_${config_upper}}")
