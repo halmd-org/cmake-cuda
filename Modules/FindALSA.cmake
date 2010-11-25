@@ -21,7 +21,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 find_path(ALSA_INCLUDE_DIR NAMES asoundlib.h
@@ -35,7 +35,7 @@ find_library(ALSA_LIBRARY NAMES asound
 
 # handle the QUIETLY and REQUIRED arguments and set ALSA_FOUND to TRUE if 
 # all listed variables are TRUE
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(ALSA DEFAULT_MSG ALSA_LIBRARY ALSA_INCLUDE_DIR)
 
 if(ALSA_FOUND)

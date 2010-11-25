@@ -39,10 +39,19 @@
 #   #--Install step---------------
 #    [INSTALL_DIR dir]           # Installation prefix
 #    [INSTALL_COMMAND cmd...]    # Command to drive install after build
-#   #--Test step---------------
+#   #--Test step------------------
 #    [TEST_BEFORE_INSTALL 1]     # Add test step executed before install step
 #    [TEST_AFTER_INSTALL 1]      # Add test step executed after install step
 #    [TEST_COMMAND cmd...]       # Command to drive test
+#   #--Output logging-------------
+#    [LOG_DOWNLOAD 1]            # Wrap download in script to log output
+#    [LOG_UPDATE 1]              # Wrap update in script to log output
+#    [LOG_CONFIGURE 1]           # Wrap configure in script to log output
+#    [LOG_BUILD 1]               # Wrap build in script to log output
+#    [LOG_TEST 1]                # Wrap test in script to log output
+#    [LOG_INSTALL 1]             # Wrap install in script to log output
+#   #--Custom targets-------------
+#    [STEP_TARGETS st1 st2 ...]  # Generate custom targets for these steps
 #    )
 # The *_DIR options specify directories for the project, with default
 # directories computed as follows.
@@ -86,6 +95,7 @@
 #    [DEPENDS files...]      # Files on which this step depends
 #    [ALWAYS 1]              # No stamp file, step always runs
 #    [WORKING_DIRECTORY dir] # Working directory for command
+#    [LOG 1]                 # Wrap step in script to log output
 #    )
 # The command line, comment, and working directory of every standard
 # and custom step is processed to replace tokens
@@ -101,6 +111,35 @@
 # It stores property values in variables of the same name.
 # Property names correspond to the keyword argument names of
 # 'ExternalProject_Add'.
+#
+# The 'ExternalProject_Add_StepTargets' function generates custom targets for
+# the steps listed:
+#  ExternalProject_Add_StepTargets(<name> [step1 [step2 [...]]])
+#
+# If STEP_TARGETS is set then ExternalProject_Add_StepTargets is automatically
+# called at the end of matching calls to ExternalProject_Add_Step. Pass
+# STEP_TARGETS explicitly to individual ExternalProject_Add calls, or
+# implicitly to all ExternalProject_Add calls by setting the directory property
+# EP_STEP_TARGETS.
+#
+# If STEP_TARGETS is not set, clients may still manually call
+# ExternalProject_Add_StepTargets after calling ExternalProject_Add or
+# ExternalProject_Add_Step.
+#
+# This functionality is provided to make it easy to drive the steps
+# independently of each other by specifying targets on build command lines.
+# For example, you may be submitting to a sub-project based dashboard, where
+# you want to drive the configure portion of the build, then submit to the
+# dashboard, followed by the build portion, followed by tests. If you invoke
+# a custom target that depends on a step halfway through the step dependency
+# chain, then all the previous steps will also run to ensure everything is
+# up to date.
+#
+# For example, to drive configure, build and test steps independently for each
+# ExternalProject_Add call in your project, write the following line prior to
+# any ExternalProject_Add calls in your CMakeLists file:
+#
+#   set_property(DIRECTORY PROPERTY EP_STEP_TARGETS configure build test)
 
 #=============================================================================
 # Copyright 2008-2009 Kitware, Inc.
@@ -112,11 +151,13 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # Pre-compute a regex to match documented keywords for each command.
-file(STRINGS "${CMAKE_CURRENT_LIST_FILE}" lines LIMIT_COUNT 103
+math(EXPR _ep_documentation_line_count "${CMAKE_CURRENT_LIST_LINE} - 16")
+file(STRINGS "${CMAKE_CURRENT_LIST_FILE}" lines
+     LIMIT_COUNT ${_ep_documentation_line_count}
      REGEX "^#  (  \\[[A-Z0-9_]+ [^]]*\\] +#.*$|[A-Za-z0-9_]+\\()")
 foreach(line IN LISTS lines)
   if("${line}" MATCHES "^#  [A-Za-z0-9_]+\\(")
@@ -146,8 +187,8 @@ function(_ep_parse_arguments f name ns args)
   # correctly based on target properties.
   #
   # We loop through ARGN and consider the namespace starting with an
-  # upper-case letter followed by at least two more upper-case letters
-  # or underscores to be keywords.
+  # upper-case letter followed by at least two more upper-case letters,
+  # numbers or underscores to be keywords.
   set(key)
 
   foreach(arg IN LISTS args)
@@ -158,14 +199,6 @@ function(_ep_parse_arguments f name ns args)
         NOT arg MATCHES "^(TRUE|FALSE)$")
       if(_ep_keywords_${f} AND arg MATCHES "${_ep_keywords_${f}}")
         set(is_value 0)
-      else()
-        if(NOT (key STREQUAL "COMMAND")
-          AND NOT (key STREQUAL "CVS_MODULE")
-          AND NOT (key STREQUAL "DEPENDS")
-          AND NOT (key STREQUAL "DOWNLOAD_COMMAND")
-          )
-          message(AUTHOR_WARNING "unknown ${f} keyword: ${arg}")
-        endif()
       endif()
     endif()
 
@@ -205,6 +238,14 @@ define_property(DIRECTORY PROPERTY "EP_PREFIX" INHERITED
   BRIEF_DOCS "Top prefix for External Project storage."
   FULL_DOCS
   "See documentation of the ExternalProject_Add() function in the "
+  "ExternalProject module."
+  )
+
+define_property(DIRECTORY PROPERTY "EP_STEP_TARGETS" INHERITED
+  BRIEF_DOCS
+  "List of ExternalProject steps that automatically get corresponding targets"
+  FULL_DOCS
+  "See documentation of the ExternalProject_Add_StepTargets() function in the "
   "ExternalProject module."
   )
 
@@ -555,8 +596,8 @@ function(_ep_get_build_command name step cmd_var)
     if(cfg_cmd_id STREQUAL "cmake")
       # CMake project.  Select build command based on generator.
       get_target_property(cmake_generator ${name} _EP_CMAKE_GENERATOR)
-      if("${cmake_generator}" MATCHES "Make" AND
-          "${cmake_generator}" STREQUAL "${CMAKE_GENERATOR}")
+      if("${CMAKE_GENERATOR}" MATCHES "Make" AND
+         ("${cmake_generator}" MATCHES "Make" OR NOT cmake_generator))
         # The project uses the same Makefile generator.  Use recursive make.
         set(cmd "$(MAKE)")
         if(step STREQUAL "INSTALL")
@@ -585,7 +626,8 @@ function(_ep_get_build_command name step cmd_var)
       endif()
     else() # if(cfg_cmd_id STREQUAL "configure")
       # Non-CMake project.  Guess "make" and "make install" and "make test".
-      set(cmd "make")
+      # But use "$(MAKE)" to get recursive parallel make.
+      set(cmd "$(MAKE)")
       if(step STREQUAL "INSTALL")
         set(args install)
       endif()
@@ -606,6 +648,101 @@ function(_ep_get_build_command name step cmd_var)
   set(${cmd_var} "${cmd}" PARENT_SCOPE)
 endfunction(_ep_get_build_command)
 
+function(_ep_write_log_script name step cmd_var)
+  ExternalProject_Get_Property(${name} stamp_dir)
+  set(command "${${cmd_var}}")
+
+  set(make "")
+  set(code_cygpath_make "")
+  if("${command}" MATCHES "^\\$\\(MAKE\\)")
+    # GNU make recognizes the string "$(MAKE)" as recursive make, so
+    # ensure that it appears directly in the makefile.
+    string(REGEX REPLACE "^\\$\\(MAKE\\)" "\${make}" command "${command}")
+    set(make "-Dmake=$(MAKE)")
+
+    if(WIN32 AND NOT CYGWIN)
+      set(code_cygpath_make "
+if(\${make} MATCHES \"^/\")
+  execute_process(
+    COMMAND cygpath -w \${make}
+    OUTPUT_VARIABLE cygpath_make
+    ERROR_VARIABLE cygpath_make
+    RESULT_VARIABLE cygpath_error
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if(NOT cygpath_error)
+    set(make \${cygpath_make})
+  endif()
+endif()
+")
+    endif()
+  endif()
+
+  set(config "")
+  if("${CMAKE_CFG_INTDIR}" MATCHES "^\\$")
+    string(REPLACE "${CMAKE_CFG_INTDIR}" "\${config}" command "${command}")
+    set(config "-Dconfig=${CMAKE_CFG_INTDIR}")
+  endif()
+
+  # Wrap multiple 'COMMAND' lines up into a second-level wrapper
+  # script so all output can be sent to one log file.
+  if("${command}" MATCHES ";COMMAND;")
+    set(code_execute_process "
+${code_cygpath_make}
+execute_process(COMMAND \${command} RESULT_VARIABLE result)
+if(result)
+  set(msg \"Command failed (\${result}):\\n\")
+  foreach(arg IN LISTS command)
+    set(msg \"\${msg} '\${arg}'\")
+  endforeach(arg)
+  message(FATAL_ERROR \"\${msg}\")
+endif()
+")
+    set(code "")
+    set(cmd "")
+    set(sep "")
+    foreach(arg IN LISTS command)
+      if("x${arg}" STREQUAL "xCOMMAND")
+        set(code "${code}set(command \"${cmd}\")${code_execute_process}")
+        set(cmd "")
+        set(sep "")
+      else()
+        set(cmd "${cmd}${sep}${arg}")
+        set(sep ";")
+      endif()
+    endforeach()
+    set(code "${code}set(command \"${cmd}\")${code_execute_process}")
+    file(WRITE ${stamp_dir}/${name}-${step}-impl.cmake "${code}")
+    set(command ${CMAKE_COMMAND} "-Dmake=\${make}" "-Dconfig=\${config}" -P ${stamp_dir}/${name}-${step}-impl.cmake)
+  endif()
+
+  # Wrap the command in a script to log output to files.
+  set(script ${stamp_dir}/${name}-${step}.cmake)
+  set(logbase ${stamp_dir}/${name}-${step})
+  file(WRITE ${script} "
+${code_cygpath_make}
+set(command \"${command}\")
+execute_process(
+  COMMAND \${command}
+  RESULT_VARIABLE result
+  OUTPUT_FILE \"${logbase}-out.log\"
+  ERROR_FILE \"${logbase}-err.log\"
+  )
+if(result)
+  set(msg \"Command failed: \${result}\\n\")
+  foreach(arg IN LISTS command)
+    set(msg \"\${msg} '\${arg}'\")
+  endforeach(arg)
+  set(msg \"\${msg}\\nSee also\\n  ${logbase}-*.log\\n\")
+  message(FATAL_ERROR \"\${msg}\")
+else()
+  set(msg \"${name} ${step} command succeeded.  See also ${logbase}-*.log\\n\")
+  message(STATUS \"\${msg}\")
+endif()
+")
+  set(command ${CMAKE_COMMAND} ${make} ${config} -P ${script})
+  set(${cmd_var} "${command}" PARENT_SCOPE)
+endfunction(_ep_write_log_script)
 
 # This module used to use "/${CMAKE_CFG_INTDIR}" directly and produced
 # makefiles with "/./" in paths for custom command dependencies. Which
@@ -622,6 +759,19 @@ function(_ep_get_configuration_subdir_suffix suffix_var)
   endif()
   set(${suffix_var} "${suffix}" PARENT_SCOPE)
 endfunction(_ep_get_configuration_subdir_suffix)
+
+
+function(ExternalProject_Add_StepTargets name)
+  set(steps ${ARGN})
+
+  _ep_get_configuration_subdir_suffix(cfgdir)
+  ExternalProject_Get_Property(${name} stamp_dir)
+
+  foreach(step ${steps})
+    add_custom_target(${name}-${step}
+      DEPENDS ${stamp_dir}${cfgdir}/${name}-${step})
+  endforeach()
+endfunction(ExternalProject_Add_StepTargets)
 
 
 function(ExternalProject_Add_Step name step)
@@ -695,6 +845,12 @@ function(ExternalProject_Add_Step name step)
     set(touch ${CMAKE_COMMAND} -E touch ${stamp_dir}${cfgdir}/${name}-${step})
   endif()
 
+  # Wrap with log script?
+  get_property(log TARGET ${name} PROPERTY _EP_${step}_LOG)
+  if(command AND log)
+    _ep_write_log_script(${name} ${step} command)
+  endif()
+
   add_custom_command(
     OUTPUT ${stamp_dir}${cfgdir}/${name}-${step}
     COMMENT ${comment}
@@ -704,6 +860,18 @@ function(ExternalProject_Add_Step name step)
     WORKING_DIRECTORY ${work_dir}
     VERBATIM
     )
+
+  # Add custom "step target"?
+  get_property(step_targets TARGET ${name} PROPERTY _EP_STEP_TARGETS)
+  if(NOT step_targets)
+    get_property(step_targets DIRECTORY PROPERTY EP_STEP_TARGETS)
+  endif()
+  foreach(st ${step_targets})
+    if("${st}" STREQUAL "${step}")
+      ExternalProject_Add_StepTargets(${name} ${step})
+      break()
+    endif()
+  endforeach()
 endfunction(ExternalProject_Add_Step)
 
 
@@ -816,8 +984,15 @@ function(_ep_add_download_command name)
     get_filename_component(src_name "${source_dir}" NAME)
     get_filename_component(work_dir "${source_dir}" PATH)
     set(comment "Performing download step (SVN checkout) for '${name}'")
+    set(svn_user_pw_args "")
+    if(svn_username)
+      set(svn_user_pw_args ${svn_user_pw_args} "--username=${svn_username}")
+    endif()
+    if(svn_password)
+      set(svn_user_pw_args ${svn_user_pw_args} "--password=${svn_password}")
+    endif()
     set(cmd ${Subversion_SVN_EXECUTABLE} co ${svn_repository} ${svn_revision}
-      --username=${svn_username} --password=${svn_password} ${src_name})
+      ${svn_user_pw_args} ${src_name})
     list(APPEND depends ${stamp_dir}/${name}-svninfo.txt)
   elseif(git_repository)
     find_package(Git)
@@ -905,12 +1080,20 @@ function(_ep_add_download_command name)
     endif()
   endif()
 
+  get_property(log TARGET ${name} PROPERTY _EP_LOG_DOWNLOAD)
+  if(log)
+    set(log LOG 1)
+  else()
+    set(log "")
+  endif()
+
   ExternalProject_Add_Step(${name} download
     COMMENT ${comment}
     COMMAND ${cmd}
     WORKING_DIRECTORY ${work_dir}
     DEPENDS ${depends}
     DEPENDEES mkdir
+    ${log}
     )
 endfunction(_ep_add_download_command)
 
@@ -948,8 +1131,15 @@ function(_ep_add_update_command name)
     get_property(svn_revision TARGET ${name} PROPERTY _EP_SVN_REVISION)
     get_property(svn_username TARGET ${name} PROPERTY _EP_SVN_USERNAME)
     get_property(svn_password TARGET ${name} PROPERTY _EP_SVN_PASSWORD)
+    set(svn_user_pw_args "")
+    if(svn_username)
+      set(svn_user_pw_args ${svn_user_pw_args} "--username=${svn_username}")
+    endif()
+    if(svn_password)
+      set(svn_user_pw_args ${svn_user_pw_args} "--password=${svn_password}")
+    endif()
     set(cmd ${Subversion_SVN_EXECUTABLE} up ${svn_revision}
-      --username=${svn_username} --password=${svn_password})
+      ${svn_user_pw_args})
     set(always 1)
   elseif(git_repository)
     if(NOT GIT_EXECUTABLE)
@@ -968,12 +1158,20 @@ function(_ep_add_update_command name)
     set(always 1)
   endif()
 
+  get_property(log TARGET ${name} PROPERTY _EP_LOG_UPDATE)
+  if(log)
+    set(log LOG 1)
+  else()
+    set(log "")
+  endif()
+
   ExternalProject_Add_Step(${name} update
     COMMENT ${comment}
     COMMAND ${cmd}
     ALWAYS ${always}
     WORKING_DIRECTORY ${work_dir}
     DEPENDEES download
+    ${log}
     )
 endfunction(_ep_add_update_command)
 
@@ -1044,11 +1242,19 @@ function(_ep_add_configure_command name)
   configure_file(${tmp_dir}/${name}-cfgcmd.txt.in ${tmp_dir}/${name}-cfgcmd.txt)
   list(APPEND file_deps ${tmp_dir}/${name}-cfgcmd.txt)
 
+  get_property(log TARGET ${name} PROPERTY _EP_LOG_CONFIGURE)
+  if(log)
+    set(log LOG 1)
+  else()
+    set(log "")
+  endif()
+
   ExternalProject_Add_Step(${name} configure
     COMMAND ${cmd}
     WORKING_DIRECTORY ${binary_dir}
     DEPENDEES update patch
     DEPENDS ${file_deps}
+    ${log}
     )
 endfunction(_ep_add_configure_command)
 
@@ -1063,10 +1269,18 @@ function(_ep_add_build_command name)
     _ep_get_build_command(${name} BUILD cmd)
   endif()
 
+  get_property(log TARGET ${name} PROPERTY _EP_LOG_BUILD)
+  if(log)
+    set(log LOG 1)
+  else()
+    set(log "")
+  endif()
+
   ExternalProject_Add_Step(${name} build
     COMMAND ${cmd}
     WORKING_DIRECTORY ${binary_dir}
     DEPENDEES configure
+    ${log}
     )
 endfunction(_ep_add_build_command)
 
@@ -1081,10 +1295,18 @@ function(_ep_add_install_command name)
     _ep_get_build_command(${name} INSTALL cmd)
   endif()
 
+  get_property(log TARGET ${name} PROPERTY _EP_LOG_INSTALL)
+  if(log)
+    set(log LOG 1)
+  else()
+    set(log "")
+  endif()
+
   ExternalProject_Add_Step(${name} install
     COMMAND ${cmd}
     WORKING_DIRECTORY ${binary_dir}
     DEPENDEES build
+    ${log}
     )
 endfunction(_ep_add_install_command)
 
@@ -1112,10 +1334,18 @@ function(_ep_add_test_command name)
       set(dep_args DEPENDEES install)
     endif()
 
+    get_property(log TARGET ${name} PROPERTY _EP_LOG_TEST)
+    if(log)
+      set(log LOG 1)
+    else()
+      set(log "")
+    endif()
+
     ExternalProject_Add_Step(${name} test
       COMMAND ${cmd}
       WORKING_DIRECTORY ${binary_dir}
       ${dep_args}
+      ${log}
       )
   endif()
 endfunction(_ep_add_test_command)

@@ -20,7 +20,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 SET (FLTK2_DIR $ENV{FLTK2_DIR} )
@@ -44,10 +44,6 @@ ENDIF(UNIX)
 IF(APPLE)
   SET( FLTK2_PLATFORM_DEPENDENT_LIBS  "-framework Carbon -framework Cocoa -framework ApplicationServices -lz")
 ENDIF(APPLE)
-
-IF(CYGWIN)
-  SET( FLTK2_PLATFORM_DEPENDENT_LIBS ole32 uuid comctl32 wsock32 supc++ -lm -lgdi32)
-ENDIF(CYGWIN)
 
 # If FLTK2_INCLUDE_DIR is already defined we assigne its value to FLTK2_DIR
 IF(FLTK2_INCLUDE_DIR)

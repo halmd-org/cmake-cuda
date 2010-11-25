@@ -13,6 +13,9 @@
 #  Java_VERSION_TWEAK      = The tweak version of the package found (after '_')
 #  Java_VERSION            = This is set to: $major.$minor.$patch(.$tweak)
 #
+# The minimum required version of Java can be specified using the
+# standard CMake syntax, e.g. FIND_PACKAGE(Java 1.5)
+#
 # NOTE: ${Java_VERSION} and ${Java_VERSION_STRING} are not guaranteed to be
 # identical. For example some java version may return:
 # Java_VERSION_STRING = 1.5.0_17
@@ -48,7 +51,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # The HINTS option should only be used for values computed from the system.
@@ -83,7 +86,6 @@ FIND_PROGRAM(Java_JAVA_EXECUTABLE
 )
 
 IF(Java_JAVA_EXECUTABLE)
-    set(_java_version_acceptable TRUE)
     EXECUTE_PROCESS(COMMAND ${Java_JAVA_EXECUTABLE} -version
       RESULT_VARIABLE res
       OUTPUT_VARIABLE var
@@ -114,7 +116,6 @@ IF(Java_JAVA_EXECUTABLE)
       ELSE()
         IF(NOT Java_FIND_QUIETLY)
           message(WARNING "regex not supported: ${var}. Please report")
-          set(_java_version_acceptable FALSE)
         ENDIF(NOT Java_FIND_QUIETLY)
       ENDIF()
       STRING( REGEX REPLACE "([0-9]+).*" "\\1" Java_VERSION_MAJOR "${Java_VERSION_STRING}" )
@@ -134,17 +135,6 @@ IF(Java_JAVA_EXECUTABLE)
       ENDIF(NOT Java_FIND_QUIETLY)
     ENDIF()
 
-    # check version if requested:
-    if( Java_FIND_VERSION )
-      if("${Java_VERSION}" VERSION_LESS "${Java_FIND_VERSION}")
-        set(_java_version_acceptable FALSE)
-      endif("${Java_VERSION}" VERSION_LESS "${Java_FIND_VERSION}")
-      if( Java_FIND_VERSION_EXACT )
-        if("${Java_VERSION}" VERSION_GREATER "${Java_FIND_VERSION}")
-          set(_java_version_acceptable FALSE)
-        endif("${Java_VERSION}" VERSION_GREATER "${Java_FIND_VERSION}")
-      endif( Java_FIND_VERSION_EXACT )
-    endif( Java_FIND_VERSION )
 ENDIF(Java_JAVA_EXECUTABLE)
 
 
@@ -160,22 +150,20 @@ FIND_PROGRAM(Java_JAVAC_EXECUTABLE
   PATHS ${_JAVA_PATHS}
 )
 
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 if(Java_FIND_COMPONENTS)
   foreach(component ${Java_FIND_COMPONENTS})
     # User just want to execute some Java byte-compiled
     if(component STREQUAL "Runtime")
-      find_package_handle_standard_args(Java DEFAULT_MSG
-        Java_JAVA_EXECUTABLE
-        _java_version_acceptable
-      )
+      find_package_handle_standard_args(Java
+        REQUIRED_VARS Java_JAVA_EXECUTABLE
+        VERSION_VAR Java_VERSION
+        )
     elseif(component STREQUAL "Development")
-      find_package_handle_standard_args(Java DEFAULT_MSG
-        Java_JAVA_EXECUTABLE
-        Java_JAR_EXECUTABLE
-        Java_JAVAC_EXECUTABLE
-        _java_version_acceptable
-      )
+      find_package_handle_standard_args(Java
+        REQUIRED_VARS Java_JAVA_EXECUTABLE Java_JAR_EXECUTABLE Java_JAVAC_EXECUTABLE
+        VERSION_VAR Java_VERSION
+        )
     else()
       message(FATAL_ERROR "Comp: ${component} is not handled")
     endif()
@@ -183,12 +171,10 @@ if(Java_FIND_COMPONENTS)
   endforeach(component)
 else()
   # Check for everything
-  find_package_handle_standard_args(Java DEFAULT_MSG
-    Java_JAVA_EXECUTABLE
-    Java_JAR_EXECUTABLE
-    Java_JAVAC_EXECUTABLE
-    _java_version_acceptable
-  )
+  find_package_handle_standard_args(Java
+    REQUIRED_VARS Java_JAVA_EXECUTABLE Java_JAR_EXECUTABLE Java_JAVAC_EXECUTABLE
+    VERSION_VAR Java_VERSION
+    )
 endif()
 
 

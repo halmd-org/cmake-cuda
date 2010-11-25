@@ -58,7 +58,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 #
@@ -231,7 +231,7 @@ else()
         endif()
     endif()
 
-    include(FindPackageHandleStandardArgs)
+    include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
     FIND_PACKAGE_HANDLE_STANDARD_ARGS(OpenSceneGraph DEFAULT_MSG OPENSCENEGRAPH_LIBRARIES OPENSCENEGRAPH_INCLUDE_DIR)
 endif()
 

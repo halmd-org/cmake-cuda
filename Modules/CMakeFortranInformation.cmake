@@ -9,12 +9,14 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # This file sets the basic flags for the Fortran language in CMake.
 # It also loads the available platform file for the system-compiler
 # if it exists.
+
+SET(_INCLUDED_FILE 0)
 
 # Load compiler-specific information.
 IF(CMAKE_Fortran_COMPILER_ID)

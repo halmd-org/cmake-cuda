@@ -61,7 +61,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 #---------------------------------------------------------------------
@@ -171,7 +171,7 @@ SET(ImageMagick_LIBRARIES ${ImageMagick_LIBRARIES})
 #---------------------------------------------------------------------
 # Standard Package Output
 #---------------------------------------------------------------------
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(
   ImageMagick DEFAULT_MSG ImageMagick_FOUND
   )

@@ -41,7 +41,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 INCLUDE(CMakeFindFrameworks)
@@ -197,7 +197,7 @@ FIND_PATH(TK_INCLUDE_PATH
 
 # handle the QUIETLY and REQUIRED arguments and set TCL_FOUND to TRUE if 
 # all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(TCL DEFAULT_MSG TCL_LIBRARY TCL_INCLUDE_PATH)
 SET(TCLTK_FIND_REQUIRED ${TCL_FIND_REQUIRED})

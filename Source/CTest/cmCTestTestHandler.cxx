@@ -567,7 +567,7 @@ int cmCTestTestHandler::ProcessHandler()
 
   if (total == 0)
     {
-    if ( !this->CTest->GetShowOnly() )
+    if ( !this->CTest->GetShowOnly() && !this->CTest->ShouldPrintLabels() )
       {
       cmCTestLog(this->CTest, ERROR_MESSAGE, "No tests were found!!!"
         << std::endl);
@@ -1048,7 +1048,7 @@ void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
 
     if(randomSchedule)
       {
-      p.Cost = rand();
+      p.Cost = static_cast<float>(rand());
       }
 
     if(p.Timeout == 0 && this->CTest->GetGlobalTimeout() != 0)
@@ -1079,7 +1079,12 @@ void cmCTestTestHandler::ProcessDirectory(std::vector<cmStdString> &passed,
   parallel->SetPassFailVectors(&passed, &failed);
   this->TestResults.clear();
   parallel->SetTestResults(&this->TestResults);
-  if(this->CTest->GetShowOnly())
+
+  if(this->CTest->ShouldPrintLabels())
+    {
+    parallel->PrintLabels();
+    }
+  else if(this->CTest->GetShowOnly())
     {
     parallel->PrintTestList();
     }
@@ -1309,7 +1314,8 @@ std::string cmCTestTestHandler::EncodeFile(std::string file)
   cmSystemTools::RemoveFile(tarFile.c_str());
 
   unsigned char *encoded_buffer
-    = new unsigned char [ static_cast<int>(len * 1.5 + 5) ];
+    = new unsigned char [ static_cast<int>(
+        static_cast<double>(len) * 1.5 + 5.0) ];
 
   unsigned long rlen
     = cmsysBase64_Encode(file_buffer, len, encoded_buffer, 1);
@@ -1881,7 +1887,8 @@ std::string cmCTestTestHandler::GenerateRegressionImages(
           unsigned char *file_buffer = new unsigned char [ len + 1 ];
           ifs.read(reinterpret_cast<char*>(file_buffer), len);
           unsigned char *encoded_buffer
-            = new unsigned char [ static_cast<int>(len * 1.5 + 5) ];
+            = new unsigned char [ static_cast<int>(
+                static_cast<double>(len) * 1.5 + 5.0) ];
 
           unsigned long rlen
             = cmsysBase64_Encode(file_buffer, len, encoded_buffer, 1);

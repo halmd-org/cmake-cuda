@@ -1069,9 +1069,16 @@ cmLocalUnixMakefileGenerator3
             }
           }
         }
-      if (useCall && launcher.empty())
+      if (launcher.empty())
         {
-        cmd = "call " + cmd;
+        if (useCall)
+          {
+          cmd = "call " + cmd;
+          }
+        else if (this->NMake && cmd[0]=='"')
+          {
+          cmd = "echo >nul && " + cmd;
+          }
         }
       commands1.push_back(cmd);
       }

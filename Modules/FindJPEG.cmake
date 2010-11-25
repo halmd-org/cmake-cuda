@@ -17,7 +17,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 FIND_PATH(JPEG_INCLUDE_DIR jpeglib.h)
@@ -27,7 +27,7 @@ FIND_LIBRARY(JPEG_LIBRARY NAMES ${JPEG_NAMES} )
 
 # handle the QUIETLY and REQUIRED arguments and set JPEG_FOUND to TRUE if 
 # all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(JPEG DEFAULT_MSG JPEG_LIBRARY JPEG_INCLUDE_DIR)
 
 IF(JPEG_FOUND)

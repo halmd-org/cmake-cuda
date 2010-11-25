@@ -62,7 +62,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # This module is maintained by David Partyka <dave.partyka@kitware.com>.
@@ -81,6 +81,7 @@ set(_MPI_PACKAGE_DIR
   lib/openmpi
   "MPICH/SDK"
   "Microsoft Compute Cluster Pack"
+  "Microsoft HPC Pack 2008 R2"
   )
 
 set(_MPI_PREFIX_PATH)
@@ -188,7 +189,7 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   # the cache, and we don't want to override those settings.
 elseif (MPI_COMPILE_CMDLINE)
   # Extract compile flags from the compile command line.
-  string(REGEX MATCHALL "-D([^\" ]+|\"[^\"]+\")" MPI_ALL_COMPILE_FLAGS "${MPI_COMPILE_CMDLINE}")
+  string(REGEX MATCHALL "(^| )-[Df]([^\" ]+|\"[^\"]+\")" MPI_ALL_COMPILE_FLAGS "${MPI_COMPILE_CMDLINE}")
   set(MPI_COMPILE_FLAGS_WORK)
   foreach(FLAG ${MPI_ALL_COMPILE_FLAGS})
     if (MPI_COMPILE_FLAGS_WORK)
@@ -199,10 +200,10 @@ elseif (MPI_COMPILE_CMDLINE)
   endforeach(FLAG)
 
   # Extract include paths from compile command line
-  string(REGEX MATCHALL "-I([^\" ]+|\"[^\"]+\")" MPI_ALL_INCLUDE_PATHS "${MPI_COMPILE_CMDLINE}")
+  string(REGEX MATCHALL "(^| )-I([^\" ]+|\"[^\"]+\")" MPI_ALL_INCLUDE_PATHS "${MPI_COMPILE_CMDLINE}")
   set(MPI_INCLUDE_PATH_WORK)
   foreach(IPATH ${MPI_ALL_INCLUDE_PATHS})
-    string(REGEX REPLACE "^-I" "" IPATH ${IPATH})
+    string(REGEX REPLACE "^ ?-I" "" IPATH ${IPATH})
     string(REGEX REPLACE "//" "/" IPATH ${IPATH})
     list(APPEND MPI_INCLUDE_PATH_WORK ${IPATH})
   endforeach(IPATH)
@@ -230,10 +231,10 @@ elseif (MPI_COMPILE_CMDLINE)
   endif (NOT MPI_INCLUDE_PATH_WORK)
 
   # Extract linker paths from the link command line
-  string(REGEX MATCHALL "-L([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_PATHS "${MPI_LINK_CMDLINE}")
+  string(REGEX MATCHALL "(^| |-Wl,)-L([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_PATHS "${MPI_LINK_CMDLINE}")
   set(MPI_LINK_PATH)
   foreach(LPATH ${MPI_ALL_LINK_PATHS})
-    string(REGEX REPLACE "^-L" "" LPATH ${LPATH})
+    string(REGEX REPLACE "^(| |-Wl,)-L" "" LPATH ${LPATH})
     string(REGEX REPLACE "//" "/" LPATH ${LPATH})
     list(APPEND MPI_LINK_PATH ${LPATH})
   endforeach(LPATH)
@@ -251,7 +252,7 @@ elseif (MPI_COMPILE_CMDLINE)
   endif (NOT MPI_LINK_PATH)
 
   # Extract linker flags from the link command line
-  string(REGEX MATCHALL "-Wl,([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_FLAGS "${MPI_LINK_CMDLINE}")
+  string(REGEX MATCHALL "(^| )-Wl,([^\" ]+|\"[^\"]+\")" MPI_ALL_LINK_FLAGS "${MPI_LINK_CMDLINE}")
   set(MPI_LINK_FLAGS_WORK)
   foreach(FLAG ${MPI_ALL_LINK_FLAGS})
     if (MPI_LINK_FLAGS_WORK)
@@ -263,20 +264,20 @@ elseif (MPI_COMPILE_CMDLINE)
 
   # Extract the set of libraries to link against from the link command
   # line
-  string(REGEX MATCHALL "-l([^\" ]+|\"[^\"]+\")" MPI_LIBNAMES "${MPI_LINK_CMDLINE}")
+  string(REGEX MATCHALL "(^| )-l([^\" ]+|\"[^\"]+\")" MPI_LIBNAMES "${MPI_LINK_CMDLINE}")
 
   # Determine full path names for all of the libraries that one needs
   # to link against in an MPI program
   set(MPI_LIBRARIES)
   foreach(LIB ${MPI_LIBNAMES})
-    string(REGEX REPLACE "^-l" "" LIB ${LIB})
+    string(REGEX REPLACE "^ ?-l" "" LIB ${LIB})
     set(MPI_LIB "MPI_LIB-NOTFOUND" CACHE FILEPATH "Cleared" FORCE)
     find_library(MPI_LIB ${LIB} HINTS ${MPI_LINK_PATH})
     if (MPI_LIB)
       list(APPEND MPI_LIBRARIES ${MPI_LIB})
-    else (MPI_LIB)
-      message(SEND_ERROR "Unable to find MPI library ${LIB}")
-    endif (MPI_LIB)
+    elseif (NOT MPI_FIND_QUIETLY)
+      message(WARNING "Unable to find MPI library ${LIB}")
+    endif ()
   endforeach(LIB)
   set(MPI_LIB "MPI_LIB-NOTFOUND" CACHE INTERNAL "Scratch variable for MPI detection" FORCE)
 
@@ -306,7 +307,7 @@ else (MPI_COMPILE_CMDLINE)
 # No MPI compiler to interogate so attempt to find everything with find functions.
   find_path(MPI_INCLUDE_PATH mpi.h
     HINTS ${_MPI_BASE_DIR} ${_MPI_PREFIX_PATH}
-    PATH_SUFFIXES include
+    PATH_SUFFIXES include Inc
     )
 
   # Decide between 32-bit and 64-bit libraries for Microsoft's MPI
@@ -332,12 +333,6 @@ else (MPI_COMPILE_CMDLINE)
   set(MPI_LINK_FLAGS "" CACHE STRING "MPI linking flags")
 endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)
 
-# on BlueGene/L the MPI lib is named libmpich.rts.a, there also these additional libs are required
-if("${MPI_LIBRARY}" MATCHES "mpich.rts")
-   set(MPI_EXTRA_LIBRARY ${MPI_EXTRA_LIBRARY} msglayer.rts devices.rts rts.rts devices.rts)
-   set(MPI_LIBRARY ${MPI_LIBRARY}  msglayer.rts devices.rts rts.rts devices.rts)
-endif("${MPI_LIBRARY}" MATCHES "mpich.rts")
-
 # Set up extra variables to conform to
 if (MPI_EXTRA_LIBRARY)
   set(MPI_LIBRARIES ${MPI_LIBRARY} ${MPI_EXTRA_LIBRARY})
@@ -351,7 +346,7 @@ else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE)
 endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)
 
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 # handle the QUIETLY and REQUIRED arguments
 find_package_handle_standard_args(MPI DEFAULT_MSG MPI_LIBRARY MPI_INCLUDE_PATH)
 

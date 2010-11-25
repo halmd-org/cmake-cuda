@@ -24,7 +24,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 macro(_FIND_BULLET_LIBRARY _var)
@@ -69,7 +69,7 @@ _FIND_BULLET_LIBRARY(BULLET_SOFTBODY_LIBRARY_DEBUG  BulletSoftBody_d)
 
 # handle the QUIETLY and REQUIRED arguments and set BULLET_FOUND to TRUE if 
 # all listed variables are TRUE
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bullet DEFAULT_MSG
     BULLET_DYNAMICS_LIBRARY BULLET_COLLISION_LIBRARY BULLET_MATH_LIBRARY
     BULLET_SOFTBODY_LIBRARY BULLET_INCLUDE_DIR)

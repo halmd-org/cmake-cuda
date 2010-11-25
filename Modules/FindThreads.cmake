@@ -6,7 +6,7 @@
 #  CMAKE_USE_PTHREADS_INIT    - are we using pthreads
 #  CMAKE_HP_PTHREADS_INIT     - are we using hp pthreads
 # For systems with multiple thread libraries, caller can set
-#  CMAKE_THREAD_PREFER_PTHREADS
+#  CMAKE_THREAD_PREFER_PTHREAD
 
 #=============================================================================
 # Copyright 2002-2009 Kitware, Inc.
@@ -18,7 +18,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 INCLUDE (CheckIncludeFiles)
@@ -153,5 +153,5 @@ IF(CMAKE_USE_PTHREADS_INIT)
   ENDIF()
 ENDIF(CMAKE_USE_PTHREADS_INIT)
 
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Threads DEFAULT_MSG Threads_FOUND)

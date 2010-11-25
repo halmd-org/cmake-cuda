@@ -278,16 +278,8 @@ void cmLocalGenerator::GenerateTestFiles()
 
   // Compute the set of configurations.
   std::vector<std::string> configurationTypes;
-  if(const char* types =
-     this->Makefile->GetDefinition("CMAKE_CONFIGURATION_TYPES"))
-    {
-    cmSystemTools::ExpandListArgument(types, configurationTypes);
-    }
-  const char* config = 0;
-  if(configurationTypes.empty())
-    {
-    config = this->Makefile->GetDefinition("CMAKE_BUILD_TYPE");
-    }
+  const char* config =
+    this->Makefile->GetConfigurations(configurationTypes, false);
 
   std::string file = this->Makefile->GetStartOutputDirectory();
   file += "/";
@@ -383,16 +375,8 @@ void cmLocalGenerator::GenerateInstallRules()
 
   // Compute the set of configurations.
   std::vector<std::string> configurationTypes;
-  if(const char* types = 
-     this->Makefile->GetDefinition("CMAKE_CONFIGURATION_TYPES"))
-    {
-    cmSystemTools::ExpandListArgument(types, configurationTypes);
-    }
-  const char* config = 0;
-  if(configurationTypes.empty())
-    {
-    config = this->Makefile->GetDefinition("CMAKE_BUILD_TYPE");
-    }
+  const char* config =
+    this->Makefile->GetConfigurations(configurationTypes, false);
 
   // Choose a default install configuration.
   const char* default_config = config;
@@ -546,19 +530,7 @@ void cmLocalGenerator::GenerateTargetManifest()
 {
   // Collect the set of configuration types.
   std::vector<std::string> configNames;
-  if(const char* configurationTypes =
-     this->Makefile->GetDefinition("CMAKE_CONFIGURATION_TYPES"))
-    {
-    cmSystemTools::ExpandListArgument(configurationTypes, configNames);
-    }
-  else if(const char* buildType =
-          this->Makefile->GetDefinition("CMAKE_BUILD_TYPE"))
-    {
-    if(*buildType)
-      {
-      configNames.push_back(buildType);
-      }
-    }
+  this->Makefile->GetConfigurations(configNames);
 
   // Add our targets to the manifest for each configuration.
   cmTargets& targets = this->Makefile->GetTargets();
@@ -2810,17 +2782,29 @@ cmLocalGenerator
 std::string cmLocalGenerator::EscapeForShellOldStyle(const char* str)
 {
   std::string result;
-  bool forceOn =  cmSystemTools::GetForceUnixPaths();
-  if(forceOn && this->WindowsShell)
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  // if there are spaces
+  std::string temp = str;
+  if (temp.find(" ") != std::string::npos &&
+      temp.find("\"")==std::string::npos)
     {
-    cmSystemTools::SetForceUnixPaths(false);
+    result = "\"";
+    result += str;
+    result += "\"";
+    return result;
     }
-  result = cmSystemTools::EscapeSpaces(str);
-  if(forceOn && this->WindowsShell)
+  return str;
+#else
+  for(const char* ch = str; *ch != '\0'; ++ch)
     {
-    cmSystemTools::SetForceUnixPaths(true);
+    if(*ch == ' ')
+      {
+      result += '\\';
+      }
+    result += *ch;
     }
   return result;
+#endif
 }
 
 //----------------------------------------------------------------------------
@@ -3045,7 +3029,7 @@ bool cmLocalGenerator::CheckDefinition(std::string const& define) const
   if(define.find_first_of("#") != define.npos)
     {
     cmOStringStream e;
-    e << "WARNING: Peprocessor definitions containing '#' may not be "
+    e << "WARNING: Preprocessor definitions containing '#' may not be "
       << "passed on the compiler command line because many compilers "
       << "do not support it.\n"
       << "CMake is dropping a preprocessor definition: " << define << "\n"

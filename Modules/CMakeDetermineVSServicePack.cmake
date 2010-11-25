@@ -23,8 +23,8 @@
 # ===========================
 
 #=============================================================================
-# Copyright 2009 Kitware, Inc.
-# Copyright 2009 Philip Lowman <philip@yhbt.com>
+# Copyright 2009-2010 Kitware, Inc.
+# Copyright 2009-2010 Philip Lowman <philip@yhbt.com>
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.
@@ -33,7 +33,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # [INTERNAL]
@@ -47,6 +47,8 @@ function(_DetermineVSServicePackFromCompiler _OUT_VAR _cl_version)
        set(_version "vc90")
    elseif(${_cl_version} VERSION_EQUAL "15.00.30729.01")
        set(_version "vc90sp1")
+   elseif(${_cl_version} VERSION_EQUAL "16.00.30319.01")
+       set(_version "vc100")
    else()
        set(_version "")
    endif()

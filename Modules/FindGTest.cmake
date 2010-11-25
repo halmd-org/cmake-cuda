@@ -66,7 +66,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 #
 # Thanks to Daniel Blezek <blezek@gmail.com> for the GTEST_ADD_TESTS code
@@ -146,7 +146,7 @@ else()
     _gtest_find_library(GTEST_MAIN_LIBRARY_DEBUG gtest_maind)
 endif()
 
-include(FindPackageHandleStandardArgs)
+include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(GTest DEFAULT_MSG GTEST_LIBRARY GTEST_INCLUDE_DIR GTEST_MAIN_LIBRARY)
 
 if(GTEST_FOUND)

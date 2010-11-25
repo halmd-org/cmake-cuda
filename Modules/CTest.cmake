@@ -55,7 +55,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 OPTION(BUILD_TESTING "Build the testing tree." ON)
@@ -163,6 +163,11 @@ IF(BUILD_TESTING)
   SET(DART_TESTING_TIMEOUT 1500 CACHE STRING 
     "Maximum time allowed before CTest will kill the test.")
 
+  SET(CTEST_SUBMIT_RETRY_DELAY 5 CACHE STRING
+    "How long to wait between timed-out CTest submissions.")
+  SET(CTEST_SUBMIT_RETRY_COUNT 3 CACHE STRING
+    "How many times to retry timed-out CTest submissions.")
+
   FIND_PROGRAM(MEMORYCHECK_COMMAND
     NAMES purify valgrind boundscheck
     PATHS
@@ -223,8 +228,10 @@ IF(BUILD_TESTING)
   ENDIF(NOT BUILDNAME)
 
   # the build command
-  BUILD_COMMAND(MAKECOMMAND CONFIGURATION "\${CTEST_CONFIGURATION_TYPE}")
-  SET(MAKECOMMAND ${MAKECOMMAND} CACHE STRING "Command to build the project")
+  BUILD_COMMAND(MAKECOMMAND_DEFAULT_VALUE
+    CONFIGURATION "\${CTEST_CONFIGURATION_TYPE}")
+  SET(MAKECOMMAND ${MAKECOMMAND_DEFAULT_VALUE}
+    CACHE STRING "Command to build the project")
 
   # the default build configuration the ctest build handler will use
   # if there is no -C arg given to ctest:
@@ -262,7 +269,9 @@ IF(BUILD_TESTING)
     SCPCOMMAND
     SLURM_SBATCH_COMMAND
     SLURM_SRUN_COMMAND
-    SITE 
+    SITE
+    CTEST_SUBMIT_RETRY_DELAY
+    CTEST_SUBMIT_RETRY_COUNT
     )
   #  BUILDNAME 
   IF(NOT RUN_FROM_DART)

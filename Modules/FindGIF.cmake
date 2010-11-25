@@ -16,7 +16,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # Created by Eric Wing. 
@@ -60,7 +60,7 @@ SET(GIF_LIBRARIES ${GIF_LIBRARY})
 
 # handle the QUIETLY and REQUIRED arguments and set GIF_FOUND to TRUE if 
 # all listed variables are TRUE
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(GIF  DEFAULT_MSG  GIF_LIBRARY  GIF_INCLUDE_DIR)
 
 MARK_AS_ADVANCED(GIF_INCLUDE_DIR GIF_LIBRARY)

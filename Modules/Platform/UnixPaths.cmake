@@ -9,7 +9,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 # Block multiple inclusion because "CMakeCInformation.cmake" includes
@@ -51,7 +51,7 @@ LIST(APPEND CMAKE_SYSTEM_INCLUDE_PATH
   /usr/X11R6/include /usr/include/X11
 
   # Other
-  /opt/local/include /usr/pkg/include
+  /usr/pkg/include
   /opt/csw/include /opt/include  
   /usr/openwin/include
   )
@@ -64,7 +64,7 @@ LIST(APPEND CMAKE_SYSTEM_LIBRARY_PATH
   /usr/X11R6/lib /usr/lib/X11
 
   # Other
-  /opt/local/lib /usr/pkg/lib
+  /usr/pkg/lib
   /opt/csw/lib /opt/lib 
   /usr/openwin/lib
   )

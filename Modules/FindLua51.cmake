@@ -21,7 +21,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-# (To distributed this file outside of CMake, substitute the full
+# (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
 FIND_PATH(LUA_INCLUDE_DIR lua.h
@@ -66,7 +66,7 @@ IF(LUA_LIBRARY)
   ENDIF(UNIX AND NOT APPLE)
 ENDIF(LUA_LIBRARY)
 
-INCLUDE(FindPackageHandleStandardArgs)
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
 # handle the QUIETLY and REQUIRED arguments and set LUA_FOUND to TRUE if 
 # all listed variables are TRUE
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(Lua51  DEFAULT_MSG  LUA_LIBRARIES LUA_INCLUDE_DIR)

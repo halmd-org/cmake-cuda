@@ -32,6 +32,30 @@ static std::string cmVS10EscapeXML(std::string arg)
   return arg;
 }
 
+static std::string cmVS10EscapeComment(std::string comment)
+{
+  // MSBuild takes the CDATA of a <Message></Message> element and just
+  // does "echo $CDATA" with no escapes.  We must encode the string.
+  // http://technet.microsoft.com/en-us/library/cc772462%28WS.10%29.aspx
+  std::string echoable;
+  for(std::string::iterator c = comment.begin(); c != comment.end(); ++c)
+    {
+    switch (*c)
+      {
+      case '\r': break;
+      case '\n': echoable += '\t'; break;
+      case '"': /* no break */
+      case '|': /* no break */
+      case '&': /* no break */
+      case '<': /* no break */
+      case '>': /* no break */
+      case '^': echoable += '^'; /* no break */
+      default:  echoable += *c; break;
+      }
+    }
+  return echoable;
+}
+
 cmVisualStudio10TargetGenerator::
 cmVisualStudio10TargetGenerator(cmTarget* target,
                                 cmGlobalVisualStudio10Generator* gg)
@@ -125,7 +149,10 @@ void cmVisualStudio10TargetGenerator::Generate()
                             ".vcxproj");
   if(this->Target->GetType() <= cmTarget::MODULE_LIBRARY)
     {
-    this->ComputeClOptions();
+    if(!this->ComputeClOptions())
+      {
+      return;
+      }
     }
   cmMakefile* mf = this->Target->GetMakefile();
   std::string path =  mf->GetStartOutputDirectory();
@@ -155,6 +182,13 @@ void cmVisualStudio10TargetGenerator::Generate()
   this->WriteString("<Keyword>Win32Proj</Keyword>\n", 2);
   this->WriteString("<Platform>", 2);
   (*this->BuildFileStream) << this->Platform << "</Platform>\n";
+  const char* projLabel = this->Target->GetProperty("PROJECT_LABEL");
+  if(!projLabel)
+    {
+    projLabel = this->Name.c_str();
+    }
+  this->WriteString("<ProjectName>", 2);
+  (*this->BuildFileStream) << projLabel << "</ProjectName>\n";
   this->WriteString("</PropertyGroup>\n", 1);
   this->WriteString("<Import Project="
                     "\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />\n",
@@ -318,6 +352,7 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
     }
   cmLocalVisualStudio7Generator* lg = this->LocalGenerator;
   std::string comment = lg->ConstructComment(command);
+  comment = cmVS10EscapeComment(comment);
   std::vector<std::string> *configs =
     static_cast<cmGlobalVisualStudio7Generator *>
     (this->GlobalGenerator)->GetConfigurations(); 
@@ -340,7 +375,7 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
                             command.GetEscapeAllowMakeVars())
         );
     this->WritePlatformConfigTag("Message",i->c_str(), 3);
-    (*this->BuildFileStream ) << comment << "</Message>\n";
+    (*this->BuildFileStream ) << cmVS10EscapeXML(comment) << "</Message>\n";
     this->WritePlatformConfigTag("Command", i->c_str(), 3);
     (*this->BuildFileStream ) << script << "</Command>\n";
     this->WritePlatformConfigTag("AdditionalInputs", i->c_str(), 3);
@@ -760,7 +795,7 @@ bool cmVisualStudio10TargetGenerator::OutputSourceSpecificFlags(
     hasFlags = true;
     this->WriteString("<ObjectFileName>", 3);
     (*this->BuildFileStream )
-      << "$(Configuration)/" << objectName << "</ObjectFileName>\n";
+      << "$(IntDir)/" << objectName << "</ObjectFileName>\n";
     }
   std::vector<std::string> *configs =
     static_cast<cmGlobalVisualStudio7Generator *>
@@ -807,10 +842,12 @@ bool cmVisualStudio10TargetGenerator::OutputSourceSpecificFlags(
 
 void cmVisualStudio10TargetGenerator::WritePathAndIncrementalLinkOptions()
 {
-  if(this->Target->GetType() > cmTarget::MODULE_LIBRARY)
+  cmTarget::TargetType ttype = this->Target->GetType();
+  if(ttype > cmTarget::GLOBAL_TARGET)
     {
     return;
     }
+
   this->WriteString("<PropertyGroup>\n", 2);
   this->WriteString("<_ProjectFileVersion>10.0.20506.1"
                     "</_ProjectFileVersion>\n", 3);
@@ -820,36 +857,50 @@ void cmVisualStudio10TargetGenerator::WritePathAndIncrementalLinkOptions()
   for(std::vector<std::string>::iterator config = configs->begin();
       config != configs->end(); ++config)
     {
-    std::string targetNameFull = 
-      this->Target->GetFullName(config->c_str());
-    std::string intermediateDir = this->LocalGenerator->
-      GetTargetDirectory(*this->Target);
-    intermediateDir += "/";
-    intermediateDir += *config;
-    intermediateDir += "/";
-    this->ConvertToWindowsSlash(intermediateDir);
-    std::string outDir = this->Target->GetDirectory(config->c_str());
-    this->ConvertToWindowsSlash(outDir);
-    this->WritePlatformConfigTag("OutDir", config->c_str(), 3);
-    *this->BuildFileStream << outDir
-                           << "\\"
-                           << "</OutDir>\n";
-    this->WritePlatformConfigTag("IntDir", config->c_str(), 3); 
-    *this->BuildFileStream << intermediateDir
-                           << "</IntDir>\n";
-    this->WritePlatformConfigTag("TargetName", config->c_str(), 3);
-    *this->BuildFileStream << cmSystemTools::GetFilenameWithoutExtension(
-      targetNameFull.c_str())
-                           << "</TargetName>\n";
-    
-    this->WritePlatformConfigTag("TargetExt", config->c_str(), 3);
-    *this->BuildFileStream << cmSystemTools::GetFilenameLastExtension(
-      targetNameFull.c_str())
-                           << "</TargetExt>\n";
-    this->OutputLinkIncremental(*config);
+    if(ttype >= cmTarget::UTILITY)
+      {
+      this->WritePlatformConfigTag("IntDir", config->c_str(), 3);
+      *this->BuildFileStream
+        << "$(Platform)\\$(Configuration)\\$(ProjectName)\\"
+        << "</IntDir>\n";
+      }
+    else
+      {
+      std::string targetNameFull =
+        this->Target->GetFullName(config->c_str());
+      std::string intermediateDir = this->LocalGenerator->
+        GetTargetDirectory(*this->Target);
+      intermediateDir += "/";
+      intermediateDir += *config;
+      intermediateDir += "/";
+      this->ConvertToWindowsSlash(intermediateDir);
+      std::string outDir = this->Target->GetDirectory(config->c_str());
+      this->ConvertToWindowsSlash(outDir);
+
+      this->WritePlatformConfigTag("OutDir", config->c_str(), 3);
+      *this->BuildFileStream << outDir
+                             << "\\"
+                             << "</OutDir>\n";
+
+      this->WritePlatformConfigTag("IntDir", config->c_str(), 3);
+      *this->BuildFileStream << intermediateDir
+                             << "</IntDir>\n";
+
+      this->WritePlatformConfigTag("TargetName", config->c_str(), 3);
+      *this->BuildFileStream
+        << cmSystemTools::GetFilenameWithoutLastExtension(
+             targetNameFull.c_str())
+        << "</TargetName>\n";
+
+      this->WritePlatformConfigTag("TargetExt", config->c_str(), 3);
+      *this->BuildFileStream
+        << cmSystemTools::GetFilenameLastExtension(targetNameFull.c_str())
+        << "</TargetExt>\n";
+
+      this->OutputLinkIncremental(*config);
+      }
     }
   this->WriteString("</PropertyGroup>\n", 2);
-        
 }
 
 
@@ -926,19 +977,23 @@ OutputLinkIncremental(std::string const& configName)
 }
 
 //----------------------------------------------------------------------------
-void cmVisualStudio10TargetGenerator::ComputeClOptions()
+bool cmVisualStudio10TargetGenerator::ComputeClOptions()
 {
   std::vector<std::string> const* configs =
     this->GlobalGenerator->GetConfigurations();
   for(std::vector<std::string>::const_iterator i = configs->begin();
       i != configs->end(); ++i)
     {
-    this->ComputeClOptions(*i);
+    if(!this->ComputeClOptions(*i))
+      {
+      return false;
+      }
     }
+  return true;
 }
 
 //----------------------------------------------------------------------------
-void cmVisualStudio10TargetGenerator::ComputeClOptions(
+bool cmVisualStudio10TargetGenerator::ComputeClOptions(
   std::string const& configName)
 {
   // much of this was copied from here:
@@ -961,7 +1016,7 @@ void cmVisualStudio10TargetGenerator::ComputeClOptions(
       cmSystemTools::Error
         ("CMake can not determine linker language for target:",
          this->Name.c_str());
-      return;
+      return false;
       }
     if(strcmp(linkLanguage, "C") == 0 || strcmp(linkLanguage, "CXX") == 0
        || strcmp(linkLanguage, "Fortran") == 0)
@@ -1021,6 +1076,7 @@ void cmVisualStudio10TargetGenerator::ComputeClOptions(
     }
 
   this->ClOptions[configName] = pOptions.release();
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -1033,6 +1089,15 @@ void cmVisualStudio10TargetGenerator::WriteClOptions(
   clOptions.OutputAdditionalOptions(*this->BuildFileStream, "      ", "");
   this->OutputIncludes(includes);
   clOptions.OutputFlagMap(*this->BuildFileStream, "      ");
+
+  // If not in debug mode, write the DebugInformationFormat field
+  // without value so PDBs don't get generated uselessly.
+  if(!clOptions.IsDebug())
+    {
+    this->WriteString("<DebugInformationFormat>"
+                      "</DebugInformationFormat>\n", 3);
+    }
+
   clOptions.OutputPreprocessorDefinitions(*this->BuildFileStream, "      ", 
                                           "\n");
   this->WriteString("<AssemblerListingLocation>", 3);
@@ -1401,8 +1466,9 @@ void cmVisualStudio10TargetGenerator::WriteEvent(
                             command.GetEscapeAllowMakeVars())
         );
     }
+  comment = cmVS10EscapeComment(comment);
   this->WriteString("<Message>",3);
-  (*this->BuildFileStream ) << comment << "</Message>\n";
+  (*this->BuildFileStream ) << cmVS10EscapeXML(comment) << "</Message>\n";
   this->WriteString("<Command>", 3);
   (*this->BuildFileStream ) << script;
   (*this->BuildFileStream ) << "</Command>" << "\n";
@@ -1413,10 +1479,13 @@ void cmVisualStudio10TargetGenerator::WriteEvent(
 
 void cmVisualStudio10TargetGenerator::WriteProjectReferences()
 {
-  cmGlobalGenerator::TargetDependSet& depends
+  cmGlobalGenerator::TargetDependSet const& unordered
     = this->GlobalGenerator->GetTargetDirectDepends(*this->Target);
+  typedef cmGlobalVisualStudioGenerator::OrderedTargetDependSet
+    OrderedTargetDependSet;
+  OrderedTargetDependSet depends(unordered);
   this->WriteString("<ItemGroup>\n", 1);
-  for( cmGlobalGenerator::TargetDependSet::const_iterator i = depends.begin();
+  for( OrderedTargetDependSet::const_iterator i = depends.begin();
        i != depends.end(); ++i)
     {
     cmTarget* dt = *i;

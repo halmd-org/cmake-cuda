@@ -46,12 +46,6 @@ public:
   static void ExpandRegistryValues(std::string& source,
                                    KeyWOW64 view = KeyWOW64_Default);
 
-  /**
-   * Platform independent escape spaces, unix uses backslash,
-   * windows double quotes the string.
-   */
-  static std::string EscapeSpaces(const char* str);
-
   ///! Escape quotes in a string.
   static std::string EscapeQuotes(const char* str);
 
@@ -109,6 +103,12 @@ public:
       cmSystemTools::s_ErrorOccured = false;
     }
   
+  /**
+   * Does a string indicates that CMake/CPack/CTest internally
+   * forced this value. This is not the same as On, but this
+   * may be considered as "internally switched on".
+   */
+  static bool IsInternallyOn(const char* val);
   /** 
    * does a string indicate a true or on value ? This is not the same
    * as ifdef. 
