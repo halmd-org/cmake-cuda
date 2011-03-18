@@ -482,6 +482,7 @@ void cmStringCommand::ClearMatches(cmMakefile* mf)
     char name[128];
     sprintf(name, "CMAKE_MATCH_%d", i);
     mf->AddDefinition(name, "");
+    mf->MarkVariableAsUsed(name);
     }
 }
 
@@ -493,6 +494,7 @@ void cmStringCommand::StoreMatches(cmMakefile* mf,cmsys::RegularExpression& re)
     char name[128];
     sprintf(name, "CMAKE_MATCH_%d", i);
     mf->AddDefinition(name, re.match(i).c_str());
+    mf->MarkVariableAsUsed(name);
     }
 }
 
@@ -606,7 +608,7 @@ bool cmStringCommand::HandleSubstringCommand(std::vector<std::string> const&
     return false;
     }
   int leftOverLength = intStringLength - begin;
-  if ( end < 0 || end > leftOverLength )
+  if ( end < -1 || end > leftOverLength )
     {
     cmOStringStream ostr;
     ostr << "end index: " << end << " is out of range " << 0 << " - "

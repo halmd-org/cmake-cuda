@@ -464,6 +464,25 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   // Variables defined by cmake, that change the behavior
   // of cmake
+
+  cm->DefineProperty
+    ("CMAKE_POLICY_DEFAULT_CMP<NNNN>",  cmProperty::VARIABLE,
+     "Default for CMake Policy CMP<NNNN> when it is otherwise left unset.",
+     "Commands cmake_minimum_required(VERSION) and cmake_policy(VERSION) "
+     "by default leave policies introduced after the given version unset.  "
+     "Set CMAKE_POLICY_DEFAULT_CMP<NNNN> to OLD or NEW to specify the "
+     "default for policy CMP<NNNN>, where <NNNN> is the policy number."
+     "\n"
+     "This variable should not be set by a project in CMake code; "
+     "use cmake_policy(SET) instead.  "
+     "Users running CMake may set this variable in the cache "
+     "(e.g. -DCMAKE_POLICY_DEFAULT_CMP<NNNN>=<OLD|NEW>) "
+     "to set a policy not otherwise set by the project.  "
+     "Set to OLD to quiet a policy warning while using old behavior "
+     "or to NEW to try building the project with new behavior.",
+     false,
+     "Variables That Change Behavior");
+
     cm->DefineProperty
     ("CMAKE_FIND_LIBRARY_PREFIXES",  cmProperty::VARIABLE,
      "Prefixes to prepend when looking for libraries.",
@@ -677,13 +696,29 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   cm->DefineProperty
     ("CMAKE_USER_MAKE_RULES_OVERRIDE", cmProperty::VARIABLE,
-     "Specify a file that can change the build rule variables.",
-     "If this variable is set, it should to point to a "
-     "CMakeLists.txt file that will be read in by CMake "
-     "after all the system settings have been set, but "
-     "before they have been used.  This would allow you "
-     "to override any variables that need to be changed "
-     "for some special project. ",false,
+     "Specify a CMake file that overrides platform information.",
+     "CMake loads the specified file while enabling support for each "
+     "language from either the project() or enable_language() commands.  "
+     "It is loaded after CMake's builtin compiler and platform information "
+     "modules have been loaded but before the information is used.  "
+     "The file may set platform information variables to override CMake's "
+     "defaults."
+     "\n"
+     "This feature is intended for use only in overriding information "
+     "variables that must be set before CMake builds its first test "
+     "project to check that the compiler for a language works.  "
+     "It should not be used to load a file in cases that a normal include() "
+     "will work.  "
+     "Use it only as a last resort for behavior that cannot be achieved "
+     "any other way.  "
+     "For example, one may set CMAKE_C_FLAGS_INIT to change the default "
+     "value used to initialize CMAKE_C_FLAGS before it is cached.  "
+     "The override file should NOT be used to set anything that could "
+     "be set after languages are enabled, such as variables like "
+     "CMAKE_RUNTIME_OUTPUT_DIRECTORY that affect the placement of binaries.  "
+     "Information set in the file will be used for try_compile and try_run "
+     "builds too."
+     ,false,
      "Variables That Change Behavior");
 
   cm->DefineProperty
@@ -832,8 +867,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
   cm->DefineProperty
     ("MSVC_VERSION", cmProperty::VARIABLE,
      "The version of Microsoft Visual C/C++ being used if any.",
-     "The version of Microsoft Visual C/C++ being used if any. "
-     "For example 1300 is MSVC 6.0.",
+     "Known version numbers are:\n"
+     "  1200 = VS  6.0\n"
+     "  1300 = VS  7.0\n"
+     "  1310 = VS  7.1\n"
+     "  1400 = VS  8.0\n"
+     "  1500 = VS  9.0\n"
+     "  1600 = VS 10.0\n"
+     "",
      false,
      "Variables That Describe the System");
 
@@ -1102,6 +1143,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "this variable for a target if they are set.  "
      "Library targets are otherwise placed in this directory.",false,
      "Variables that Control the Build");
+  cm->DefineProperty
+    ("CMAKE_TRY_COMPILE_CONFIGURATION", cmProperty::VARIABLE,
+     "Build configuration used for try_compile and try_run projects.",
+     "Projects built by try_compile and try_run are built "
+     "synchronously during the CMake configuration step.  "
+     "Therefore a specific build configuration must be chosen even "
+     "if the generated build system supports multiple configurations.",false,
+     "Variables that Control the Build");
 
 
 //   Variables defined when the a language is enabled These variables will
@@ -1111,13 +1160,10 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   cm->DefineProperty
     ("CMAKE_USER_MAKE_RULES_OVERRIDE_<LANG>", cmProperty::VARIABLE,
-     "Specify a file that can change the build rule variables.",
-     "If this variable is set, it should to point to a "
-     "CMakeLists.txt file that will be read in by CMake "
-     "after all the system settings have been set, but "
-     "before they have been used.  This would allow you "
-     "to override any variables that need to be changed "
-     "for some language. ",false,
+     "Specify a CMake file that overrides platform information for <LANG>.",
+     "This is a language-specific version of "
+     "CMAKE_USER_MAKE_RULES_OVERRIDE loaded only when enabling "
+     "language <LANG>.",false,
      "Variables for Languages");
 
   cm->DefineProperty
@@ -1334,6 +1380,29 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
     "Defined to true if the language is enabled.",
     "When language <LANG> is enabled by project() or enable_language() "
     "this variable is defined to 1.",
+    false,"Variables for Languages");
+
+  cm->DefineProperty(
+    "CMAKE_Fortran_MODDIR_FLAG", cmProperty::VARIABLE,
+    "Fortran flag for module output directory.",
+    "This stores the flag needed to pass the value of the "
+    "Fortran_MODULE_DIRECTORY target property to the compiler.",
+    false,"Variables for Languages");
+
+  cm->DefineProperty(
+    "CMAKE_Fortran_MODDIR_DEFAULT", cmProperty::VARIABLE,
+    "Fortran default module output directory.",
+    "Most Fortran compilers write .mod files to the current working "
+    "directory.  "
+    "For those that do not, this is set to \".\" and used when the "
+    "Fortran_MODULE_DIRECTORY target property is not set.",
+    false,"Variables for Languages");
+
+  cm->DefineProperty(
+    "CMAKE_Fortran_MODOUT_FLAG", cmProperty::VARIABLE,
+    "Fortran flag to enable module output.",
+    "Most Fortran compilers write .mod files out by default.  "
+    "For others, this stores the flag needed to enable module output.",
     false,"Variables for Languages");
 
   // variables that are used by cmake but not to be documented

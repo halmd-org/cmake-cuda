@@ -16,7 +16,9 @@
 #include "cmLocalGenerator.h"
 #include "cmGlobalGenerator.h"
 #include "cmComputeLinkInformation.h"
+#include "cmDocumentCompileDefinitions.h"
 #include "cmListFileCache.h"
+#include "cmGeneratorExpression.h"
 #include <cmsys/RegularExpression.hxx>
 #include <map>
 #include <set>
@@ -145,14 +147,7 @@ void cmTarget::DefineProperties(cmake *cm)
      "are not supported by the native build tool.  "
      "The VS6 IDE does not support definition values with spaces "
      "(but NMake does).\n"
-     "Dislaimer: Most native build tools have poor support for escaping "
-     "certain values.  CMake has work-arounds for many cases but some "
-     "values may just not be possible to pass correctly.  If a value "
-     "does not seem to be escaped correctly, do not attempt to "
-     "work-around the problem by adding escape sequences to the value.  "
-     "Your work-around may break in a future version of CMake that "
-     "has improved escape support.  Instead consider defining the macro "
-     "in a (configured) header file.  Then report the limitation.");
+     CM_DOCUMENT_COMPILE_DEFINITIONS_DISCLAIMER);
 
   cm->DefineProperty
     ("COMPILE_DEFINITIONS_<CONFIG>", cmProperty::TARGET,
@@ -500,6 +495,15 @@ void cmTarget::DefineProperties(cmake *cm)
      "value is the default.  "
      "See documentation of CMAKE_<LANG>_LINKER_PREFERENCE variables.");
 
+#define CM_LOCATION_UNDEFINED_BEHAVIOR \
+  "\n" \
+  "Do not set properties that affect the location of the target after " \
+  "reading this property.  These include properties whose names match " \
+  "\"(RUNTIME|LIBRARY|ARCHIVE)_OUTPUT_(NAME|DIRECTORY)(_<CONFIG>)?\" " \
+  "or \"(IMPLIB_)?(PREFIX|SUFFIX)\".  " \
+  "Failure to follow this rule is not diagnosed and leaves the location " \
+  "of the target undefined."
+
   cm->DefineProperty
     ("LOCATION", cmProperty::TARGET,
      "Read-only location of a target on disk.",
@@ -516,7 +520,10 @@ void cmTarget::DefineProperties(cmake *cm)
      "In CMake 2.6 and above add_custom_command automatically recognizes a "
      "target name in its COMMAND and DEPENDS options and computes the "
      "target location.  "
-     "Therefore this property is not needed for creating custom commands.");
+     "In CMake 2.8.4 and above add_custom_command recognizes generator "
+     "expressions to refer to target locations anywhere in the command.  "
+     "Therefore this property is not needed for creating custom commands."
+     CM_LOCATION_UNDEFINED_BEHAVIOR);
 
   cm->DefineProperty
     ("LOCATION_<CONFIG>", cmProperty::TARGET,
@@ -529,7 +536,20 @@ void cmTarget::DefineProperties(cmake *cm)
      "By default CMake looks for an exact-match but otherwise uses an "
      "arbitrary available configuration.  "
      "Use the MAP_IMPORTED_CONFIG_<CONFIG> property to map imported "
-     "configurations explicitly.");
+     "configurations explicitly."
+     CM_LOCATION_UNDEFINED_BEHAVIOR);
+
+  cm->DefineProperty
+    ("LINK_DEPENDS", cmProperty::TARGET,
+     "Additional files on which a target binary depends for linking.",
+     "Specifies a semicolon-separated list of full-paths to files on which "
+     "the link rule for this target depends.  "
+     "The target binary will be linked if any of the named files is newer "
+     "than it."
+     "\n"
+     "This property is ignored by non-Makefile generators.  "
+     "It is intended to specify dependencies on \"linker scripts\" for "
+     "custom Makefile link rules.");
 
   cm->DefineProperty
     ("LINK_INTERFACE_LIBRARIES", cmProperty::TARGET,
@@ -1345,8 +1365,8 @@ bool cmTargetTraceDependencies::IsUtility(std::string const& dep)
     util = cmSystemTools::GetFilenameWithoutLastExtension(util);
     }
 
-  // Check for a non-imported target with this name.
-  if(cmTarget* t = this->GlobalGenerator->FindTarget(0, util.c_str()))
+  // Check for a target with this name.
+  if(cmTarget* t = this->Makefile->FindTargetToUse(util.c_str()))
     {
     // If we find the target and the dep was given as a full path,
     // then make sure it was not a full path to something else, and
@@ -1390,12 +1410,13 @@ cmTargetTraceDependencies
 {
   // Transform command names that reference targets built in this
   // project to corresponding target-level dependencies.
+  cmGeneratorExpression ge(this->Makefile, 0, cc.GetBacktrace(), true);
   for(cmCustomCommandLines::const_iterator cit = cc.GetCommandLines().begin();
       cit != cc.GetCommandLines().end(); ++cit)
     {
     std::string const& command = *cit->begin();
-    // Look for a non-imported target with this name.
-    if(cmTarget* t = this->GlobalGenerator->FindTarget(0, command.c_str()))
+    // Check for a target with this name.
+    if(cmTarget* t = this->Makefile->FindTargetToUse(command.c_str()))
       {
       if(t->GetType() == cmTarget::EXECUTABLE)
         {
@@ -1406,6 +1427,21 @@ cmTargetTraceDependencies
         this->Target->AddUtility(command.c_str());
         }
       }
+
+    // Check for target references in generator expressions.
+    for(cmCustomCommandLine::const_iterator cli = cit->begin();
+        cli != cit->end(); ++cli)
+      {
+      ge.Process(*cli);
+      }
+    }
+
+  // Add target-level dependencies referenced by generator expressions.
+  std::set<cmTarget*> targets = ge.GetTargets();
+  for(std::set<cmTarget*>::iterator ti = targets.begin();
+      ti != targets.end(); ++ti)
+    {
+    this->Target->AddUtility((*ti)->GetName());
     }
 
   // Queue the custom command dependencies.
@@ -1438,6 +1474,15 @@ cmTargetTraceDependencies
 //----------------------------------------------------------------------------
 void cmTarget::TraceDependencies(const char* vsProjectFile)
 {
+  // CMake-generated targets have no dependencies to trace.  Normally tracing
+  // would find nothing anyway, but when building CMake itself the "install"
+  // target command ends up referencing the "cmake" target but we do not
+  // really want the dependency because "install" depend on "all" anyway.
+  if(this->GetType() == cmTarget::GLOBAL_TARGET)
+    {
+    return;
+    }
+
   // Use a helper object to trace the dependencies.
   cmTargetTraceDependencies tracer(this, this->Internal.Get(), vsProjectFile);
   tracer.Trace();
@@ -3184,6 +3229,7 @@ void cmTarget::GetLibraryNames(std::string& name,
     // the library version as the soversion.
     soversion = version;
     }
+  bool isApple = this->Makefile->IsOn("APPLE");
 
   // Get the components of the library name.
   std::string prefix;
@@ -3195,26 +3241,33 @@ void cmTarget::GetLibraryNames(std::string& name,
   name = prefix+base+suffix;
 
   // The library's soname.
-#if defined(__APPLE__)
-  soName = prefix+base;
-#else
-  soName = name;
-#endif
+  if(isApple)
+    {
+    soName = prefix+base;
+    }
+  else
+    {
+    soName = name;
+    }
   if(soversion)
     {
     soName += ".";
     soName += soversion;
     }
-#if defined(__APPLE__)
-  soName += suffix;
-#endif
+  if(isApple)
+    {
+    soName += suffix;
+    }
 
   // The library's real name on disk.
-#if defined(__APPLE__)
-  realName = prefix+base;
-#else
+  if(isApple)
+    {
+    realName = prefix+base;
+    }
+  else
+    {
   realName = name;
-#endif
+    }
   if(version)
     {
     realName += ".";
@@ -3225,9 +3278,10 @@ void cmTarget::GetLibraryNames(std::string& name,
     realName += ".";
     realName += soversion;
     }
-#if defined(__APPLE__)
-  realName += suffix;
-#endif
+  if(isApple)
+    {
+    realName += suffix;
+    }
 
   // The import library name.
   if(this->GetType() == cmTarget::SHARED_LIBRARY ||

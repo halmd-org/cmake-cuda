@@ -1,6 +1,6 @@
 
 #=============================================================================
-# Copyright 2004-2009 Kitware, Inc.
+# Copyright 2004-2011 Kitware, Inc.
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.
@@ -76,12 +76,16 @@ ENDIF (NOT _INCLUDED_FILE)
 # be made to those values.
 
 IF(CMAKE_USER_MAKE_RULES_OVERRIDE)
-   INCLUDE(${CMAKE_USER_MAKE_RULES_OVERRIDE})
-ENDIF(CMAKE_USER_MAKE_RULES_OVERRIDE)
+  # Save the full path of the file so try_compile can use it.
+  INCLUDE(${CMAKE_USER_MAKE_RULES_OVERRIDE} RESULT_VARIABLE _override)
+  SET(CMAKE_USER_MAKE_RULES_OVERRIDE "${_override}")
+ENDIF()
 
 IF(CMAKE_USER_MAKE_RULES_OVERRIDE_C)
-   INCLUDE(${CMAKE_USER_MAKE_RULES_OVERRIDE_C})
-ENDIF(CMAKE_USER_MAKE_RULES_OVERRIDE_C)
+  # Save the full path of the file so try_compile can use it.
+  INCLUDE(${CMAKE_USER_MAKE_RULES_OVERRIDE_C} RESULT_VARIABLE _override)
+  SET(CMAKE_USER_MAKE_RULES_OVERRIDE_C "${_override}")
+ENDIF()
 
 
 # for most systems a module is the same as a shared library
@@ -164,9 +168,15 @@ ENDIF(NOT CMAKE_C_CREATE_SHARED_MODULE)
 
 # Create a static archive incrementally for large object file counts.
 # If CMAKE_C_CREATE_STATIC_LIBRARY is set it will override these.
-SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> cr <TARGET> <LINK_FLAGS> <OBJECTS>")
-SET(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> r  <TARGET> <LINK_FLAGS> <OBJECTS>")
-SET(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+IF(NOT DEFINED CMAKE_C_ARCHIVE_CREATE)
+  SET(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> cr <TARGET> <LINK_FLAGS> <OBJECTS>")
+ENDIF()
+IF(NOT DEFINED CMAKE_C_ARCHIVE_APPEND)
+  SET(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> r  <TARGET> <LINK_FLAGS> <OBJECTS>")
+ENDIF()
+IF(NOT DEFINED CMAKE_C_ARCHIVE_FINISH)
+  SET(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+ENDIF()
 
 # compile a C file into an object file
 IF(NOT CMAKE_C_COMPILE_OBJECT)

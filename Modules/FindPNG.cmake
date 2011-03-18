@@ -33,7 +33,7 @@ if(ZLIB_FOUND)
   /usr/local/include/libpng             # OpenBSD
   )
 
-  set(PNG_NAMES ${PNG_NAMES} png libpng png14 libpng14 png14d libpng14d png12 libpng12 png12d libpng12d)
+  set(PNG_NAMES ${PNG_NAMES} png libpng png15 libpng15 png15d libpng15d png14 libpng14 png14d libpng14d png12 libpng12 png12d libpng12d)
   find_library(PNG_LIBRARY NAMES ${PNG_NAMES} )
 
   if (PNG_LIBRARY AND PNG_PNG_INCLUDE_DIR)
@@ -55,7 +55,7 @@ endif(ZLIB_FOUND)
 
 # handle the QUIETLY and REQUIRED arguments and set PNG_FOUND to TRUE if
 # all listed variables are TRUE
-include("${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake")
+include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
 find_package_handle_standard_args(PNG  DEFAULT_MSG  PNG_LIBRARY PNG_PNG_INCLUDE_DIR)
 
 mark_as_advanced(PNG_PNG_INCLUDE_DIR PNG_LIBRARY )

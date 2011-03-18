@@ -55,7 +55,7 @@ ADD_CUSTOM_COMMAND(
 #  Test creating files from a custom target
 #
 ################################################################
-ADD_CUSTOM_COMMAND(OUTPUT ${PROJECT_BINARY_DIR}/doc1.dvi
+ADD_CUSTOM_COMMAND(OUTPUT ${PROJECT_BINARY_DIR}//doc1.dvi # test 2 slashes
   DEPENDS ${PROJECT_SOURCE_DIR}/doc1.tex 
   COMMAND   ${CMAKE_COMMAND}  
   ARGS      -E copy ${PROJECT_SOURCE_DIR}/doc1.tex 
@@ -130,6 +130,7 @@ ADD_CUSTOM_COMMAND(
 ################################################################
 ADD_CUSTOM_COMMAND(OUTPUT ${PROJECT_BINARY_DIR}/foo.pre
   DEPENDS ${PROJECT_SOURCE_DIR}/foo.in
+          TDocument # Ensure doc1.h generates before this target
   COMMAND   ${CMAKE_COMMAND}  
   ARGS      -E copy ${PROJECT_SOURCE_DIR}/foo.in 
   ${PROJECT_BINARY_DIR}/foo.pre
@@ -180,10 +181,6 @@ ADD_CUSTOM_COMMAND(OUTPUT ${PROJECT_BINARY_DIR}/generated.c
   )
 
 TARGET_LINK_LIBRARIES(CustomCommand GeneratedHeader)
-
-# must add a dependency on TDocument otherwise it might never build and 
-# the CustomCommand executable really needs doc1.h
-ADD_DEPENDENCIES(CustomCommand TDocument)
 
 ##############################################################################
 # Test for using just the target name as executable in the COMMAND
@@ -426,3 +423,16 @@ ADD_CUSTOM_TARGET(DifferentName ALL
   )
 #
 # </SameNameTest>
+
+# Per-config target name and generator expressions.
+ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/../PerConfig PerConfig)
+ADD_CUSTOM_COMMAND(
+  OUTPUT perconfig.out
+  COMMAND ${PerConfig_COMMAND}
+  DEPENDS ${PerConfig_DEPENDS}
+  VERBATIM
+  )
+SET_PROPERTY(SOURCE perconfig.out PROPERTY SYMBOLIC 1)
+ADD_CUSTOM_TARGET(perconfig_target ALL
+  COMMAND ${CMAKE_COMMAND} -E echo "perconfig=$<TARGET_FILE:perconfig>" "config=$<CONFIGURATION>"
+  DEPENDS perconfig.out)

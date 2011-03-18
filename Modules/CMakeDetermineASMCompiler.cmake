@@ -64,7 +64,11 @@ IF(NOT CMAKE_ASM${ASM_DIALECT}_COMPILER_ID)
   LIST(APPEND CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDORS GNU )
   SET(CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDOR_FLAGS_GNU "--version")
   SET(CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDOR_REGEX_GNU "GNU assembler")
+  LIST(APPEND CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDORS TI_DSP )
+  SET(CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDOR_FLAGS_TI_DSP "-h")
+  SET(CMAKE_ASM${ASM_DIALECT}_COMPILER_ID_VENDOR_REGEX_TI_DSP "Texas Instruments")
 
+  INCLUDE(CMakeDetermineCompilerId)
   CMAKE_DETERMINE_COMPILER_ID_VENDOR(ASM${ASM_DIALECT})
 
   IF(CMAKE_ASM${ASM_DIALECT}_COMPILER_ID)
@@ -77,16 +81,17 @@ ENDIF()
 
 
 # If we have a gas/as cross compiler, they have usually some prefix, like
-# e.g. powerpc-linux-gas, arm-elf-gas or i586-mingw32msvc-gas .
+# e.g. powerpc-linux-gas, arm-elf-gas or i586-mingw32msvc-gas , optionally
+# with a 3-component version number at the end
 # The other tools of the toolchain usually have the same prefix
 # NAME_WE cannot be used since then this test will fail for names lile
 # "arm-unknown-nto-qnx6.3.0-gas.exe", where BASENAME would be
 # "arm-unknown-nto-qnx6" instead of the correct "arm-unknown-nto-qnx6.3.0-"
 IF (NOT _CMAKE_TOOLCHAIN_PREFIX)
   GET_FILENAME_COMPONENT(COMPILER_BASENAME "${CMAKE_ASM${ASM_DIALECT}_COMPILER}" NAME)
-  IF (COMPILER_BASENAME MATCHES "^(.+-)g?as(\\.exe)?$")
+  IF (COMPILER_BASENAME MATCHES "^(.+-)g?as(-[0-9]+\\.[0-9]+\\.[0-9]+)?(\\.exe)?$")
     STRING(REGEX REPLACE "^(.+-)g?as(\\.exe)?$"  "\\1" _CMAKE_TOOLCHAIN_PREFIX "${COMPILER_BASENAME}")
-  ENDIF (COMPILER_BASENAME MATCHES "^(.+-)g?as(\\.exe)?$")
+  ENDIF (COMPILER_BASENAME MATCHES "^(.+-)g?as(-[0-9]+\\.[0-9]+\\.[0-9]+)?(\\.exe)?$")
 ENDIF (NOT _CMAKE_TOOLCHAIN_PREFIX)
 
 INCLUDE(CMakeFindBinUtils)

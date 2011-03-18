@@ -16,6 +16,7 @@
 #include "cmMakefile.h"
 #include "cmSystemTools.h"
 #include "cmake.h"
+#include "cmDocumentCompileDefinitions.h"
 
 //----------------------------------------------------------------------------
 cmSourceFile::cmSourceFile(cmMakefile* mf, const char* name):
@@ -187,8 +188,13 @@ bool cmSourceFile::FindFullPath(std::string* error)
     }
 
   cmOStringStream e;
-  e << "Cannot find source file \"" << this->Location.GetName() << "\"";
-  e << ".  Tried extensions";
+  std::string missing = this->Location.GetDirectory();
+  if(!missing.empty())
+    {
+    missing += "/";
+    }
+  missing += this->Location.GetName();
+  e << "Cannot find source file:\n  " << missing << "\nTried extensions";
   for(std::vector<std::string>::const_iterator ext = srcExts.begin();
       ext != srcExts.end(); ++ext)
     {
@@ -411,15 +417,7 @@ void cmSourceFile::DefineProperties(cmake *cm)
      "The VS6 IDE does not support definition values with spaces "
      "(but NMake does).  Xcode does not support per-configuration "
      "definitions on source files.\n"
-     "Disclaimer: Most native build tools have poor support for escaping "
-     "certain values.  CMake has work-arounds for many cases but some "
-     "values may just not be possible to pass correctly.  If a value "
-     "does not seem to be escaped correctly, do not attempt to "
-     "work-around the problem by adding escape sequences to the value.  "
-     "Your work-around may break in a future version of CMake that "
-     "has improved escape support.  Instead consider defining the macro "
-     "in a (configured) header file.  Then report the limitation.");
-
+     CM_DOCUMENT_COMPILE_DEFINITIONS_DISCLAIMER);
 
   cm->DefineProperty
     ("COMPILE_DEFINITIONS_<CONFIG>", cmProperty::SOURCE_FILE,
@@ -472,7 +470,9 @@ void cmSourceFile::DefineProperties(cmake *cm)
      "What programming language is the file.",
      "A property that can be set to indicate what programming language "
      "the source file is. If it is not set the language is determined "
-     "based on the file extension. Typical values are CXX C etc.");
+     "based on the file extension. Typical values are CXX C etc. Setting "
+     "this property for a file means this file will be compiled. "
+     "Do not set this for header or files that should not be compiled.");
 
   cm->DefineProperty
     ("LOCATION", cmProperty::SOURCE_FILE, 

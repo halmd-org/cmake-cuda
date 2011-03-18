@@ -39,6 +39,7 @@ public:
 
   // Store options from command line flags.
   void Parse(const char* flags);
+  void ParseFinish();
 
   // Fix the ExceptionHandling option to default to off.
   void FixExceptionHandlingDefault();
@@ -53,7 +54,8 @@ public:
   // Write options to output.
   void OutputPreprocessorDefinitions(std::ostream& fout,
                                      const char* prefix,
-                                     const char* suffix);
+                                     const char* suffix,
+                                     const char* lang);
   void OutputFlagMap(std::ostream& fout, const char* indent);
   void OutputAdditionalOptions(std::ostream& fout,
                                const char* prefix,
@@ -66,6 +68,10 @@ private:
   std::string Configuration;
   Tool CurrentTool;
   cmVisualStudio10TargetGenerator* TargetGenerator;
+
+  bool FortranRuntimeDebug;
+  bool FortranRuntimeDLL;
+  bool FortranRuntimeMT;
 
   virtual void StoreUnknownFlag(const char* flag);
 };
