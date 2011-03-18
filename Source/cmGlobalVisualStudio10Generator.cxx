@@ -19,6 +19,10 @@
 cmGlobalVisualStudio10Generator::cmGlobalVisualStudio10Generator()
 {
   this->FindMakeProgramFile = "CMakeVS10FindMake.cmake";
+  std::string vc10Express;
+  this->ExpressEdition = cmSystemTools::ReadRegistryValue(
+    "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VCExpress\\10.0\\Setup\\VC;"
+    "ProductDir", vc10Express, cmSystemTools::KeyWOW64_32);
 }
 
 //----------------------------------------------------------------------------
@@ -63,6 +67,16 @@ void cmGlobalVisualStudio10Generator
 }
 
 //----------------------------------------------------------------------------
+const char* cmGlobalVisualStudio10Generator::GetPlatformToolset()
+{
+  if(!this->PlatformToolset.empty())
+    {
+    return this->PlatformToolset.c_str();
+    }
+  return 0;
+}
+
+//----------------------------------------------------------------------------
 std::string cmGlobalVisualStudio10Generator::GetUserMacrosDirectory()
 {
   std::string base;
@@ -100,17 +114,22 @@ std::string cmGlobalVisualStudio10Generator
 ::GenerateBuildCommand(const char* makeProgram,
                        const char *projectName, 
                        const char* additionalOptions, const char *targetName,
-                       const char* config, bool ignoreErrors, bool)
+                       const char* config, bool ignoreErrors, bool fast)
 {
-  // Ingoring errors is not implemented in visual studio 6
-  (void) ignoreErrors;
-
-  
   // now build the test
   std::string makeCommand 
     = cmSystemTools::ConvertToOutputPath(makeProgram);
   std::string lowerCaseCommand = makeCommand;
   cmSystemTools::LowerCase(lowerCaseCommand);
+
+  // If makeProgram is devenv, parent class knows how to generate command:
+  if (lowerCaseCommand.find("devenv") != std::string::npos)
+    {
+    return cmGlobalVisualStudio7Generator::GenerateBuildCommand(makeProgram,
+      projectName, additionalOptions, targetName, config, ignoreErrors, fast);
+    }
+
+  // Otherwise, assume MSBuild command line, and construct accordingly.
 
   // if there are spaces in the makeCommand, assume a full path
   // and convert it to a path with no spaces in it as the

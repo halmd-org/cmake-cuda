@@ -16,6 +16,7 @@
 #include "QCMake.h"
 #include <QMainWindow>
 #include <QThread>
+#include <QEventLoop>
 #include "ui_CMakeSetupDialog.h"
 
 class QCMakeThread;
@@ -43,8 +44,6 @@ protected slots:
   void doHelp();
   void doAbout();
   void doInterrupt();
-  void finishConfigure(int error);
-  void finishGenerate(int error);
   void error(const QString& message);
   void message(const QString& message);
   
@@ -74,6 +73,10 @@ protected slots:
   void setGroupedView(bool);
   void showUserChanges();
   void setSearchFilter(const QString& str);
+  bool prepareConfigure();
+  bool doConfigureInternal();
+  bool doGenerateInternal();
+  void exitLoop(int);
 
 protected:
 
@@ -87,18 +90,25 @@ protected:
   QCMakeThread* CMakeThread;
   bool ExitAfterGenerate;
   bool CacheModified;
+  bool ConfigureNeeded;
   QAction* ReloadCacheAction;
   QAction* DeleteCacheAction;
   QAction* ExitAction;
   QAction* ConfigureAction;
   QAction* GenerateAction;
   QAction* SuppressDevWarningsAction;
+  QAction* WarnUninitializedAction;
+  QAction* WarnUnusedAction;
   QAction* InstallForCommandLineAction;
   State CurrentState;
 
   QTextCharFormat ErrorFormat;
   QTextCharFormat MessageFormat;
 
+  QEventLoop LocalLoop;
+
+  float ProgressOffset;
+  float ProgressFactor;
 };
 
 // QCMake instance on a thread

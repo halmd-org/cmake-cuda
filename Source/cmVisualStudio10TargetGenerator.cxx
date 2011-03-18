@@ -244,6 +244,8 @@ void cmVisualStudio10TargetGenerator::WriteProjectConfigurations()
 
 void cmVisualStudio10TargetGenerator::WriteProjectConfigurationValues()
 {
+  cmGlobalVisualStudio10Generator* gg =
+    static_cast<cmGlobalVisualStudio10Generator*>(this->GlobalGenerator);
   std::vector<std::string> *configs =
     static_cast<cmGlobalVisualStudio7Generator *>
     (this->GlobalGenerator)->GetConfigurations();
@@ -290,6 +292,13 @@ void cmVisualStudio10TargetGenerator::WriteProjectConfigurationValues()
     else
       {
       this->WriteString("<CharacterSet>MultiByte</CharacterSet>\n", 2);
+      }
+    if(const char* toolset = gg->GetPlatformToolset())
+      {
+      std::string pts = "<PlatformToolset>";
+      pts += toolset;
+      pts += "</PlatformToolset>\n";
+      this->WriteString(pts.c_str(), 2);
       }
     this->WriteString("</PropertyGroup>\n", 1);
     }
@@ -367,13 +376,7 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
       i != configs->end(); ++i)
     {
     std::string script =
-      cmVS10EscapeXML(
-        lg->ConstructScript(command.GetCommandLines(),
-                            command.GetWorkingDirectory(),
-                            i->c_str(),
-                            command.GetEscapeOldStyle(),
-                            command.GetEscapeAllowMakeVars())
-        );
+      cmVS10EscapeXML(lg->ConstructScript(command, i->c_str()));
     this->WritePlatformConfigTag("Message",i->c_str(), 3);
     (*this->BuildFileStream ) << cmVS10EscapeXML(comment) << "</Message>\n";
     this->WritePlatformConfigTag("Command", i->c_str(), 3);
@@ -386,10 +389,12 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
         d != command.GetDepends().end(); 
         ++d)
       {
-      std::string dep = this->LocalGenerator->
-        GetRealDependency(d->c_str(), i->c_str());
-      this->ConvertToWindowsSlash(dep);
-      (*this->BuildFileStream ) << ";" << dep;
+      std::string dep;
+      if(this->LocalGenerator->GetRealDependency(d->c_str(), i->c_str(), dep))
+        {
+        this->ConvertToWindowsSlash(dep);
+        (*this->BuildFileStream ) << ";" << dep;
+        }
       }
     (*this->BuildFileStream ) << ";%(AdditionalInputs)</AdditionalInputs>\n";
     this->WritePlatformConfigTag("Outputs", i->c_str(), 3);
@@ -431,6 +436,7 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
   std::vector<cmSourceFile*> customBuild;
   std::vector<cmSourceFile*> none;
   std::vector<cmSourceFile*> headers;
+  std::vector<cmSourceFile*> idls;
   std::vector<cmSourceFile*> resource;
   
   for(std::vector<cmSourceFile*>::const_iterator s = classes.begin(); 
@@ -453,7 +459,7 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
       {
       clCompile.push_back(sf);
       }
-    if(strcmp(lang, "RC") == 0)
+    else if(strcmp(lang, "RC") == 0)
       {
       resource.push_back(sf);
       }
@@ -464,6 +470,10 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
     else if(header)
       {
       headers.push_back(sf);
+      }
+    else if(sf->GetExtension() == "idl")
+      {
+      idls.push_back(sf);
       }
     else
       {
@@ -493,6 +503,7 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
   this->WriteGroupSources("ClCompile", clCompile, sourceGroups);
   this->WriteGroupSources("ClInclude", headers, sourceGroups);
   this->WriteGroupSources("ResourceCompile", resource, sourceGroups);
+  this->WriteGroupSources("Midl", idls, sourceGroups);
   this->WriteGroupSources("CustomBuild", customBuild, sourceGroups);
 
   this->WriteString("<ItemGroup>\n", 1);
@@ -586,7 +597,11 @@ WriteGroupSources(const char* name,
   for(std::vector<cmSourceFile*>::const_iterator s = sources.begin();
       s != sources.end(); ++s)
     {
-    cmSourceFile* sf = *s; 
+    cmSourceFile* sf = *s;
+    if(sf->GetExtension() == "obj")
+      {
+      continue;
+      }
     std::string const& source = sf->GetFullPath();
     cmSourceGroup& sourceGroup = 
       this->Makefile->FindSourceGroup(source.c_str(), sourceGroups);
@@ -646,7 +661,7 @@ void cmVisualStudio10TargetGenerator::WriteObjSources()
 
 void cmVisualStudio10TargetGenerator::WriteCLSources()
 {
-  if(this->Target->GetType() > cmTarget::MODULE_LIBRARY)
+  if(this->Target->GetType() > cmTarget::UTILITY)
     {
     return;
     }
@@ -655,50 +670,60 @@ void cmVisualStudio10TargetGenerator::WriteCLSources()
   for(std::vector<cmSourceFile*>::const_iterator source = sources.begin();
       source != sources.end(); ++source)
     {
-    // if it is not a custom command then add it as a c/c++ file,
-    // TODO: need to check for idl or rc
-    if(!(*source)->GetCustomCommand())
+    std::string ext = (*source)->GetExtension();
+    if((*source)->GetCustomCommand() || ext == "obj")
       {
-      bool header = (*source)->GetPropertyAsBool("HEADER_FILE_ONLY")
-        || this->GlobalGenerator->IgnoreFile
-        ((*source)->GetExtension().c_str());
-      const char* lang = (*source)->GetLanguage();
-      bool cl = lang && (strcmp(lang, "C") == 0 || strcmp(lang, "CXX") ==0);
-      bool rc = lang && (strcmp(lang, "RC") == 0);
-      std::string sourceFile = (*source)->GetFullPath();
-      sourceFile =  cmSystemTools::RelativePath(
-        this->Makefile->GetCurrentOutputDirectory(),
-        sourceFile.c_str());
-      this->ConvertToWindowsSlash(sourceFile);
-      // output the source file
-      if(header)
-        {
-        this->WriteString("<ClInclude Include=\"", 2);
-        }
-      else if(cl)
-        {
-        this->WriteString("<ClCompile Include=\"", 2);
-        }
-      else if(rc)
-        {
-        this->WriteString("<ResourceCompile Include=\"", 2);
-        }
-      else
-        {
-        this->WriteString("<None Include=\"", 2);
-        }
-      (*this->BuildFileStream ) << sourceFile << "\"";
-      // ouput any flags specific to this source file
-      if(cl && this->OutputSourceSpecificFlags(*source))
-        {
-        // if the source file has specific flags the tag
-        // is ended on a new line
-        this->WriteString("</ClCompile>\n", 2);
-        }
-      else
-        {
-        (*this->BuildFileStream ) << " />\n";
-        }
+      continue;
+      }
+    // If it is not a custom command and it is not a pre-built obj file,
+    // then add it as a source (c/c++/header/rc/idl) file
+    bool header = (*source)->GetPropertyAsBool("HEADER_FILE_ONLY")
+      || this->GlobalGenerator->IgnoreFile(ext.c_str());
+    const char* lang = (*source)->GetLanguage();
+    bool cl = lang && (strcmp(lang, "C") == 0 || strcmp(lang, "CXX") ==0);
+    bool rc = lang && (strcmp(lang, "RC") == 0);
+    bool idl = ext == "idl";
+    std::string sourceFile = (*source)->GetFullPath();
+    sourceFile =  cmSystemTools::RelativePath(
+      this->Makefile->GetCurrentOutputDirectory(),
+      sourceFile.c_str());
+    this->ConvertToWindowsSlash(sourceFile);
+    // output the source file
+    if(header)
+      {
+      this->WriteString("<ClInclude Include=\"", 2);
+      }
+    else if(cl)
+      {
+      this->WriteString("<ClCompile Include=\"", 2);
+      }
+    else if(rc)
+      {
+      this->WriteString("<ResourceCompile Include=\"", 2);
+      }
+    else if(idl)
+      {
+      this->WriteString("<Midl Include=\"", 2);
+      }
+    else
+      {
+      this->WriteString("<None Include=\"", 2);
+      }
+    (*this->BuildFileStream ) << sourceFile << "\"";
+    // ouput any flags specific to this source file
+    if(!header && cl && this->OutputSourceSpecificFlags(*source))
+      {
+      // if the source file has specific flags the tag
+      // is ended on a new line
+      this->WriteString("</ClCompile>\n", 2);
+      }
+    else if(!header && rc && this->OutputSourceSpecificFlags(*source))
+      {
+      this->WriteString("</ResourceCompile>\n", 2);
+      }
+    else
+      {
+      (*this->BuildFileStream ) << " />\n";
       }
     }
   this->WriteString("</ItemGroup>\n", 1);
@@ -832,8 +857,7 @@ bool cmVisualStudio10TargetGenerator::OutputSourceSpecificFlags(
       clOptions.OutputAdditionalOptions(*this->BuildFileStream, "      ", "");
       clOptions.OutputFlagMap(*this->BuildFileStream, "      "); 
       clOptions.OutputPreprocessorDefinitions(*this->BuildFileStream,
-                                              "      ", "\n");
-      
+                                              "      ", "\n", lang);
       }
     }
   return hasFlags;
@@ -1099,7 +1123,7 @@ void cmVisualStudio10TargetGenerator::WriteClOptions(
     }
 
   clOptions.OutputPreprocessorDefinitions(*this->BuildFileStream, "      ", 
-                                          "\n");
+                                          "\n", "CXX");
   this->WriteString("<AssemblerListingLocation>", 3);
   *this->BuildFileStream << configName 
                          << "</AssemblerListingLocation>\n";
@@ -1128,10 +1152,13 @@ OutputIncludes(std::vector<std::string> const & includes)
 
 
 void cmVisualStudio10TargetGenerator::
-WriteRCOptions(std::string const& ,
+WriteRCOptions(std::string const& configName,
                std::vector<std::string> const & includes)
 {
   this->WriteString("<ResourceCompile>\n", 2);
+  Options& clOptions = *(this->ClOptions[configName]);
+  clOptions.OutputPreprocessorDefinitions(*this->BuildFileStream, "      ",
+                                          "\n", "RC");
   this->OutputIncludes(includes);
   this->WriteString("</ResourceCompile>\n", 2);
 }
@@ -1389,11 +1416,20 @@ WriteMidlOptions(std::string const& /*config*/,
 {
   this->WriteString("<Midl>\n", 2);
   this->OutputIncludes(includes);
+  this->WriteString("<OutputDirectory>$(IntDir)</OutputDirectory>\n", 3);
+  this->WriteString("<HeaderFileName>%(Filename).h</HeaderFileName>\n", 3);
+  this->WriteString(
+    "<TypeLibraryName>%(Filename).tlb</TypeLibraryName>\n", 3);
+  this->WriteString(
+    "<InterfaceIdentifierFileName>"
+    "%(Filename)_i.c</InterfaceIdentifierFileName>\n", 3);
+  this->WriteString("<ProxyFileName>%(Filename)_p.c</ProxyFileName>\n",3);
   this->WriteString("</Midl>\n", 2);
 }
-  
+
+
 void cmVisualStudio10TargetGenerator::WriteItemDefinitionGroups()
-{  
+{
   std::vector<std::string> *configs =
     static_cast<cmGlobalVisualStudio7Generator *>
     (this->GlobalGenerator)->GetConfigurations();
@@ -1458,13 +1494,7 @@ void cmVisualStudio10TargetGenerator::WriteEvent(
     script += pre;
     pre = "\n";
     script +=
-      cmVS10EscapeXML(
-        lg->ConstructScript(command.GetCommandLines(),
-                            command.GetWorkingDirectory(),
-                            configName.c_str(),
-                            command.GetEscapeOldStyle(),
-                            command.GetEscapeAllowMakeVars())
-        );
+      cmVS10EscapeXML(lg->ConstructScript(command, configName.c_str()));
     }
   comment = cmVS10EscapeComment(comment);
   this->WriteString("<Message>",3);

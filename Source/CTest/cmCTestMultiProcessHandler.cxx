@@ -275,12 +275,6 @@ void cmCTestMultiProcessHandler::StartNextTests()
         }
       numToStart -= processors;
       }
-    else
-      {
-      cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, std::endl
-                 << "Test did not start waiting on depends to finish: "
-                 << *test << "\n");
-      }
     if(numToStart == 0)
       {
       return;
@@ -434,7 +428,10 @@ void cmCTestMultiProcessHandler::ReadCostData()
       if(index == -1) continue;
 
       this->Properties[index]->PreviousRuns = prev;
-      if(this->Properties[index] && this->Properties[index]->Cost == 0)
+      // When not running in parallel mode, don't use cost data
+      if(this->ParallelLevel > 1 &&
+         this->Properties[index] &&
+         this->Properties[index]->Cost == 0)
         {
         this->Properties[index]->Cost = cost;
         }
@@ -475,20 +472,19 @@ void cmCTestMultiProcessHandler::CreateTestCostList()
     {
     SortedTests.push_back(i->first);
 
-    //If the test failed last time, it should be run first, so max the cost
-    if(std::find(this->LastTestsFailed.begin(),
-                 this->LastTestsFailed.end(),
-                 this->Properties[i->first]->Name)
-       != this->LastTestsFailed.end())
+    //If the test failed last time, it should be run first, so max the cost.
+    //Only do this for parallel runs; in non-parallel runs, avoid clobbering
+    //the test's explicitly set cost.
+    if(this->ParallelLevel > 1 &&
+       std::find(this->LastTestsFailed.begin(), this->LastTestsFailed.end(),
+       this->Properties[i->first]->Name) != this->LastTestsFailed.end())
       {
       this->Properties[i->first]->Cost = FLT_MAX;
       }
     }
-  if(this->ParallelLevel > 1)
-    {
-    TestComparator comp(this);
-    std::sort(SortedTests.begin(), SortedTests.end(), comp);
-    }
+
+  TestComparator comp(this);
+  std::sort(SortedTests.begin(), SortedTests.end(), comp);
 }
 
 //---------------------------------------------------------
@@ -659,32 +655,37 @@ bool cmCTestMultiProcessHandler::CheckCycles()
       it != this->Tests.end(); ++it)
     {
     //DFS from each element to itself
+    int root = it->first;
+    std::set<int> visited;
     std::stack<int> s;
-    std::vector<int> visited;
-
-    s.push(it->first);
-
+    s.push(root);
     while(!s.empty())
       {
       int test = s.top();
       s.pop();
-
-      for(TestSet::iterator d = this->Tests[test].begin();
-          d != this->Tests[test].end(); ++d)
+      if(visited.insert(test).second)
         {
-        if(std::find(visited.begin(), visited.end(), *d) != visited.end())
+        for(TestSet::iterator d = this->Tests[test].begin();
+            d != this->Tests[test].end(); ++d)
           {
-          //cycle exists
-          cmCTestLog(this->CTest, ERROR_MESSAGE, "Error: a cycle exists in "
-            "the test dependency graph for the test \""
-            << this->Properties[it->first]->Name << "\"." << std::endl
-            << "Please fix the cycle and run ctest again." << std::endl);
-          return false;
+          if(*d == root)
+            {
+            //cycle exists
+            cmCTestLog(this->CTest, ERROR_MESSAGE,
+                       "Error: a cycle exists in the test dependency graph "
+                       "for the test \"" << this->Properties[root]->Name <<
+                       "\".\nPlease fix the cycle and run ctest again.\n");
+            return false;
+            }
+          else
+            {
+            s.push(*d);
+            }
           }
-        s.push(*d);
         }
-      visited.push_back(test);
       }
     }
+  cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+             "Checking test dependency graph end" << std::endl);
   return true;
 }

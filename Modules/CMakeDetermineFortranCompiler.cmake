@@ -169,6 +169,9 @@ IF(NOT CMAKE_Fortran_COMPILER_ID_RUN)
   LIST(APPEND CMAKE_Fortran_COMPILER_ID_VENDORS Compaq)
   SET(CMAKE_Fortran_COMPILER_ID_VENDOR_FLAGS_Compaq "-what")
   SET(CMAKE_Fortran_COMPILER_ID_VENDOR_REGEX_Compaq "Compaq Visual Fortran")
+  LIST(APPEND CMAKE_Fortran_COMPILER_ID_VENDORS NAG) # Numerical Algorithms Group
+  SET(CMAKE_Fortran_COMPILER_ID_VENDOR_FLAGS_NAG "-V")
+  SET(CMAKE_Fortran_COMPILER_ID_VENDOR_REGEX_NAG "NAG Fortran Compiler")
 
   # Try to identify the compiler.
   SET(CMAKE_Fortran_COMPILER_ID)
@@ -215,6 +218,10 @@ ENDIF(NOT CMAKE_Fortran_COMPILER_ID_RUN)
 
 INCLUDE(CMakeFindBinUtils)
 
+IF(MSVC_Fortran_ARCHITECTURE_ID)
+  SET(SET_MSVC_Fortran_ARCHITECTURE_ID
+    "SET(MSVC_Fortran_ARCHITECTURE_ID ${MSVC_Fortran_ARCHITECTURE_ID})")
+ENDIF()
 # configure variables set in this file for fast reload later on
 CONFIGURE_FILE(${CMAKE_ROOT}/Modules/CMakeFortranCompiler.cmake.in
   ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeFortranCompiler.cmake

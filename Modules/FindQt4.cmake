@@ -447,7 +447,10 @@ MACRO (_QT4_ADJUST_LIB_VARS _camelCaseBasename)
 ENDMACRO (_QT4_ADJUST_LIB_VARS)
 
 function(_QT4_QUERY_QMAKE VAR RESULT)
-  exec_program(${QT_QMAKE_EXECUTABLE} ARGS "-query ${VAR}" RETURN_VALUE return_code OUTPUT_VARIABLE output )
+  execute_process(COMMAND "${QT_QMAKE_EXECUTABLE}" -query ${VAR}
+    RESULT_VARIABLE return_code
+    OUTPUT_VARIABLE output ERROR_VARIABLE output
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE)
   if(NOT return_code)
     file(TO_CMAKE_PATH "${output}" output)
     set(${RESULT} ${output} PARENT_SCOPE)
@@ -482,7 +485,7 @@ IF (QT_QMAKE_EXECUTABLE)
   _qt4_query_qmake(QT_VERSION QTVERSION)
 
   # check for qt3 qmake and then try and find qmake4 or qmake-qt4 in the path
-  IF("${QTVERSION}" MATCHES "Unknown")
+  IF(NOT QTVERSION)
     SET(QT_QMAKE_EXECUTABLE NOTFOUND CACHE FILEPATH "" FORCE)
     FIND_PROGRAM(QT_QMAKE_EXECUTABLE NAMES qmake4 qmake-qt4 PATHS
       "[HKEY_CURRENT_USER\\Software\\Trolltech\\Qt3Versions\\4.0.0;InstallDir]/bin"
@@ -493,7 +496,7 @@ IF (QT_QMAKE_EXECUTABLE)
     IF(QT_QMAKE_EXECUTABLE)
       _qt4_query_qmake(QT_VERSION QTVERSION)
     ENDIF(QT_QMAKE_EXECUTABLE)
-  ENDIF("${QTVERSION}" MATCHES "Unknown")
+  ENDIF(NOT QTVERSION)
 
   # check that we found the Qt4 qmake, Qt3 qmake output won't match here
   STRING(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" qt_version_tmp "${QTVERSION}")
@@ -1074,15 +1077,6 @@ IF (QT4_QMAKE_FOUND)
 
   ######################################
   #
-  #       Macros for building Qt files
-  #
-  ######################################
-
-  INCLUDE("${_qt4_current_dir}/Qt4Macros.cmake")
-
-
-  ######################################
-  #
   #       decide if Qt got found
   #
   ######################################
@@ -1114,6 +1108,89 @@ IF (QT4_QMAKE_FOUND)
   ###############################################
 
   INCLUDE("${_qt4_current_dir}/Qt4ConfigDependentSettings.cmake")
+
+
+  #######################################
+  #
+  #       Check the plugins of Qt
+  #
+  #######################################
+
+  SET( QT_PLUGIN_TYPES accessible bearer codecs decorations designer gfxdrivers graphicssystems iconengines imageformats inputmethods mousedrivers phonon_backend script sqldrivers )
+
+  SET( QT_ACCESSIBLE_PLUGINS qtaccessiblecompatwidgets qtaccessiblewidgets )
+  SET( QT_BEARER_PLUGINS qcorewlanbearer qgenericbearer )
+  SET( QT_CODECS_PLUGINS qcncodecs qjpcodecs qkrcodecs qtwcodecs )
+  SET( QT_DECORATIONS_PLUGINS qdecorationdefault qdecorationwindows )
+  SET( QT_DESIGNER_PLUGINS arthurplugin containerextension customwidgetplugin phononwidgets qdeclarativeview qt3supportwidgets qwebview taskmenuextension worldtimeclockplugin )
+  SET( QT_GRAPHICSDRIVERS_PLUGINS qgfxtransformed qgfxvnc qscreenvfb )
+  SET( QT_GRAPHICSSYSTEMS_PLUGINS qglgraphicssystem qtracegraphicssystem )
+  SET( QT_ICONENGINES_PLUGINS qsvgicon )
+  SET( QT_IMAGEFORMATS_PLUGINS qgif qjpeg qmng qico qsvg qtiff  )
+  SET( QT_INPUTMETHODS_PLUGINS qimsw_multi )
+  SET( QT_MOUSEDRIVERS_PLUGINS qwstslibmousehandler )
+  SET( QT_PHONON_BACKEND_PLUGINS phonon_qt7 )
+  SET( QT_SCRIPT_PLUGINS qtscriptdbus )
+  SET( QT_SQLDRIVERS_PLUGINS qsqldb2 qsqlibase qsqlite qsqlite2 qsqlmysql qsqloci qsqlodbc qsqlpsql qsqltds )
+
+  IF(QT_QMAKE_CHANGED)
+    FOREACH(QT_PLUGIN_TYPE ${QT_PLUGIN_TYPES})
+      STRING(TOUPPER ${QT_PLUGIN_TYPE} _upper_qt_plugin_type)
+      SET(QT_${_upper_qt_plugin_type}_PLUGINS_DIR ${QT_PLUGINS_DIR}/${QT_PLUGIN_TYPE})
+      FOREACH(QT_PLUGIN ${QT_${_upper_qt_plugin_type}_PLUGINS})
+        STRING(TOUPPER ${QT_PLUGIN} _upper_qt_plugin)
+        UNSET(QT_${_upper_qt_plugin}_LIBRARY_RELEASE CACHE)
+        UNSET(QT_${_upper_qt_plugin}_LIBRARY_DEBUG CACHE)
+        UNSET(QT_${_upper_qt_plugin}_LIBRARY CACHE)
+        UNSET(QT_${_upper_qt_plugin}_PLUGIN_RELEASE CACHE)
+        UNSET(QT_${_upper_qt_plugin}_PLUGIN_DEBUG CACHE)
+        UNSET(QT_${_upper_qt_plugin}_PLUGIN CACHE)
+      ENDFOREACH(QT_PLUGIN)
+    ENDFOREACH(QT_PLUGIN_TYPE)
+  ENDIF(QT_QMAKE_CHANGED)
+
+  # find_library works better than find_file but we need to set prefixes to only match plugins
+  FOREACH(QT_PLUGIN_TYPE ${QT_PLUGIN_TYPES})
+    STRING(TOUPPER ${QT_PLUGIN_TYPE} _upper_qt_plugin_type)
+    SET(QT_${_upper_qt_plugin_type}_PLUGINS_DIR ${QT_PLUGINS_DIR}/${QT_PLUGIN_TYPE})
+    FOREACH(QT_PLUGIN ${QT_${_upper_qt_plugin_type}_PLUGINS})
+      STRING(TOUPPER ${QT_PLUGIN} _upper_qt_plugin)
+      IF(QT_IS_STATIC)
+        FIND_LIBRARY(QT_${_upper_qt_plugin}_LIBRARY_RELEASE
+                     NAMES ${QT_PLUGIN}${QT_LIBINFIX} ${QT_PLUGIN}${QT_LIBINFIX}4
+                     PATHS ${QT_${_upper_qt_plugin_type}_PLUGINS_DIR} NO_DEFAULT_PATH
+            )
+        FIND_LIBRARY(QT_${_upper_qt_plugin}_LIBRARY_DEBUG
+                     NAMES ${QT_PLUGIN}${QT_LIBINFIX}_debug ${QT_PLUGIN}${QT_LIBINFIX}d ${QT_PLUGIN}${QT_LIBINFIX}d4
+                     PATHS ${QT_${_upper_qt_plugin_type}_PLUGINS_DIR} NO_DEFAULT_PATH
+            )
+        _QT4_ADJUST_LIB_VARS(${QT_PLUGIN})
+      ELSE(QT_IS_STATIC)
+        # find_library works easier/better than find_file but we need to set suffixes to only match plugins
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES_DEFAULT ${CMAKE_FIND_LIBRARY_SUFFIXES})
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_SHARED_MODULE_SUFFIX} ${CMAKE_SHARED_LIBRARY_SUFFIX})
+        FIND_LIBRARY(QT_${_upper_qt_plugin}_PLUGIN_RELEASE
+                     NAMES ${QT_PLUGIN}${QT_LIBINFIX} ${QT_PLUGIN}${QT_LIBINFIX}4
+                     PATHS ${QT_${_upper_qt_plugin_type}_PLUGINS_DIR} NO_DEFAULT_PATH
+            )
+        FIND_LIBRARY(QT_${_upper_qt_plugin}_PLUGIN_DEBUG
+                     NAMES ${QT_PLUGIN}${QT_LIBINFIX}_debug ${QT_PLUGIN}${QT_LIBINFIX}d ${QT_PLUGIN}${QT_LIBINFIX}d4
+                     PATHS ${QT_${_upper_qt_plugin_type}_PLUGINS_DIR} NO_DEFAULT_PATH
+            )
+        MARK_AS_ADVANCED(QT_${_upper_qt_plugin}_PLUGIN_RELEASE QT_${_upper_qt_plugin}_PLUGIN_DEBUG)
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES_DEFAULT})
+      ENDIF(QT_IS_STATIC)
+    ENDFOREACH(QT_PLUGIN)
+  ENDFOREACH(QT_PLUGIN_TYPE)
+
+
+  ######################################
+  #
+  #       Macros for building Qt files
+  #
+  ######################################
+
+  INCLUDE("${_qt4_current_dir}/Qt4Macros.cmake")
 
 
   #######################################
