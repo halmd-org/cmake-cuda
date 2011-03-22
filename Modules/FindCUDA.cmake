@@ -31,11 +31,13 @@ FIND_PATH(CUDA_INCLUDE_DIR cuda_runtime.h
   ~/Library/Frameworks
   /Library/Frameworks
   /usr/local
+  /usr/local/cuda
   /usr
   /sw # Fink
   /opt/local # DarwinPorts
   /opt/csw # Blastwave
   /opt
+  /opt/cuda
 )
 
 FIND_LIBRARY(CUDA_LIBRARY NAMES cuda
@@ -46,11 +48,13 @@ FIND_LIBRARY(CUDA_LIBRARY NAMES cuda
   ~/Library/Frameworks
   /Library/Frameworks
   /usr/local
+  /usr/local/cuda
   /usr
   /sw # Fink
   /opt/local # DarwinPorts
   /opt/csw # Blastwave
   /opt
+  /opt/cuda
 )
 
 FIND_LIBRARY(CUDA_RUNTIME_LIBRARY NAMES cudart
@@ -61,11 +65,13 @@ FIND_LIBRARY(CUDA_RUNTIME_LIBRARY NAMES cudart
   ~/Library/Frameworks
   /Library/Frameworks
   /usr/local
+  /usr/local/cuda
   /usr
   /sw # Fink
   /opt/local # DarwinPorts
   /opt/csw # Blastwave
   /opt
+  /opt/cuda
 )
 
 IF(CUDA_LIBRARY AND CUDA_RUNTIME_LIBRARY)
