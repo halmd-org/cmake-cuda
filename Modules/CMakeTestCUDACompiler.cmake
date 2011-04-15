@@ -16,12 +16,12 @@
 INCLUDE(CMakeTestCompilerCommon)
 
 # This file is used by EnableLanguage in cmGlobalGenerator to
-# determine that that selected CUDA C compiler can actually compile
+# determine that that selected CUDA compiler can actually compile
 # and link the most basic of programs.   If not, a fatal error
 # is set and cmake stops processing commands and will not generate
 # any makefiles or projects.
 IF(NOT CMAKE_CUDA_COMPILER_WORKS)
-  PrintTestCompilerStatus("CUDA C" "")
+  PrintTestCompilerStatus("CUDA" "")
   FILE(WRITE ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/testCUDACompiler.cu
     "__global__ void test(){}\n"
     "int main(){test<<< 32, 128 >>>(); return 0;}\n")
@@ -32,21 +32,21 @@ IF(NOT CMAKE_CUDA_COMPILER_WORKS)
 ENDIF(NOT CMAKE_CUDA_COMPILER_WORKS)
 
 IF(NOT CMAKE_CUDA_COMPILER_WORKS)
-  PrintTestCompilerStatus("CUDA C" " -- broken")
+  PrintTestCompilerStatus("CUDA" " -- broken")
   # if the compiler is broken make sure to remove the platform file
   FILE(REMOVE ${CMAKE_PLATFORM_ROOT_BIN}/CMakeCUDAPlatform.cmake )
   FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
-    "Determining if the CUDA C compiler works failed with "
+    "Determining if the CUDA compiler works failed with "
     "the following output:\n${OUTPUT}\n\n")
-  MESSAGE(FATAL_ERROR "The CUDA C compiler \"${CMAKE_CUDA_COMPILER}\" "
+  MESSAGE(FATAL_ERROR "The CUDA compiler \"${CMAKE_CUDA_COMPILER}\" "
     "is not able to compile a simple test program.\nIt fails "
     "with the following output:\n ${OUTPUT}\n\n"
     "CMake will not be able to correctly generate this project.")
 ELSE(NOT CMAKE_CUDA_COMPILER_WORKS)
   IF(CUDA_TEST_WAS_RUN)
-    PrintTestCompilerStatus("CUDA C" " -- works")
+    PrintTestCompilerStatus("CUDA" " -- works")
     FILE(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
-      "Determining if the CUDA C compiler works passed with "
+      "Determining if the CUDA compiler works passed with "
       "the following output:\n${OUTPUT}\n\n")
   ENDIF(CUDA_TEST_WAS_RUN)
   SET(CMAKE_CUDA_COMPILER_WORKS 1 CACHE INTERNAL "")
