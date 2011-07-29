@@ -249,32 +249,56 @@ void cmMakefileTargetGenerator::WriteCommonCodeRules()
 }
 
 //----------------------------------------------------------------------------
-void cmMakefileTargetGenerator::WriteTargetLanguageFlags()
+std::string cmMakefileTargetGenerator::GetFlags(const std::string &l)
 {
-  // write language flags for target
-  std::set<cmStdString> languages;
-  this->Target->GetLanguages(languages);
-    // put the compiler in the rules.make file so that if it changes
-  // things rebuild
-  for(std::set<cmStdString>::const_iterator l = languages.begin();
-      l != languages.end(); ++l)
+  ByLanguageMap::iterator i = this->FlagsByLanguage.find(l);
+  if (i == this->FlagsByLanguage.end())
     {
-    cmStdString compiler = "CMAKE_";
-    compiler += *l;
-    compiler += "_COMPILER";
-    *this->FlagFileStream << "# compile " << l->c_str() << " with " << 
-      this->Makefile->GetSafeDefinition(compiler.c_str()) << "\n";
-    }
-
-  for(std::set<cmStdString>::const_iterator l = languages.begin();
-      l != languages.end(); ++l)
-    {
-    const char *lang = l->c_str();
     std::string flags;
-    std::string defines;
+    const char *lang = l.c_str();
+
     bool shared = ((this->Target->GetType() == cmTarget::SHARED_LIBRARY) ||
                    (this->Target->GetType() == cmTarget::MODULE_LIBRARY));
 
+    // Add language feature flags.
+    this->AddFeatureFlags(flags, lang);
+
+    this->LocalGenerator->AddArchitectureFlags(flags, this->Target,
+                                               lang, this->ConfigName);
+
+    // Fortran-specific flags computed for this target.
+    if(l == "Fortran")
+      {
+      this->AddFortranFlags(flags);
+      }
+
+    // Add shared-library flags if needed.
+    this->LocalGenerator->AddSharedFlags(flags, lang, shared);
+
+    // Add include directory flags.
+    this->AddIncludeFlags(flags, lang);
+
+    // Append old-style preprocessor definition flags.
+    this->LocalGenerator->
+      AppendFlags(flags, this->Makefile->GetDefineFlags());
+
+    // Add include directory flags.
+    this->LocalGenerator->
+      AppendFlags(flags,this->GetFrameworkFlags().c_str());
+
+    ByLanguageMap::value_type entry(l, flags);
+    i = this->FlagsByLanguage.insert(entry).first;
+    }
+  return i->second;
+}
+
+std::string cmMakefileTargetGenerator::GetDefines(const std::string &l)
+{
+  ByLanguageMap::iterator i = this->DefinesByLanguage.find(l);
+  if (i == this->DefinesByLanguage.end())
+    {
+    std::string defines;
+    const char *lang = l.c_str();
     // Add the export symbol definition for shared library objects.
     if(const char* exportMacro = this->Target->GetExportMacro())
       {
@@ -294,36 +318,41 @@ void cmMakefileTargetGenerator::WriteTargetLanguageFlags()
     this->LocalGenerator->AppendDefines
       (defines, this->Target->GetProperty(defPropName.c_str()), lang);
 
-    // Add language feature flags.
-    this->AddFeatureFlags(flags, lang);
+    ByLanguageMap::value_type entry(l, defines);
+    i = this->DefinesByLanguage.insert(entry).first;
+    }
+  return i->second;
+}
 
-    this->LocalGenerator->AddArchitectureFlags(flags, this->Target,
-                                               lang, this->ConfigName);
+void cmMakefileTargetGenerator::WriteTargetLanguageFlags()
+{
+  // write language flags for target
+  std::set<cmStdString> languages;
+  this->Target->GetLanguages(languages);
+    // put the compiler in the rules.make file so that if it changes
+  // things rebuild
+  for(std::set<cmStdString>::const_iterator l = languages.begin();
+      l != languages.end(); ++l)
+    {
+    cmStdString compiler = "CMAKE_";
+    compiler += *l;
+    compiler += "_COMPILER";
+    *this->FlagFileStream << "# compile " << l->c_str() << " with " <<
+      this->Makefile->GetSafeDefinition(compiler.c_str()) << "\n";
+    }
 
-    // Fortran-specific flags computed for this target.
-    if(*l == "Fortran")
-      {
-      this->AddFortranFlags(flags);
-      }
-
-    // Add shared-library flags if needed.
-    this->LocalGenerator->AddSharedFlags(flags, lang, shared);
-
-    // Add include directory flags.
-    this->LocalGenerator->
-      AppendFlags(flags, this->LocalGenerator->GetIncludeFlags(lang));
-    // Add include directory flags.
-    this->LocalGenerator->
-      AppendFlags(flags,this->GetFrameworkFlags().c_str());
-
-    *this->FlagFileStream << lang << "_FLAGS = " << flags << "\n\n";
-    *this->FlagFileStream << lang << "_DEFINES = " << defines << "\n\n";
+  for(std::set<cmStdString>::const_iterator l = languages.begin();
+      l != languages.end(); ++l)
+    {
+    *this->FlagFileStream << *l << "_FLAGS = " << this->GetFlags(*l) << "\n\n";
+    *this->FlagFileStream << *l << "_DEFINES = " << this->GetDefines(*l) <<
+      "\n\n";
     }
 
   // Add target-specific flags.
   if(this->Target->GetProperty("COMPILE_FLAGS"))
     {
-    std::string flags;    
+    std::string flags;
     this->LocalGenerator->AppendFlags
       (flags, this->Target->GetProperty("COMPILE_FLAGS"));
     *this->FlagFileStream << "# TARGET_FLAGS = " << flags << "\n\n";
@@ -482,6 +511,8 @@ cmMakefileTargetGenerator
 {
   this->LocalGenerator->AppendRuleDepend(depends,
                                          this->FlagFileNameFull.c_str());
+  this->LocalGenerator->AppendRuleDepends(depends,
+                                          this->FlagFileDepends[lang]);
 
   // generate the depend scanning rule
   this->WriteObjectDependRules(source, depends);
@@ -635,6 +666,10 @@ cmMakefileTargetGenerator
   vars.Flags = flags.c_str();
   vars.Defines = defines.c_str();
 
+  bool lang_is_c_or_cxx = ((strcmp(lang, "C") == 0) ||
+                           (strcmp(lang, "CXX") == 0) ||
+                           (strcmp(lang, "CUDA") == 0));
+
   // Construct the compile rules.
   {
   std::string compileRuleVar = "CMAKE_";
@@ -644,6 +679,23 @@ cmMakefileTargetGenerator
     this->Makefile->GetRequiredDefinition(compileRuleVar.c_str());
   std::vector<std::string> compileCommands;
   cmSystemTools::ExpandListArgument(compileRule, compileCommands);
+
+  if (this->Makefile->IsOn("CMAKE_EXPORT_COMPILE_COMMANDS") &&
+      lang_is_c_or_cxx && compileCommands.size() == 1)
+    {
+    std::string compileCommand = compileCommands[0];
+    this->LocalGenerator->ExpandRuleVariables(compileCommand, vars);
+    std::string workingDirectory =
+      this->LocalGenerator->Convert(
+        this->Makefile->GetStartOutputDirectory(), cmLocalGenerator::FULL);
+    compileCommand.replace(compileCommand.find(langFlags),
+                           langFlags.size(), this->GetFlags(lang));
+    std::string langDefines = std::string("$(") + lang + "_DEFINES)";
+    compileCommand.replace(compileCommand.find(langDefines),
+                           langDefines.size(), this->GetDefines(lang));
+    this->GlobalGenerator->AddCXXCompileCommand(
+      source.GetFullPath(), workingDirectory, compileCommand);
+    }
 
   // Expand placeholders in the commands.
   for(std::vector<std::string>::iterator i = compileCommands.begin();
@@ -685,9 +737,6 @@ cmMakefileTargetGenerator
       }
     }
 
-  bool lang_is_c_or_cxx = ((strcmp(lang, "C") == 0) ||
-                           (strcmp(lang, "CXX") == 0) ||
-                           (strcmp(lang, "CUDA") == 0));
   bool do_preprocess_rules = lang_is_c_or_cxx &&
     this->LocalGenerator->GetCreatePreprocessedSourceRules();
   bool do_assembly_rules = lang_is_c_or_cxx &&
@@ -1717,6 +1766,38 @@ cmMakefileTargetGenerator
     buildObjs += ") $(";
     buildObjs += variableNameExternal;
     buildObjs += ")";
+    }
+}
+
+//----------------------------------------------------------------------------
+void cmMakefileTargetGenerator::AddIncludeFlags(std::string& flags,
+                                                const char* lang)
+{
+  std::string responseVar = "CMAKE_";
+  responseVar += lang;
+  responseVar += "_USE_RESPONSE_FILE_FOR_INCLUDES";
+  bool useResponseFile = this->Makefile->IsOn(responseVar.c_str());
+
+  std::string includeFlags =
+    this->LocalGenerator->GetIncludeFlags(lang, useResponseFile);
+  if(includeFlags.empty())
+    {
+    return;
+    }
+
+  if(useResponseFile)
+    {
+    std::string name = "includes_";
+    name += lang;
+    name += ".rsp";
+    std::string arg = "@" +
+      this->CreateResponseFile(name.c_str(), includeFlags,
+                               this->FlagFileDepends[lang]);
+    this->LocalGenerator->AppendFlags(flags, arg.c_str());
+    }
+  else
+    {
+    this->LocalGenerator->AppendFlags(flags, includeFlags.c_str());
     }
 }
 

@@ -80,8 +80,11 @@ public:
       "  file(RELATIVE_PATH variable directory file)\n"
       "  file(TO_CMAKE_PATH path result)\n"
       "  file(TO_NATIVE_PATH path result)\n"
-      "  file(DOWNLOAD url file [TIMEOUT timeout] [STATUS status] [LOG log]\n"
-      "       [EXPECTED_MD5 sum] [SHOW_PROGRESS])\n"
+      "  file(DOWNLOAD url file [INACTIVITY_TIMEOUT timeout]\n"
+      "       [TIMEOUT timeout] [STATUS status] [LOG log] [SHOW_PROGRESS]\n"
+      "       [EXPECTED_MD5 sum])\n"
+      "  file(UPLOAD filename url [INACTIVITY_TIMEOUT timeout]\n"
+      "       [TIMEOUT timeout] [STATUS status] [LOG log] [SHOW_PROGRESS])\n"
       "WRITE will write a message into a file called 'filename'. It "
       "overwrites the file if it already exists, and creates the file "
       "if it does not exist.\n"
@@ -159,9 +162,25 @@ public:
       "numeric error means no error in the operation. "
       "If TIMEOUT time is specified, the operation will "
       "timeout after time seconds, time should be specified as an integer. "
+      "The INACTIVITY_TIMEOUT specifies an integer number of seconds of "
+      "inactivity after which the operation should terminate. "
       "If EXPECTED_MD5 sum is specified, the operation will verify that the "
       "downloaded file's actual md5 sum matches the expected value. If it "
       "does not match, the operation fails with an error. "
+      "If SHOW_PROGRESS is specified, progress information will be printed "
+      "as status messages until the operation is complete."
+      "\n"
+      "UPLOAD will upload the given file to the given URL. "
+      "If LOG var is specified a log of the upload will be put in var. "
+      "If STATUS var is specified the status of the operation will"
+      " be put in var. The status is returned in a list of length 2. "
+      "The first element is the numeric return value for the operation, "
+      "and the second element is a string value for the error. A 0 "
+      "numeric error means no error in the operation. "
+      "If TIMEOUT time is specified, the operation will "
+      "timeout after time seconds, time should be specified as an integer. "
+      "The INACTIVITY_TIMEOUT specifies an integer number of seconds of "
+      "inactivity after which the operation should terminate. "
       "If SHOW_PROGRESS is specified, progress information will be printed "
       "as status messages until the operation is complete."
       "\n"
@@ -223,6 +242,7 @@ protected:
   bool HandleCopyCommand(std::vector<std::string> const& args);
   bool HandleInstallCommand(std::vector<std::string> const& args);
   bool HandleDownloadCommand(std::vector<std::string> const& args);
+  bool HandleUploadCommand(std::vector<std::string> const& args);
 };
 
 

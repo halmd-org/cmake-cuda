@@ -121,9 +121,11 @@ int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
           << std::endl);
       // Begin the archive for this group
       std::string packageFileName= std::string(toplevel);
-      packageFileName += "/"
-        +std::string(this->GetOption("CPACK_PACKAGE_FILE_NAME"))
-        +"-"+compGIt->first + this->GetOutputExtension();
+      packageFileName += "/"+
+       GetComponentPackageFileName(this->GetOption("CPACK_PACKAGE_FILE_NAME"),
+                                   compGIt->first,
+                                   true)
+         + this->GetOutputExtension();
       // open a block in order to automatically close archive
       // at the end of the block
       {
@@ -141,6 +143,39 @@ int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
       // add the generated package to package file names list
       packageFileNames.push_back(packageFileName);
       }
+    // Handle Orphan components (components not belonging to any groups)
+    std::map<std::string, cmCPackComponent>::iterator compIt;
+    for (compIt=this->Components.begin();
+         compIt!=this->Components.end(); ++compIt )
+      {
+      // Does the component belong to a group?
+      if (compIt->second.Group==NULL)
+        {
+        cmCPackLogger(cmCPackLog::LOG_VERBOSE,
+            "Component <"
+              << compIt->second.Name
+              << "> does not belong to any group, package it separately."
+              << std::endl);
+        std::string localToplevel(
+          this->GetOption("CPACK_TEMPORARY_DIRECTORY")
+                                 );
+        std::string packageFileName = std::string(toplevel);
+
+        localToplevel += "/"+ compIt->first;
+        packageFileName += "/"+
+        GetComponentPackageFileName(this->GetOption("CPACK_PACKAGE_FILE_NAME"),
+                                    compIt->first,
+                                    false)
+                              + this->GetOutputExtension();
+        {
+          DECLARE_AND_OPEN_ARCHIVE(packageFileName,archive);
+          // Add the files of this component to the archive
+          addOneComponentToArchive(archive,&(compIt->second));
+        }
+        // add the generated package to package file names list
+        packageFileNames.push_back(packageFileName);
+        }
+      }
     }
   // CPACK_COMPONENTS_IGNORE_GROUPS is set
   // We build 1 package per component
@@ -154,9 +189,11 @@ int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
       std::string packageFileName = std::string(toplevel);
 
       localToplevel += "/"+ compIt->first;
-      packageFileName += "/"
-        +std::string(this->GetOption("CPACK_PACKAGE_FILE_NAME"))
-        +"-"+compIt->first + this->GetOutputExtension();
+      packageFileName += "/"+
+       GetComponentPackageFileName(this->GetOption("CPACK_PACKAGE_FILE_NAME"),
+                                   compIt->first,
+                                   false)
+        + this->GetOutputExtension();
       {
         DECLARE_AND_OPEN_ARCHIVE(packageFileName,archive);
         // Add the files of this component to the archive
@@ -170,52 +207,29 @@ int cmCPackArchiveGenerator::PackageComponents(bool ignoreGroup)
 }
 
 //----------------------------------------------------------------------
-int cmCPackArchiveGenerator::PackageComponentsAllInOne(bool allComponent)
+int cmCPackArchiveGenerator::PackageComponentsAllInOne()
 {
   // reset the package file names
   packageFileNames.clear();
   packageFileNames.push_back(std::string(toplevel));
   packageFileNames[0] += "/"
     +std::string(this->GetOption("CPACK_PACKAGE_FILE_NAME"))
-    +"-ALL" + this->GetOutputExtension();
+    + this->GetOutputExtension();
   cmCPackLogger(cmCPackLog::LOG_VERBOSE,
                 "Packaging all groups in one package..."
                 "(CPACK_COMPONENTS_ALL_GROUPS_IN_ONE_PACKAGE is set)"
       << std::endl);
   DECLARE_AND_OPEN_ARCHIVE(packageFileNames[0],archive);
 
-  // The ALL GROUP in ONE package case
-  if (! allComponent) {
-    // iterate over the component groups
-    std::map<std::string, cmCPackComponentGroup>::iterator compGIt;
-    for (compGIt=this->ComponentGroups.begin();
-        compGIt!=this->ComponentGroups.end(); ++compGIt)
-      {
-      cmCPackLogger(cmCPackLog::LOG_VERBOSE, "Packaging component group: "
-          << compGIt->first
-          << std::endl);
-      // now iterate over the component of this group
-      std::vector<cmCPackComponent*>::iterator compIt;
-      for (compIt=(compGIt->second).Components.begin();
-          compIt!=(compGIt->second).Components.end();
-          ++compIt)
-        {
-        // Add the files of this component to the archive
-        addOneComponentToArchive(archive,*compIt);
-        }
-      }
-  }
-  // The ALL COMPONENT in ONE package case
-  else
+  // The ALL COMPONENTS in ONE package case
+  std::map<std::string, cmCPackComponent>::iterator compIt;
+  for (compIt=this->Components.begin();compIt!=this->Components.end();
+      ++compIt )
     {
-    std::map<std::string, cmCPackComponent>::iterator compIt;
-    for (compIt=this->Components.begin();compIt!=this->Components.end();
-         ++compIt )
-      {
-      // Add the files of this component to the archive
-      addOneComponentToArchive(archive,&(compIt->second));
-      }
+    // Add the files of this component to the archive
+    addOneComponentToArchive(archive,&(compIt->second));
     }
+
   // archive goes out of scope so it will finalized and closed.
   return 1;
 }
@@ -226,25 +240,22 @@ int cmCPackArchiveGenerator::PackageFiles()
   cmCPackLogger(cmCPackLog::LOG_DEBUG, "Toplevel: "
                 << toplevel << std::endl);
 
-  PrepareGroupingKind();
-
   if (SupportsComponentInstallation()) {
     // CASE 1 : COMPONENT ALL-IN-ONE package
-    // If ALL GROUPS or ALL COMPONENTS in ONE package has been requested
+    // If ALL COMPONENTS in ONE package has been requested
     // then the package file is unique and should be open here.
-    if (allComponentInOne ||
-        (allGroupInOne && (!this->ComponentGroups.empty()))
-       )
+    if (componentPackageMethod == ONE_PACKAGE)
       {
-      return PackageComponentsAllInOne(allComponentInOne);
+      return PackageComponentsAllInOne();
       }
     // CASE 2 : COMPONENT CLASSICAL package(s) (i.e. not all-in-one)
     // There will be 1 package for each component group
     // however one may require to ignore component group and
     // in this case you'll get 1 package for each component.
-    else if ((!this->ComponentGroups.empty()) || (ignoreComponentGroup))
+    else
       {
-      return PackageComponents(ignoreComponentGroup);
+      return PackageComponents(componentPackageMethod ==
+                               ONE_PACKAGE_PER_COMPONENT);
       }
   }
 

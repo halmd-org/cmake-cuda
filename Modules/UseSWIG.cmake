@@ -69,6 +69,7 @@ ENDMACRO(SWIG_MODULE_INITIALIZE)
 #
 
 MACRO(SWIG_GET_EXTRA_OUTPUT_FILES language outfiles generatedpath infile)
+  SET(${outfiles} "")
   GET_SOURCE_FILE_PROPERTY(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename
     ${infile} SWIG_MODULE_NAME)
   IF(SWIG_GET_EXTRA_OUTPUT_FILES_module_basename STREQUAL "NOTFOUND")
@@ -125,8 +126,6 @@ MACRO(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
   # If CMAKE_SWIG_OUTDIR was specified then pass it to -outdir
   IF(CMAKE_SWIG_OUTDIR)
     SET(swig_outdir ${CMAKE_SWIG_OUTDIR})
-    # it may not exist, so create it:
-    file(MAKE_DIRECTORY ${CMAKE_SWIG_OUTDIR})
   ELSE(CMAKE_SWIG_OUTDIR)
     SET(swig_outdir ${CMAKE_CURRENT_BINARY_DIR})
   ENDIF(CMAKE_SWIG_OUTDIR)
@@ -168,6 +167,8 @@ MACRO(SWIG_ADD_SOURCE_TO_MODULE name outfiles infile)
   ENDIF(SWIG_MODULE_${name}_EXTRA_FLAGS)
   ADD_CUSTOM_COMMAND(
     OUTPUT "${swig_generated_file_fullname}" ${swig_extra_generated_files}
+    # Let's create the ${swig_outdir} at execution time, in case dir contains $(OutDir)
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${swig_outdir}
     COMMAND "${SWIG_EXECUTABLE}"
     ARGS "-${SWIG_MODULE_${name}_SWIG_LANGUAGE_FLAG}"
     ${swig_source_file_flags}

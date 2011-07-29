@@ -237,6 +237,8 @@ public:
   /** Parse arguments out of a unix command line string.  */
   static void ParseUnixCommandLine(const char* command,
                                    std::vector<std::string>& args);
+  static void ParseUnixCommandLine(const char* command,
+                                   std::vector<cmStdString>& args);
 
   /** Compute an escaped version of the given argument for use in a
       windows shell.  See kwsys/System.h.in for details.  */
@@ -402,6 +404,9 @@ public:
   static bool FileTimeGet(const char* fname, cmSystemToolsFileTime* t);
   static bool FileTimeSet(const char* fname, cmSystemToolsFileTime* t);
 
+  /** Random seed generation.  */
+  static unsigned int RandomSeed();
+
   /** Find the directory containing the running executable.  Save it
    in a global location to be queried by GetExecutableDirectory
    later.  */
@@ -439,6 +444,9 @@ public:
   /** Remove a directory; repeat a few times in case of locked files.  */
   static bool RepeatedRemoveDirectory(const char* dir);
 
+  /** Tokenize a string */
+  static std::vector<std::string> tokenize(const std::string& str,
+                                           const std::string& sep);
 private:
   static bool s_ForceUnixPaths;
   static bool s_RunCommandHideConsole;

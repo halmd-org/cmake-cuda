@@ -105,6 +105,7 @@ JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_AWT_LIBRARY_DIRECTORIES
   /usr/local/lib
   /usr/lib/jvm/java/lib
   /usr/lib/java/jre/lib/{libarch}
+  /usr/lib/jvm/jre/lib/{libarch}
   /usr/local/lib/java/jre/lib/{libarch}
   /usr/local/share/java/jre/lib/{libarch}
   /usr/lib/j2sdk1.4-sun/jre/lib/{libarch}
@@ -114,6 +115,7 @@ JAVA_APPEND_LIBRARY_DIRECTORIES(JAVA_AWT_LIBRARY_DIRECTORIES
   /usr/lib/jvm/java-1.5.0-sun/jre/lib/{libarch}
   /usr/lib/jvm/java-6-sun-1.6.0.00/jre/lib/{libarch}       # can this one be removed according to #8821 ? Alex
   /usr/lib/jvm/java-6-openjdk/jre/lib/{libarch}
+  /usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/lib/{libarch}        # fedora
   # Debian specific paths for default JVM
   /usr/lib/jvm/default-java/jre/lib/{libarch}
   /usr/lib/jvm/default-java/jre/lib
@@ -226,6 +228,8 @@ FIND_PATH(JAVA_INCLUDE_PATH2 jni_md.h
   ${JAVA_INCLUDE_PATH}/linux
   ${JAVA_INCLUDE_PATH}/freebsd
   ${JAVA_INCLUDE_PATH}/solaris
+  ${JAVA_INCLUDE_PATH}/hp-ux
+  ${JAVA_INCLUDE_PATH}/alpha
 )
 
 FIND_PATH(JAVA_AWT_INCLUDE_PATH jawt.h

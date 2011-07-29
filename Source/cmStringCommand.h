@@ -90,6 +90,7 @@ public:
       "  string(STRIP <string> <output variable>)\n"
       "  string(RANDOM [LENGTH <length>] [ALPHABET <alphabet>]\n"
       "         [RANDOM_SEED <seed>] <output variable>)\n"
+      "  string(FIND <string> <substring> <output variable> [REVERSE])\n"
       "REGEX MATCH will match the regular expression once and store the "
       "match in the output variable.\n"
       "REGEX MATCHALL will match the regular expression as many times as "
@@ -109,7 +110,8 @@ public:
       "a file.\n"
       "TOUPPER/TOLOWER will convert string to upper/lower characters.\n"
       "LENGTH will return a given string's length.\n"
-      "SUBSTRING will return a substring of a given string.\n"
+      "SUBSTRING will return a substring of a given string. If length is "
+      "-1 the remainder of the string starting at begin will be returned.\n"
       "STRIP will return a substring of a given string with leading "
       "and trailing spaces removed.\n"
       "RANDOM will return a random string of given length consisting of "
@@ -117,6 +119,10 @@ public:
       "characters and default alphabet is all numbers and upper and "
       "lower case letters.  If an integer RANDOM_SEED is given, its "
       "value will be used to seed the random number generator.\n"
+      "FIND will return the position where the given substring was found "
+      "in the supplied string. If the REVERSE flag was used, the command "
+      "will search for the position of the last occurrence of the "
+      "specified substring.\n"
       "The following characters have special meaning in regular expressions:\n"
       "   ^         Matches at beginning of a line\n"
       "   $         Matches at end of a line\n"
@@ -152,6 +158,7 @@ protected:
   bool HandleSubstringCommand(std::vector<std::string> const& args);
   bool HandleStripCommand(std::vector<std::string> const& args);
   bool HandleRandomCommand(std::vector<std::string> const& args);
+  bool HandleFindCommand(std::vector<std::string> const& args);
 
   class RegexReplacement
   {

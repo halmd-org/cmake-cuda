@@ -10,6 +10,9 @@
 cmake_minimum_required(VERSION 2.8.3.20101130 FATAL_ERROR)
 project(CPackComponentsForAll)
 
+# Use GNUInstallDirs in order to enforce lib64 if needed
+include(GNUInstallDirs)
+
 # Create the mylib library
 add_library(mylib mylib.cpp)
 
@@ -27,7 +30,7 @@ target_link_libraries(mylibapp2 mylib)
 # be used to create the installation components.
 install(TARGETS mylib
   ARCHIVE
-  DESTINATION lib
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}
   COMPONENT libraries)
 install(TARGETS mylibapp
   RUNTIME

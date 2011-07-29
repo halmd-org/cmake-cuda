@@ -195,11 +195,13 @@ bool cmAddCustomCommandCommand
            {
            // An implicit dependency starting point is also an
            // explicit dependency.
-           depends.push_back(copy);
+           std::string dep = copy;
+           cmSystemTools::ConvertToUnixSlashes(dep);
+           depends.push_back(dep);
 
            // Add the implicit dependency language and file.
            cmCustomCommand::ImplicitDependsPair
-             entry(implicit_depends_lang, copy);
+             entry(implicit_depends_lang, dep);
            implicit_depends.push_back(entry);
 
            // Switch back to looking for a language.
@@ -213,7 +215,11 @@ bool cmAddCustomCommandCommand
            target = copy;
            break;
          case doing_depends:
-           depends.push_back(copy);
+           {
+           std::string dep = copy;
+           cmSystemTools::ConvertToUnixSlashes(dep);
+           depends.push_back(dep);
+           }
            break;
          case doing_outputs:
            outputs.push_back(filename);
@@ -284,6 +290,13 @@ bool cmAddCustomCommandCommand
       << "\" which is not already a custom command output.";
     this->SetError(e.str().c_str());
     return false;
+    }
+
+  // Convert working directory to a full path.
+  if(!working.empty())
+    {
+    const char* build_dir = this->Makefile->GetCurrentOutputDirectory();
+    working = cmSystemTools::CollapseFullPath(working.c_str(), build_dir);
     }
 
   // Choose which mode of the command to use.

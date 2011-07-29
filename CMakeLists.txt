@@ -1,6 +1,6 @@
 #=============================================================================
 # CMake - Cross Platform Makefile Generator
-# Copyright 2000-2009 Kitware, Inc., Insight Software Consortium
+# Copyright 2000-2011 Kitware, Inc., Insight Software Consortium
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.
@@ -9,12 +9,9 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4.5 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.6.3 FATAL_ERROR)
 SET(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 PROJECT(CMake)
-IF(COMMAND CMAKE_POLICY)
-  CMAKE_POLICY(SET CMP0003 NEW)
-ENDIF(COMMAND CMAKE_POLICY)
 
 IF(CMAKE_BOOTSTRAP)
   # Running from bootstrap script.  Set local variable and remove from cache.
@@ -22,19 +19,7 @@ IF(CMAKE_BOOTSTRAP)
   UNSET(CMAKE_BOOTSTRAP CACHE)
 ENDIF()
 
-MARK_AS_ADVANCED(CMAKE_BACKWARDS_COMPATIBILITY)
-
-# Allow empty endif() and such with CMake 2.4.
-SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS 1)
-
 SET(CMake_BIN_DIR ${CMake_BINARY_DIR}/bin)
-
-IF(NOT ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} GREATER 2.4)
-  # Since the built CMake will install itself instead of the
-  # generating CMake, tell it that the install rules were generated
-  # by CMake 2.4.
-  INSTALL(CODE "SET(CMAKE_INSTALL_SELF_2_4 1)")
-ENDIF()
 
 IF("${CMake_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
   # Disallow architecture-specific try_run.  It may not run on the host.
@@ -340,6 +325,7 @@ MACRO (CMAKE_BUILD_UTILITIES)
     IF(NOT LibArchive_FOUND)
       MESSAGE(FATAL_ERROR "CMAKE_USE_SYSTEM_LIBARCHIVE is ON but LibArchive is not found!")
     ENDIF()
+    SET(CMAKE_TAR_INCLUDES ${LibArchive_INCLUDE_DIRS})
     SET(CMAKE_TAR_LIBRARIES ${LibArchive_LIBRARIES})
   ELSE(CMAKE_USE_SYSTEM_LIBARCHIVE)
     SET(HAVE_LIBZ 1)
@@ -430,9 +416,9 @@ ENDIF()
 # The CMake version number.
 SET(CMake_VERSION_MAJOR 2)
 SET(CMake_VERSION_MINOR 8)
-SET(CMake_VERSION_PATCH 4)
+SET(CMake_VERSION_PATCH 5)
 SET(CMake_VERSION_TWEAK 0)
-#SET(CMake_VERSION_RC 2)
+#SET(CMake_VERSION_RC 3)
 
 # Releases define a tweak level.
 IF(DEFINED CMake_VERSION_TWEAK)

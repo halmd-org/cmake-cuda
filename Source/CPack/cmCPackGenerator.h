@@ -122,14 +122,39 @@ protected:
 
   /**
    * Prepare requested grouping kind from CPACK_xxx vars
-   * CPACK_COMPONENTS_ALL_GROUPS_IN_ONE_PACKAGE
    * CPACK_COMPONENTS_ALL_IN_ONE_PACKAGE
    * CPACK_COMPONENTS_IGNORE_GROUPS
    * or
-   * CPACK_COMPONENTS_GROUPING
+   * CPACK_COMPONENTS_ONE_PACKAGE_PER_GROUP
    * @return 1 on success 0 on failure.
    */
   virtual int PrepareGroupingKind();
+
+  /**
+   * Some CPack generators may prefer to have
+   * CPack install all components belonging to the same
+   * [component] group to be install in the same directory.
+   * The default behavior is to install each component in
+   * a separate directory.
+   * @param[in] componentName the name of the component to be installed
+   * @return the name suffix the generator wants for the specified component
+   *         default is "componentName"
+   */
+  virtual std::string GetComponentInstallDirNameSuffix(
+      const std::string& componentName);
+
+  /**
+   * CPack specific generator may mangle CPACK_PACKAGE_FILE_NAME
+   * with CPACK_COMPONENT_xxxx_<NAME>_DISPLAY_NAME if
+   * CPACK_<GEN>_USE_DISPLAY_NAME_IN_FILENAME is ON.
+   * @param[in] initialPackageFileName
+   * @param[in] groupOrComponentName
+   * @param[in] isGroupName
+   */
+  virtual std::string GetComponentPackageFileName(
+      const std::string& initialPackageFileName,
+      const std::string& groupOrComponentName,
+      bool isGroupName);
 
   /**
    * Package the list of files and/or components which
@@ -212,20 +237,30 @@ protected:
    */
   std::map<std::string, cmCPackComponent> Components;
   std::map<std::string, cmCPackComponentGroup> ComponentGroups;
+
   /**
-   * If true All component groups will be put in a single package.
+   * If components are enabled, this enum represents the different
+   * ways of mapping components to package files.
    */
-  bool allGroupInOne;
+  enum ComponentPackageMethod
+  {
+    /* one package for all components */
+    ONE_PACKAGE,
+    /* one package for each component */
+    ONE_PACKAGE_PER_COMPONENT,
+    /* one package for each group,
+     * with left over components in their own package */
+    ONE_PACKAGE_PER_GROUP,
+    UNKNOWN_COMPONENT_PACKAGE_METHOD
+  };
+
   /**
-   * If true All component will be put in a single package.
+   * The component package method
+   * The default is ONE_PACKAGE_PER_GROUP,
+   * and generators may override the default
+   * before PrepareGroupingKind() is called.
    */
-  bool allComponentInOne;
-  /**
-   * If true component grouping will be ignored.
-   * You will still get 1 package for each component unless
-   * allComponentInOne is true.
-   */
-  bool ignoreComponentGroup;
+  ComponentPackageMethod componentPackageMethod;
 
   cmCPackLog* Logger;
 private:
