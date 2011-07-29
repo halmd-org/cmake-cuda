@@ -71,11 +71,13 @@ static const char * cmDocumentationOptions[][3] =
   {"-E", "CMake command mode.",
    "For true platform independence, CMake provides a list of commands "
    "that can be used on all systems. Run with -E help for the usage "
-   "information. Commands available are: chdir, copy, copy_if_different "
-   "copy_directory, compare_files, echo, echo_append, environment, "
-   "make_directory, md5sum, remove_directory, remove, tar, time, "
-   "touch, touch_nocreate, write_regv, delete_regv, comspec, "
-   "create_symlink."},
+   "information. Commands available are: build, chdir, compare_files, copy, "
+   "copy_directory, copy_if_different, echo, echo_append, environment, "
+   "make_directory, md5sum, remove, remove_directory, rename, tar, time, "
+   "touch, touch_nocreate. In addition, some platform specific commands "
+   "are available. "
+   "On Windows: comspec, delete_regv, write_regv. "
+   "On UNIX: create_symlink."},
   {"-i", "Run in wizard mode.",
    "Wizard mode runs cmake interactively without a GUI.  The user is "
    "prompted to answer questions about the project configuration.  "
@@ -107,7 +109,8 @@ static const char * cmDocumentationOptions[][3] =
    "Dump a wide range of information about the current system. If run "
    "from the top of a binary tree for a CMake project it will dump "
    "additional information such as the cache, log files etc."},
-  {"--debug-trycompile", "Do not delete the try compile directories..",
+  {"--debug-trycompile", "Do not delete the try_compile build tree. Only "
+   "useful on one try_compile at a time.",
    "Do not delete the files and directories created for try_compile calls. "
    "This is useful in debugging failed try_compiles. It may however "
    "change the results of the try-compiles as old junk from a previous "

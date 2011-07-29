@@ -54,7 +54,8 @@ cmFindPackageCommand::cmFindPackageCommand()
   this->CMakePathName = "PACKAGE";
   this->Quiet = false;
   this->Required = false;
-  this->NoRegistry = false;
+  this->NoUserRegistry = false;
+  this->NoSystemRegistry = false;
   this->NoBuilds = false;
   this->NoModule = false;
   this->DebugMode = false;
@@ -101,9 +102,10 @@ void cmFindPackageCommand::GenerateDocumentation()
     "The [version] argument requests a version with which the package found "
     "should be compatible (format is major[.minor[.patch[.tweak]]]).  "
     "The EXACT option requests that the version be matched exactly.  "
-    "If no [version] is given to a recursive invocation inside a "
-    "find-module, the [version] and EXACT arguments are forwarded "
-    "automatically from the outer call.  "
+    "If no [version] and/or component list is given to a recursive "
+    "invocation inside a find-module, the corresponding arguments "
+    "are forwarded automatically from the outer call (including the "
+    "EXACT flag for [version]).  "
     "Version support is currently provided only on a package-by-package "
     "basis (details below).\n"
     "User code should generally look for packages using the above simple "
@@ -139,6 +141,7 @@ void cmFindPackageCommand::GenerateDocumentation()
     "               [NO_CMAKE_PACKAGE_REGISTRY]\n"
     "               [NO_CMAKE_BUILDS_PATH]\n"
     "               [NO_CMAKE_SYSTEM_PATH]\n"
+    "               [NO_CMAKE_SYSTEM_PACKAGE_REGISTRY]\n"
     "               [CMAKE_FIND_ROOT_PATH_BOTH |\n"
     "                ONLY_CMAKE_FIND_ROOT_PATH |\n"
     "                NO_CMAKE_FIND_ROOT_PATH])\n"
@@ -240,9 +243,9 @@ void cmFindPackageCommand::GenerateDocumentation()
     "  <prefix>/(cmake|CMake)/                                 (W)\n"
     "  <prefix>/<name>*/                                       (W)\n"
     "  <prefix>/<name>*/(cmake|CMake)/                         (W)\n"
-    "  <prefix>/(share|lib)/cmake/<name>*/                     (U)\n"
-    "  <prefix>/(share|lib)/<name>*/                           (U)\n"
-    "  <prefix>/(share|lib)/<name>*/(cmake|CMake)/             (U)\n"
+    "  <prefix>/(lib/<arch>|lib|share)/cmake/<name>*/          (U)\n"
+    "  <prefix>/(lib/<arch>|lib|share)/<name>*/                (U)\n"
+    "  <prefix>/(lib/<arch>|lib|share)/<name>*/(cmake|CMake)/  (U)\n"
     "On systems supporting OS X Frameworks and Application Bundles "
     "the following directories are searched for frameworks or bundles "
     "containing a configuration file:\n"
@@ -254,6 +257,7 @@ void cmFindPackageCommand::GenerateDocumentation()
     "  <prefix>/<name>.app/Contents/Resources/CMake/           (A)\n"
     "In all cases the <name> is treated as case-insensitive and corresponds "
     "to any of the names specified (<package> or names given by NAMES).  "
+    "Paths with lib/<arch> are enabled if CMAKE_LIBRARY_ARCHITECTURE is set.  "
     "If PATH_SUFFIXES is specified the suffixes are appended to each "
     "(W) or (U) directory entry one-by-one.\n"
     "This set of directories is intended to work in cooperation with "
@@ -298,9 +302,16 @@ void cmFindPackageCommand::GenerateDocumentation()
     "dependent projects one after another.\n"
     "6. Search paths stored in the CMake user package registry.  "
     "This can be skipped if NO_CMAKE_PACKAGE_REGISTRY is passed.  "
-    "Paths are stored in the registry when CMake configures a project "
-    "that invokes export(PACKAGE <name>).  "
-    "See the export(PACKAGE) command documentation for more details."
+    "On Windows a <package> may appear under registry key\n"
+    "  HKEY_CURRENT_USER\\Software\\Kitware\\CMake\\Packages\\<package>\n"
+    "as a REG_SZ value, with arbitrary name, that specifies the directory "
+    "containing the package configuration file.  "
+    "On UNIX platforms a <package> may appear under the directory\n"
+    "  ~/.cmake/packages/<package>\n"
+    "as a file, with arbitrary name, whose content specifies the directory "
+    "containing the package configuration file.  "
+    "See the export(PACKAGE) command to create user package registry entries "
+    "for project build trees."
     "\n"
     "7. Search cmake variables defined in the Platform files "
     "for the current system.  This can be skipped if NO_CMAKE_SYSTEM_PATH "
@@ -308,7 +319,15 @@ void cmFindPackageCommand::GenerateDocumentation()
     "   CMAKE_SYSTEM_PREFIX_PATH\n"
     "   CMAKE_SYSTEM_FRAMEWORK_PATH\n"
     "   CMAKE_SYSTEM_APPBUNDLE_PATH\n"
-    "8. Search paths specified by the PATHS option.  "
+    "8. Search paths stored in the CMake system package registry.  "
+    "This can be skipped if NO_CMAKE_SYSTEM_PACKAGE_REGISTRY is passed.  "
+    "On Windows a <package> may appear under registry key\n"
+    "  HKEY_LOCAL_MACHINE\\Software\\Kitware\\CMake\\Packages\\<package>\n"
+    "as a REG_SZ value, with arbitrary name, that specifies the directory "
+    "containing the package configuration file.  "
+    "There is no system package registry on non-Windows platforms."
+    "\n"
+    "9. Search paths specified by the PATHS option.  "
     "These are typically hard-coded guesses.\n"
     ;
   this->CommandDocumentation += this->GenericDocumentationMacPolicy;
@@ -343,6 +362,13 @@ bool cmFindPackageCommand
 
   // Check for debug mode.
   this->DebugMode = this->Makefile->IsOn("CMAKE_FIND_DEBUG_MODE");
+
+  // Lookup target architecture, if any.
+  if(const char* arch =
+     this->Makefile->GetDefinition("CMAKE_LIBRARY_ARCHITECTURE"))
+    {
+    this->LibraryArchitecture = arch;
+    }
 
   // Lookup whether lib64 paths should be used.
   if(this->Makefile->PlatformIs64Bit() &&
@@ -443,7 +469,14 @@ bool cmFindPackageCommand
       }
     else if(args[i] == "NO_CMAKE_PACKAGE_REGISTRY")
       {
-      this->NoRegistry = true;
+      this->NoUserRegistry = true;
+      this->NoModule = true;
+      this->Compatibility_1_6 = false;
+      doing = DoingNone;
+      }
+    else if(args[i] == "NO_CMAKE_SYSTEM_PACKAGE_REGISTRY")
+      {
+      this->NoSystemRegistry = true;
       this->NoModule = true;
       this->Compatibility_1_6 = false;
       doing = DoingNone;
@@ -524,7 +557,7 @@ bool cmFindPackageCommand
       cmake::AUTHOR_WARNING, "Ignoring EXACT since no version is requested.");
     }
 
-  if(this->Version.empty())
+  if(this->Version.empty() || components.empty())
     {
     // Check whether we are recursing inside "Find<name>.cmake" within
     // another find_package(<name>) call.
@@ -532,16 +565,24 @@ bool cmFindPackageCommand
     mod += "_FIND_MODULE";
     if(this->Makefile->IsOn(mod.c_str()))
       {
-      // Get version information from the outer call if necessary.
-      // Requested version string.
-      std::string ver = this->Name;
-      ver += "_FIND_VERSION";
-      this->Version = this->Makefile->GetSafeDefinition(ver.c_str());
+      if(this->Version.empty())
+        {
+        // Get version information from the outer call if necessary.
+        // Requested version string.
+        std::string ver = this->Name;
+        ver += "_FIND_VERSION";
+        this->Version = this->Makefile->GetSafeDefinition(ver.c_str());
 
-      // Whether an exact version is required.
-      std::string exact = this->Name;
-      exact += "_FIND_VERSION_EXACT";
-      this->VersionExact = this->Makefile->IsOn(exact.c_str());
+        // Whether an exact version is required.
+        std::string exact = this->Name;
+        exact += "_FIND_VERSION_EXACT";
+        this->VersionExact = this->Makefile->IsOn(exact.c_str());
+        }
+      if(components.empty())
+        {
+        std::string components_var = this->Name + "_FIND_COMPONENTS";
+        components = this->Makefile->GetSafeDefinition(components_var.c_str());
+        }
       }
     }
 
@@ -1172,9 +1213,10 @@ void cmFindPackageCommand::ComputePrefixes()
   this->AddPrefixesCMakeEnvironment();
   this->AddPrefixesUserHints();
   this->AddPrefixesSystemEnvironment();
-  this->AddPrefixesRegistry();
+  this->AddPrefixesUserRegistry();
   this->AddPrefixesBuilds();
   this->AddPrefixesCMakeSystemVariable();
+  this->AddPrefixesSystemRegistry();
   this->AddPrefixesUserGuess();
   this->ComputeFinalPrefixes();
 }
@@ -1240,15 +1282,15 @@ void cmFindPackageCommand::AddPrefixesSystemEnvironment()
 }
 
 //----------------------------------------------------------------------------
-void cmFindPackageCommand::AddPrefixesRegistry()
+void cmFindPackageCommand::AddPrefixesUserRegistry()
 {
-  if(this->NoRegistry || this->NoDefaultPath)
+  if(this->NoUserRegistry || this->NoDefaultPath)
     {
     return;
     }
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
-  this->LoadPackageRegistryWin();
+  this->LoadPackageRegistryWinUser();
 #elif defined(__HAIKU__)
   BPath dir;
   if (find_directory(B_USER_SETTINGS_DIRECTORY, &dir) == B_OK)
@@ -1268,18 +1310,63 @@ void cmFindPackageCommand::AddPrefixesRegistry()
 #endif
 }
 
+//----------------------------------------------------------------------------
+void cmFindPackageCommand::AddPrefixesSystemRegistry()
+{
+  if(this->NoSystemRegistry || this->NoDefaultPath)
+    {
+    return;
+    }
+
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  this->LoadPackageRegistryWinSystem();
+#endif
+}
+
 #if defined(_WIN32) && !defined(__CYGWIN__)
 # include <windows.h>
 # undef GetCurrentDirectory
+  // http://msdn.microsoft.com/en-us/library/aa384253%28v=vs.85%29.aspx
+# if !defined(KEY_WOW64_32KEY)
+#  define KEY_WOW64_32KEY 0x0200
+# endif
+# if !defined(KEY_WOW64_64KEY)
+#  define KEY_WOW64_64KEY 0x0100
+# endif
 //----------------------------------------------------------------------------
-void cmFindPackageCommand::LoadPackageRegistryWin()
+void cmFindPackageCommand::LoadPackageRegistryWinUser()
+{
+  // HKEY_CURRENT_USER\\Software shares 32-bit and 64-bit views.
+  this->LoadPackageRegistryWin(true, 0);
+}
+
+//----------------------------------------------------------------------------
+void cmFindPackageCommand::LoadPackageRegistryWinSystem()
+{
+  // HKEY_LOCAL_MACHINE\\SOFTWARE has separate 32-bit and 64-bit views.
+  // Prefer the target platform view first.
+  if(this->Makefile->PlatformIs64Bit())
+    {
+    this->LoadPackageRegistryWin(false, KEY_WOW64_64KEY);
+    this->LoadPackageRegistryWin(false, KEY_WOW64_32KEY);
+    }
+  else
+    {
+    this->LoadPackageRegistryWin(false, KEY_WOW64_32KEY);
+    this->LoadPackageRegistryWin(false, KEY_WOW64_64KEY);
+    }
+}
+
+//----------------------------------------------------------------------------
+void cmFindPackageCommand::LoadPackageRegistryWin(bool user,
+                                                  unsigned int view)
 {
   std::string key = "Software\\Kitware\\CMake\\Packages\\";
   key += this->Name;
   std::set<cmStdString> bad;
   HKEY hKey;
-  if(RegOpenKeyEx(HKEY_CURRENT_USER, key.c_str(),
-                  0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
+  if(RegOpenKeyEx(user? HKEY_CURRENT_USER : HKEY_LOCAL_MACHINE, key.c_str(),
+                  0, KEY_QUERY_VALUE|view, &hKey) == ERROR_SUCCESS)
     {
     DWORD valueType = REG_NONE;
     char name[16384];
@@ -1299,13 +1386,12 @@ void cmFindPackageCommand::LoadPackageRegistryWin()
             {
             data[dataSize] = 0;
             cmsys_ios::stringstream ss(&data[0]);
-            if(this->CheckPackageRegistryEntry(ss))
+            if(!this->CheckPackageRegistryEntry(ss))
               {
-              // The entry is okay.
-              continue;
+              // The entry is invalid.
+              bad.insert(name);
               }
             }
-          bad.insert(name);
           break;
         case ERROR_MORE_DATA:
           data.resize(dataSize+1);
@@ -1317,9 +1403,9 @@ void cmFindPackageCommand::LoadPackageRegistryWin()
     }
 
   // Remove bad values if possible.
-  if(!bad.empty() &&
+  if(user && !bad.empty() &&
      RegOpenKeyEx(HKEY_CURRENT_USER, key.c_str(),
-                  0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
+                  0, KEY_SET_VALUE|view, &hKey) == ERROR_SUCCESS)
     {
     for(std::set<cmStdString>::const_iterator vi = bad.begin();
         vi != bad.end(); ++vi)
@@ -2111,6 +2197,10 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
 
   // Construct list of common install locations (lib and share).
   std::vector<std::string> common;
+  if(!this->LibraryArchitecture.empty())
+    {
+    common.push_back("lib/"+this->LibraryArchitecture);
+    }
   if(this->UseLib64Paths)
     {
     common.push_back("lib64");
@@ -2118,7 +2208,7 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
   common.push_back("lib");
   common.push_back("share");
 
-  //  PREFIX/(share|lib)/cmake/(Foo|foo|FOO).*/
+  //  PREFIX/(lib/ARCH|lib|share)/cmake/(Foo|foo|FOO).*/
   {
   cmFindPackageFileList lister(this);
   lister
@@ -2132,7 +2222,7 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
     }
   }
 
-  //  PREFIX/(share|lib)/(Foo|foo|FOO).*/
+  //  PREFIX/(lib/ARCH|lib|share)/(Foo|foo|FOO).*/
   {
   cmFindPackageFileList lister(this);
   lister
@@ -2145,7 +2235,7 @@ bool cmFindPackageCommand::SearchPrefix(std::string const& prefix_in)
     }
   }
 
-  //  PREFIX/(share|lib)/(Foo|foo|FOO).*/(cmake|CMake)/
+  //  PREFIX/(lib/ARCH|lib|share)/(Foo|foo|FOO).*/(cmake|CMake)/
   {
   cmFindPackageFileList lister(this);
   lister
@@ -2277,11 +2367,3 @@ bool cmFindPackageCommand::SearchAppBundlePrefix(std::string const& prefix_in)
 }
 
 // TODO: Debug cmsys::Glob double slash problem.
-
-// TODO: Add registry entries after cmake system search path?
-// Currently the user must specify them with the PATHS option.
-//
-//  [HKEY_CURRENT_USER\Software\*\Foo*;InstallDir]
-//  [HKEY_CURRENT_USER\Software\*\*\Foo*;InstallDir]
-//  [HKEY_LOCAL_MACHINE\Software\*\Foo*;InstallDir]
-//  [HKEY_LOCAL_MACHINE\Software\*\*\Foo*;InstallDir]

@@ -893,6 +893,20 @@ cmMakefile::AddCustomCommandToOutput(const std::vector<std::string>& outputs,
     return;
     }
 
+  // Validate custom commands.  TODO: More strict?
+  for(cmCustomCommandLines::const_iterator i=commandLines.begin();
+      i != commandLines.end(); ++i)
+    {
+    cmCustomCommandLine const& cl = *i;
+    if(!cl.empty() && !cl[0].empty() && cl[0][0] == '"')
+      {
+      cmOStringStream e;
+      e << "COMMAND may not contain literal quotes:\n  " << cl[0] << "\n";
+      this->IssueMessage(cmake::FATAL_ERROR, e.str());
+      return;
+      }
+    }
+
   // Choose a source file on which to store the custom command.
   cmSourceFile* file = 0;
   if(main_dependency && main_dependency[0])
@@ -2742,6 +2756,27 @@ void cmMakefile::SetHomeOutputDirectory(const char* lib)
     this->AddDefinition("CMAKE_CURRENT_BINARY_DIR",
                         this->GetHomeOutputDirectory());
     }
+}
+
+void cmMakefile::SetScriptModeFile(const char* scriptfile)
+{
+  this->AddDefinition("CMAKE_SCRIPT_MODE_FILE", scriptfile);
+}
+
+void cmMakefile::SetArgcArgv(const std::vector<std::string>& args)
+{
+  cmOStringStream strStream;
+  strStream << args.size();
+  this->AddDefinition("CMAKE_ARGC", strStream.str().c_str());
+  //this->MarkVariableAsUsed("CMAKE_ARGC");
+
+  for (unsigned int t = 0; t < args.size(); ++t)
+  {
+    cmOStringStream tmpStream;
+    tmpStream << "CMAKE_ARGV" << t;
+    this->AddDefinition(tmpStream.str().c_str(), args[t].c_str());
+    //this->MarkVariableAsUsed(tmpStream.str().c_str());
+  }
 }
 
 //----------------------------------------------------------------------------

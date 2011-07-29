@@ -368,8 +368,8 @@ class cmake
 
   void UnwatchUnusedCli(const char* var);
   void WatchUnusedCli(const char* var);
-  void RunCheckForUnusedVariables(const std::string& reason) const;
 protected:
+  void RunCheckForUnusedVariables();
   void InitializeProperties();
   int HandleDeleteCacheVariables(const char* var);
   cmPropertyMap Properties;
@@ -406,7 +406,7 @@ protected:
   bool DoSuppressDevWarnings;
 
   ///! read in a cmake list file to initialize the cache
-  void ReadListFile(const char *path);
+  void ReadListFile(const std::vector<std::string>& args, const char *path);
 
   ///! Check if CMAKE_CACHEFILE_DIR is set. If it is not, delete the log file.
   ///  If it is set, truncate it to 50kb
@@ -451,6 +451,8 @@ protected:
 
   ///! Find the full path to one of the cmake programs like ctest, cpack, etc.
   std::string FindCMakeProgram(const char* name) const;
+
+  bool RejectUnsupportedPaths(const char* desc, std::string const& path);
 private:
   cmake(const cmake&);  // Not implemented.
   void operator=(const cmake&);  // Not implemented.
@@ -465,7 +467,7 @@ private:
   bool WarnUnused;
   bool WarnUnusedCli;
   bool CheckSystemVars;
-  std::map<std::string, bool> UsedCliVariables;
+  std::map<cmStdString, bool> UsedCliVariables;
   std::string CMakeEditCommand;
   std::string CMakeCommand;
   std::string CXXEnvironment;

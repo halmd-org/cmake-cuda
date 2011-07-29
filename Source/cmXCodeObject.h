@@ -139,8 +139,22 @@ public:
     {
       return this->DependLibraries;
     }
+  void AddDependTarget(const char* configName,
+                       const char* tName)
+    {
+      if(!configName)
+        {
+        configName = "";
+        }
+      this->DependTargets[configName].push_back(tName);
+    }
+  std::map<cmStdString, StringVec> const& GetDependTargets()
+    {
+    return this->DependTargets;
+    }
   std::vector<cmXCodeObject*> const& GetObjectList() { return this->List;}
   void SetComment(const char* c) { this->Comment = c;}
+  static void PrintString(std::ostream& os,cmStdString String);
 protected:
   void PrintString(std::ostream& os) const;
 
@@ -155,6 +169,7 @@ protected:
   cmXCodeObject* PBXTargetDependencyValue;
   std::vector<cmXCodeObject*> List;
   std::map<cmStdString, StringVec> DependLibraries;
+  std::map<cmStdString, StringVec> DependTargets;
   std::map<cmStdString, cmXCodeObject*> ObjectAttributes;
 };
 #endif

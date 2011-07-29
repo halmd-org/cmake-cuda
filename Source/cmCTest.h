@@ -61,6 +61,7 @@ public:
     PartSubmit,
     PartNotes,
     PartExtraFiles,
+    PartUpload,
     PartCount // Update names in constructor when adding a part
   };
 
@@ -192,8 +193,13 @@ public:
   ///! Get the current time as string
   std::string CurrentTime();
 
+  //! tar/gzip and then base 64 encode a file
+  std::string Base64GzipEncodeFile(std::string file);
+  //! base64 encode a file
+  std::string Base64EncodeFile(std::string file);
+
   /** 
-   * Return the time remaianing that the script is allowed to run in
+   * Return the time remaining that the script is allowed to run in
    * seconds if the user has set the variable CTEST_TIME_LIMIT. If that has
    * not been set it returns 1e7 seconds
    */
@@ -213,6 +219,8 @@ public:
   bool ShouldPrintLabels() { return this->PrintLabels; }
 
   bool ShouldCompressTestOutput();
+  bool ShouldCompressMemCheckOutput();
+  bool CompressString(std::string& str);
 
   std::string GetCDashVersion();
 
@@ -424,7 +432,8 @@ private:
   bool RunConfigurationScript;
 
   //flag for lazy getter (optimization)
-  bool ComputedCompressOutput;
+  bool ComputedCompressTestOutput;
+  bool ComputedCompressMemCheckOutput;
 
   int GenerateNotesFile(const char* files);
 
@@ -481,8 +490,8 @@ private:
   bool                     ShortDateFormat;
 
   bool                     CompressXMLFiles;
-
   bool                     CompressTestOutput;
+  bool                     CompressMemCheckOutput;
 
   void InitStreams();
   std::ostream* StreamOut;
@@ -515,7 +524,7 @@ private:
   //! Reread the configuration file
   bool UpdateCTestConfiguration();
 
-  //! Create not from files.
+  //! Create note from files.
   int GenerateCTestNotesOutput(std::ostream& os,
     const VectorOfStrings& files);
 

@@ -4,8 +4,10 @@
 # used by CPack : http://www.cmake.org/Wiki/CMake:CPackConfiguration
 #
 # However CPackRPM has specific features which are controlled by
-# the specifics CPACK_RPM_XXX variables. You'll find a detailed usage on
-# the wiki:
+# the specifics CPACK_RPM_XXX variables.
+# Usually those vars correspond to RPM spec file entities, one may find
+# information about spec files here http://www.rpm.org/wiki/Docs.
+# You'll find a detailed usage of CPackRPM on the wiki:
 #  http://www.cmake.org/Wiki/CMake:CPackPackageGenerators#RPM_.28Unix_Only.29
 # However as a handy reminder here comes the list of specific variables:
 #
@@ -68,6 +70,8 @@
 #     Note that you must enclose the complete requires string between quotes,
 #     for example:
 #     set(CPACK_RPM_PACKAGE_REQUIRES "python >= 2.5.0, cmake >= 2.8")
+#     The required package list of an RPM file could be printed with
+#     rpm -qp --requires file.rpm
 #  CPACK_RPM_PACKAGE_SUGGESTS
 #     Mandatory : NO
 #     Default   : -
@@ -77,6 +81,8 @@
 #     Mandatory : NO
 #     Default   : -
 #     May be used to set RPM dependencies (provides).
+#     The provided package list of an RPM file could be printed with
+#     rpm -qp --provides file.rpm
 #  CPACK_RPM_PACKAGE_OBSOLETES
 #     Mandatory : NO
 #     Default   : -
@@ -193,6 +199,25 @@ ENDIF(RPMBUILD_EXECUTABLE)
 IF(NOT RPMBUILD_EXECUTABLE)
   MESSAGE(FATAL_ERROR "RPM package requires rpmbuild executable")
 ENDIF(NOT RPMBUILD_EXECUTABLE)
+
+# Display lsb_release output if DEBUG mode enable
+# This will help to diagnose problem with CPackRPM
+# because we will know on which kind of Linux we are
+IF(CPACK_RPM_PACKAGE_DEBUG)
+  find_program(LSB_RELEASE_EXECUTABLE lsb_release)
+  if(LSB_RELEASE_EXECUTABLE)
+    execute_process(COMMAND ${LSB_RELEASE_EXECUTABLE} -a
+                    OUTPUT_VARIABLE _TMP_LSB_RELEASE_OUTPUT
+                    ERROR_QUIET
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REGEX REPLACE "\n" ", "
+           LSB_RELEASE_OUTPUT
+           ${_TMP_LSB_RELEASE_OUTPUT})
+  else (LSB_RELEASE_EXECUTABLE)
+    set(LSB_RELEASE_OUTPUT "lsb_release not installed/found!")
+  endif(LSB_RELEASE_EXECUTABLE)
+  MESSAGE("CPackRPM:Debug: LSB_RELEASE  = ${LSB_RELEASE_OUTPUT}")
+ENDIF(CPACK_RPM_PACKAGE_DEBUG)
 
 # We may use RPM version in the future in order
 # to shut down warning about space in buildtree
@@ -345,7 +370,7 @@ if(CPACK_RPM_PACKAGE_RELOCATABLE)
 endif(CPACK_RPM_PACKAGE_RELOCATABLE)
 
 # check if additional fields for RPM spec header are given
-FOREACH(_RPM_SPEC_HEADER URL REQUIRES SUGGESTS PROVIDES OBSOLETES PREFIX)
+FOREACH(_RPM_SPEC_HEADER URL REQUIRES SUGGESTS PROVIDES OBSOLETES PREFIX CONFLICTS AUTOPROV AUTOREQ AUTOREQPROV)
   IF(CPACK_RPM_PACKAGE_${_RPM_SPEC_HEADER})
     STRING(LENGTH ${_RPM_SPEC_HEADER} _PACKAGE_HEADER_STRLENGTH)
     MATH(EXPR _PACKAGE_HEADER_STRLENGTH "${_PACKAGE_HEADER_STRLENGTH} - 1")
@@ -470,11 +495,25 @@ ENDIF(CPACK_RPM_PACKAGE_COMPONENT)
 # file name by enclosing it between double quotes (thus the sed)
 # Then we must authorize any man pages extension (adding * at the end)
 # because rpmbuild may automatically compress those files
-EXECUTE_PROCESS(COMMAND find -type f -o -type l
-                COMMAND sed {s:.*/man.*/.*:&*:}
-                COMMAND sed {s/\\.\\\(.*\\\)/\"\\1\"/}
+EXECUTE_PROCESS(COMMAND find . -type f -o -type l
+                COMMAND sed s:.*/man.*/.*:&*:
+                COMMAND sed s/\\.\\\(.*\\\)/\"\\1\"/
                 WORKING_DIRECTORY "${WDIR}"
                 OUTPUT_VARIABLE CPACK_RPM_INSTALL_FILES)
+
+# In component case, replace CPACK_ABSOLUTE_DESTINATION_FILES
+#        with the content of CPACK_ABSOLUTE_DESTINATION_FILES_<COMPONENT>
+# This must be done BEFORE the CPACK_ABSOLUTE_DESTINATION_FILES handling
+if(CPACK_RPM_PACKAGE_COMPONENT)
+  if(CPACK_ABSOLUTE_DESTINATION_FILES)
+   set(COMPONENT_FILES_TAG "CPACK_ABSOLUTE_DESTINATION_FILES_${CPACK_RPM_PACKAGE_COMPONENT}")
+   set(CPACK_ABSOLUTE_DESTINATION_FILES "${${COMPONENT_FILES_TAG}}")
+   if(CPACK_RPM_PACKAGE_DEBUG)
+     message("CPackRPM:Debug: Handling Absolute Destination Files ${CPACK_ABSOLUTE_DESTINATION_FILES}")
+     message("CPackRPM:Debug: in component = ${CPACK_RPM_PACKAGE_COMPONENT}")
+   endif(CPACK_RPM_PACKAGE_DEBUG)
+  endif()
+endif()
 
 if (CPACK_ABSOLUTE_DESTINATION_FILES)
   IF(CPACK_RPM_PACKAGE_DEBUG)
@@ -540,6 +579,10 @@ Vendor:         \@CPACK_RPM_PACKAGE_VENDOR\@
 \@TMP_RPM_REQUIRES\@
 \@TMP_RPM_PROVIDES\@
 \@TMP_RPM_OBSOLETES\@
+\@TMP_RPM_CONFLICTS\@
+\@TMP_RPM_AUTOPROV\@
+\@TMP_RPM_AUTOREQ\@
+\@TMP_RPM_AUTOREQPROV\@
 \@TMP_RPM_BUILDARCH\@
 \@TMP_RPM_PREFIX\@
 
@@ -621,13 +664,18 @@ IF(RPMBUILD_EXECUTABLE)
             --buildroot "${CPACK_RPM_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
             "${CPACK_RPM_BINARY_SPECFILE}"
     WORKING_DIRECTORY "${CPACK_TOPLEVEL_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}${CPACK_RPM_PACKAGE_COMPONENT_PART_PATH}"
+    RESULT_VARIABLE CPACK_RPMBUILD_EXEC_RESULT
     ERROR_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.err"
     OUTPUT_FILE "${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.out")
-  IF(CPACK_RPM_PACKAGE_DEBUG)
+  IF(CPACK_RPM_PACKAGE_DEBUG OR CPACK_RPMBUILD_EXEC_RESULT)
+    FILE(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.err RPMBUILDERR)
+    FILE(READ ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.out RPMBUILDOUT)
     MESSAGE("CPackRPM:Debug: You may consult rpmbuild logs in: ")
     MESSAGE("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.err")
+    MESSAGE("CPackRPM:Debug: *** ${RPMBUILDERR} ***")
     MESSAGE("CPackRPM:Debug:    - ${CPACK_TOPLEVEL_DIRECTORY}/rpmbuild${CPACK_RPM_PACKAGE_COMPONENT_PART_NAME}.out")
-  ENDIF(CPACK_RPM_PACKAGE_DEBUG)
+    MESSAGE("CPackRPM:Debug: *** ${RPMBUILDERR} ***")
+  ENDIF(CPACK_RPM_PACKAGE_DEBUG OR CPACK_RPMBUILD_EXEC_RESULT)
 ELSE(RPMBUILD_EXECUTABLE)
   IF(ALIEN_EXECUTABLE)
     MESSAGE(FATAL_ERROR "RPM packaging through alien not done (yet)")

@@ -72,7 +72,11 @@ bool cmStringCommand
     {
     return this->HandleRandomCommand(args);
     }
-  
+  else if(subCommand == "FIND")
+    {
+    return this->HandleFindCommand(args);
+    }
+
   std::string e = "does not recognize sub-command "+subCommand;
   this->SetError(e.c_str());
   return false;
@@ -499,6 +503,68 @@ void cmStringCommand::StoreMatches(cmMakefile* mf,cmsys::RegularExpression& re)
 }
 
 //----------------------------------------------------------------------------
+bool cmStringCommand::HandleFindCommand(std::vector<std::string> const&
+                                           args)
+{
+  // check if all required parameters were passed
+  if(args.size() < 4 || args.size() > 5)
+    {
+    this->SetError("sub-command FIND requires 3 or 4 parameters.");
+    return false;
+    }
+
+  // check if the reverse flag was set or not
+  bool reverseMode = false;
+  if(args.size() == 5 && args[4] == "REVERSE")
+    {
+    reverseMode = true;
+    }
+
+  // if we have 5 arguments the last one must be REVERSE
+  if(args.size() == 5 && args[4] != "REVERSE")
+    {
+    this->SetError("sub-command FIND: unknown last parameter");
+    return false;
+    }
+
+  // local parameter names.
+  const std::string& sstring = args[1];
+  const std::string& schar = args[2];
+  const std::string& outvar = args[3];
+
+  // ensure that the user cannot accidentally specify REVERSE as a variable
+  if(outvar == "REVERSE")
+    {
+    this->SetError("sub-command FIND does not allow to select REVERSE as "
+                   "the output variable.  "
+                   "Maybe you missed the actual output variable?");
+    return false;
+    }
+
+  // try to find the character and return its position
+  size_t pos;
+  if(!reverseMode)
+    {
+    pos = sstring.find(schar);
+    }
+  else
+    {
+    pos = sstring.rfind(schar);
+    }
+  if(std::string::npos != pos)
+    {
+    cmOStringStream s;
+    s << pos;
+    this->Makefile->AddDefinition(outvar.c_str(), s.str().c_str());
+    return true;
+    }
+
+  // the character was not found, but this is not really an error
+  this->Makefile->AddDefinition(outvar.c_str(), "-1");
+  return true;
+}
+
+//----------------------------------------------------------------------------
 bool cmStringCommand::HandleCompareCommand(std::vector<std::string> const&
                                            args)
 {
@@ -611,7 +677,7 @@ bool cmStringCommand::HandleSubstringCommand(std::vector<std::string> const&
   if ( end < -1 || end > leftOverLength )
     {
     cmOStringStream ostr;
-    ostr << "end index: " << end << " is out of range " << 0 << " - "
+    ostr << "end index: " << end << " is out of range -1 - "
          << leftOverLength;
     this->SetError(ostr.str().c_str());
     return false;
@@ -704,7 +770,7 @@ bool cmStringCommand
 
   static bool seeded = false;
   bool force_seed = false;
-  int seed = (int) time(NULL);
+  unsigned int seed = 0;
   int length = 5;
   const char cmStringCommandDefaultAlphabet[] = "qwertyuiopasdfghjklzxcvbnm"
     "QWERTYUIOPASDFGHJKLZXCVBNM"
@@ -731,7 +797,7 @@ bool cmStringCommand
       else if ( args[i] == "RANDOM_SEED" )
         {
         ++i;
-        seed = atoi(args[i].c_str());
+        seed = static_cast<unsigned int>(atoi(args[i].c_str()));
         force_seed = true;
         }
       }
@@ -759,7 +825,7 @@ bool cmStringCommand
   if (!seeded || force_seed)
     {
     seeded = true;
-    srand(seed);
+    srand(force_seed? seed : cmSystemTools::RandomSeed());
     }
 
   const char* alphaPtr = alphabet.c_str();

@@ -167,6 +167,7 @@ void cmVisualStudio10TargetGenerator::Generate()
   // Write the encoding header into the file
   char magic[] = {0xEF,0xBB, 0xBF};
   this->BuildFileStream->write(magic, 3);
+  this->WriteString("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n",0);
   this->WriteString("<Project DefaultTargets=\"Build\" "
                     "ToolsVersion=\"4.0\" "
                     "xmlns=\"http://schemas.microsoft.com/"
@@ -350,12 +351,23 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
     {
     if(!cmSystemTools::FileExists(sourcePath.c_str()))
       {
+      // Make sure the path exists for the file
+      std::string path = cmSystemTools::GetFilenamePath(sourcePath);
+      cmSystemTools::MakeDirectory(path.c_str());
       std::ofstream fout(sourcePath.c_str());
       if(fout)
         {
         fout << "# generated from CMake\n";
         fout.flush();
         fout.close();
+        }
+      else
+        {
+        std::string error = "Could not create file: [";
+        error +=  sourcePath;
+        error += "]  ";
+        cmSystemTools::Error
+          (error.c_str(), cmSystemTools::GetLastSystemError().c_str());
         }
       }
     }
@@ -366,10 +378,11 @@ cmVisualStudio10TargetGenerator::WriteCustomRule(cmSourceFile* source,
     static_cast<cmGlobalVisualStudio7Generator *>
     (this->GlobalGenerator)->GetConfigurations(); 
   this->WriteString("<CustomBuild Include=\"", 2);
-  std::string path =
-    cmSystemTools::RelativePath(
-      this->Makefile->GetCurrentOutputDirectory(),
-      sourcePath.c_str());
+  // custom command have to use relative paths or they do not
+  // show up in the GUI
+  std::string path = cmSystemTools::RelativePath(
+    this->Makefile->GetCurrentOutputDirectory(),
+    sourcePath.c_str());
   this->ConvertToWindowsSlash(path);
   (*this->BuildFileStream ) << path << "\">\n";
   for(std::vector<std::string>::iterator i = configs->begin();
@@ -451,11 +464,17 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
     bool header = (*s)->GetPropertyAsBool("HEADER_FILE_ONLY")
       || this->GlobalGenerator->IgnoreFile
       ((*s)->GetExtension().c_str());
+    std::string ext =
+      cmSystemTools::LowerCase((*s)->GetExtension());
     if(!lang)
       {
       lang = "None";
       }
-    if(lang[0] == 'C')
+    if(header)
+      {
+      headers.push_back(sf);
+      }
+    else if(lang[0] == 'C')
       {
       clCompile.push_back(sf);
       }
@@ -467,11 +486,7 @@ void cmVisualStudio10TargetGenerator::WriteGroups()
       {
       customBuild.push_back(sf);
       }
-    else if(header)
-      {
-      headers.push_back(sf);
-      }
-    else if(sf->GetExtension() == "idl")
+    else if(ext == "idl")
       {
       idls.push_back(sf);
       }
@@ -608,9 +623,14 @@ WriteGroupSources(const char* name,
     const char* filter = sourceGroup.GetFullName();
     this->WriteString("<", 2); 
     std::string path = source;
-    path = cmSystemTools::RelativePath(
-      this->Makefile->GetCurrentOutputDirectory(),
-      source.c_str());
+    // custom command sources must use relative paths or they will
+    // not show up in the GUI.
+    if(sf->GetCustomCommand())
+      {
+      path = cmSystemTools::RelativePath(
+        this->Makefile->GetCurrentOutputDirectory(),
+        source.c_str());
+      }
     this->ConvertToWindowsSlash(path);
     (*this->BuildFileStream) << name << " Include=\""
                              << path;
@@ -641,14 +661,28 @@ void cmVisualStudio10TargetGenerator::WriteObjSources()
   for(std::vector<cmSourceFile*>::const_iterator source = sources.begin();
       source != sources.end(); ++source)
     {
-    if((*source)->GetExtension() == "obj")
+    std::string ext =
+      cmSystemTools::LowerCase((*source)->GetExtension());
+    if(ext == "obj" || ext == "o")
       {
       if(first)
         {
         this->WriteString("<ItemGroup>\n", 1);
         first = false;
         }
-      this->WriteString("<None Include=\"", 2);
+      // If an object file is generated, then vs10
+      // will use it in the build, and we have to list
+      // it as None instead of Object
+      if((*source)->GetPropertyAsBool("GENERATED"))
+        {
+        this->WriteString("<None Include=\"", 2);
+        }
+      // If it is not a generated object then we have
+      // to use the Object type
+      else
+        {
+        this->WriteString("<Object Include=\"", 2);
+        }
       (*this->BuildFileStream ) << (*source)->GetFullPath() << "\" />\n";
       }
     }
@@ -670,8 +704,8 @@ void cmVisualStudio10TargetGenerator::WriteCLSources()
   for(std::vector<cmSourceFile*>::const_iterator source = sources.begin();
       source != sources.end(); ++source)
     {
-    std::string ext = (*source)->GetExtension();
-    if((*source)->GetCustomCommand() || ext == "obj")
+    std::string ext = cmSystemTools::LowerCase((*source)->GetExtension());
+    if((*source)->GetCustomCommand() || ext == "o" || ext == "obj")
       {
       continue;
       }
@@ -684,9 +718,8 @@ void cmVisualStudio10TargetGenerator::WriteCLSources()
     bool rc = lang && (strcmp(lang, "RC") == 0);
     bool idl = ext == "idl";
     std::string sourceFile = (*source)->GetFullPath();
-    sourceFile =  cmSystemTools::RelativePath(
-      this->Makefile->GetCurrentOutputDirectory(),
-      sourceFile.c_str());
+    // do not use a relative path here because it means that you
+    // can not use as long a path to the file.
     this->ConvertToWindowsSlash(sourceFile);
     // output the source file
     if(header)
@@ -998,6 +1031,15 @@ OutputLinkIncremental(std::string const& configName)
   this->WritePlatformConfigTag("LinkIncremental", configName.c_str(), 3);
   *this->BuildFileStream << incremental
                          << "</LinkIncremental>\n"; 
+
+  const char* manifest = "true";
+  if(flags.find("MANIFEST:NO") != flags.npos)
+    {
+    manifest = "false";
+    }
+  this->WritePlatformConfigTag("GenerateManifest", configName.c_str(), 3);
+  *this->BuildFileStream << manifest
+                         << "</GenerateManifest>\n";
 }
 
 //----------------------------------------------------------------------------
@@ -1326,7 +1368,7 @@ void cmVisualStudio10TargetGenerator::WriteLinkOptions(std::string const&
   linkDirs += "%(AdditionalLibraryDirectories)";
   linkOptions.AddFlag("AdditionalLibraryDirectories", linkDirs.c_str());
   linkOptions.AddFlag("AdditionalDependencies", libs.c_str());
-  linkOptions.AddFlag("Version", "0.0");
+  linkOptions.AddFlag("Version", "");
   if(linkOptions.IsDebug() || flags.find("/debug") != flags.npos)
     {
     linkOptions.AddFlag("GenerateDebugInformation", "true");
@@ -1369,6 +1411,8 @@ void cmVisualStudio10TargetGenerator::WriteLinkOptions(std::string const&
     linkOptions.AddFlag("ModuleDefinitionFile",
                         this->ModuleDefinitionFile.c_str());
     }
+
+  linkOptions.RemoveFlag("GenerateManifest");
   linkOptions.OutputAdditionalOptions(*this->BuildFileStream, "      ", "");
   linkOptions.OutputFlagMap(*this->BuildFileStream, "      ");
   

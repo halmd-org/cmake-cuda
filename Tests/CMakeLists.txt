@@ -11,6 +11,7 @@ MACRO(ADD_TEST_MACRO NAME COMMAND)
     --build-generator ${CMAKE_TEST_GENERATOR}
     --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
     --build-project ${proj}
+    ${${NAME}_EXTRA_OPTIONS}
     --test-command ${COMMAND} ${ARGN})
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/${dir}")
 ENDMACRO(ADD_TEST_MACRO)
@@ -39,6 +40,10 @@ CONFIGURE_FILE(${CMake_SOURCE_DIR}/Tests/EnforceConfig.cmake.in
 
 # Testing
 IF(BUILD_TESTING)
+  IF("${CMAKE_TEST_GENERATOR}" MATCHES "Unix Makefiles")
+    SET(TEST_CompileCommandOutput 1)
+  ENDIF()
+
   ADD_SUBDIRECTORY(CMakeLib)
 
   # Collect a list of all test build directories.
@@ -187,6 +192,24 @@ IF(BUILD_TESTING)
   ENDIF(CTEST_TEST_OSX_ARCH)
 
   LIST(APPEND TEST_BUILD_DIRS ${CMake_TEST_INSTALL_PREFIX})
+
+
+  # run test for BundleUtilities on supported platforms/compilers
+  if(MSVC OR
+     CMAKE_SYSTEM_NAME MATCHES "Linux" OR
+     CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  if(NOT "${CMAKE_TEST_GENERATOR}" STREQUAL "Watcom WMake")
+    ADD_TEST(BundleUtilities ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/BundleUtilities"
+      "${CMake_BINARY_DIR}/Tests/BundleUtilities"
+      --build-generator ${CMAKE_TEST_GENERATOR}
+      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+      --build-project BundleUtilities
+      )
+    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleUtilities")
+  endif()
+  endif()
 
   SET(CMAKE_BUILD_TEST_SOURCE_DIR "${CMake_SOURCE_DIR}/Tests/COnly")
   SET(CMAKE_BUILD_TEST_BINARY_DIR "${CMake_BINARY_DIR}/Tests/CMakeBuildCOnly")
@@ -566,12 +589,26 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     set(CPackRun_CPackCommand "-DCPackCommand=${CMAKE_CPACK_COMMAND}")
     # set up list of CPack generators
     list(APPEND GENLST "ZIP")
+    if(APPLE)
+      list(APPEND GENLST "DragNDrop")
+    endif(APPLE)
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+        find_program(RPMBUILD NAMES rpmbuild)
+    endif(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+    if (RPMBUILD)
+       list(APPEND GENLST "RPM")
+    endif(RPMBUILD)
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+       find_program(DPKG NAMES dpkg)
+       if (DPKG)
+          list(APPEND GENLST "DEB")
+       endif(DPKG)
+    endif(CMAKE_SYSTEM_NAME MATCHES "Linux")
     # set up list of component packaging ways
     list(APPEND CWAYLST "default")
     list(APPEND CWAYLST "OnePackPerGroup")
     list(APPEND CWAYLST "IgnoreGroup")
     list(APPEND CWAYLST "AllInOne")
-    list(APPEND CWAYLST "AllGroupsInOne")
     foreach(CPackGen ${GENLST})
       set(CPackRun_CPackGen  "-DCPackGen=${CPackGen}")
       foreach(CPackComponentWay ${CWAYLST})
@@ -815,11 +852,8 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --test-command ${CMAKE_CTEST_COMMAND} -V
     )
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/ExternalProject")
-  # The ExternalProject test takes 900 seconds on some machines!
-  GET_TEST_PROPERTY(ExternalProject TIMEOUT PREVIOUS_TIMEOUT)
-  IF("${PREVIOUS_TIMEOUT}" MATCHES NOTFOUND)
-    SET_TESTS_PROPERTIES(ExternalProject PROPERTIES TIMEOUT 1000)
-  ENDIF("${PREVIOUS_TIMEOUT}" MATCHES NOTFOUND)
+  SET_TESTS_PROPERTIES(ExternalProject PROPERTIES
+    TIMEOUT ${CMAKE_LONG_TEST_TIMEOUT})
 
   # do each of the tutorial steps
   FOREACH(STP RANGE 1 7)
@@ -1002,6 +1036,22 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   SET_TESTS_PROPERTIES ( linkorder2 PROPERTIES DEPENDS linkorder1)
   SET_TESTS_PROPERTIES ( SimpleInstall-Stage2 PROPERTIES DEPENDS SimpleInstall)
 
+  # Test static linking on toolchains known to support it.
+  IF("${CMAKE_C_COMPILER_ID}" MATCHES "^(GNU)$"
+      AND NOT APPLE AND NOT WIN32 AND NOT CYGWIN
+      AND EXISTS "/usr/lib/libm.a")
+    ADD_TEST(LinkStatic  ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/LinkStatic"
+      "${CMake_BINARY_DIR}/Tests/LinkStatic"
+      --build-generator ${CMAKE_TEST_GENERATOR}
+      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+      --build-project LinkStatic
+      --build-options -DMATH_LIBRARY:FILEPATH=/usr/lib/libm.a
+      --test-command LinkStatic
+      )
+  ENDIF()
+
   IF(NOT CMAKE_TEST_DIFFERENT_GENERATOR)
     ADD_TEST(kwsys ${CMAKE_CTEST_COMMAND}
       --build-and-test
@@ -1082,8 +1132,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   IF(CMAKE_TEST_MSVC)
     ADD_TEST_MACRO(ForceInclude foo)
     ADD_TEST_MACRO(PrecompiledHeader foo)
+  ENDIF()
+  IF(CMAKE_TEST_MSVC OR
+      "${CMAKE_TEST_GENERATOR}" MATCHES "(MSYS|MinGW) Makefiles")
     ADD_TEST_MACRO(ModuleDefinition example_exe)
-  ENDIF(CMAKE_TEST_MSVC)
+  ENDIF()
 
   ADD_TEST_MACRO(CheckCompilerRelatedVariables CheckCompilerRelatedVariables)
 
@@ -1144,6 +1197,21 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       ${BundleTestInstallDir}/Applications/SecondBundleExe.app/Contents/MacOS/SecondBundleExe)
     LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleTest")
 
+    ADD_TEST(CFBundleTest ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/CFBundleTest"
+      "${CMake_BINARY_DIR}/Tests/CFBundleTest"
+      --build-two-config
+      --build-generator ${CMAKE_TEST_GENERATOR}
+      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+      --build-project CFBundleTest
+      --test-command
+      ${CMAKE_CMAKE_COMMAND} -DCTEST_CONFIGURATION_TYPE=\${CTEST_CONFIGURATION_TYPE}
+        -Ddir=${CMake_BINARY_DIR}/Tests/CFBundleTest
+        -Dgen=${CMAKE_TEST_GENERATOR}
+        -P ${CMake_SOURCE_DIR}/Tests/CFBundleTest/VerifyResult.cmake)
+    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/CFBundleTest")
+
     ADD_TEST_MACRO(ObjC++ ObjC++)
   ENDIF (APPLE AND CMAKE_COMPILER_IS_GNUCXX)
 
@@ -1202,7 +1270,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --build-project WarnUnusedCliUnused
     --build-options "-DUNUSED_CLI_VARIABLE=Unused")
   SET_TESTS_PROPERTIES(WarnUnusedCliUnused PROPERTIES
-    PASS_REGULAR_EXPRESSION "CMake Warning: The variable, 'UNUSED_CLI_VARIABLE'")
+    PASS_REGULAR_EXPRESSION "CMake Warning:.*Manually-specified variables were not used by the project:.*  UNUSED_CLI_VARIABLE")
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/WarnUnusedCliUnused")
 
   ADD_TEST(WarnUnusedCliUsed ${CMAKE_CTEST_COMMAND}
@@ -1242,7 +1310,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
     --build-exe-dir "${CMake_BINARY_DIR}/Tests/TestsWorkingDirectory"
     --force-new-ctest-process
-    --test-command ${CMAKE_CTEST_COMMAND} -V
+    --test-command ${CMAKE_CTEST_COMMAND} -V -C \${CTEST_CONFIGURATION_TYPE}
     )
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/TestsWorkingDirectory")
 
@@ -1400,6 +1468,16 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     PASS_REGULAR_EXPRESSION "Could not find executable"
     FAIL_REGULAR_EXPRESSION "SegFault")
 
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestUpload/test.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestUpload/test.cmake"
+    @ONLY ESCAPE_QUOTES)
+  ADD_TEST(CTestTestUpload ${CMAKE_CTEST_COMMAND}
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestUpload/test.cmake" -V
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestUpload/testOut.log"
+    )
+  SET_TESTS_PROPERTIES(CTestTestUpload PROPERTIES
+    PASS_REGULAR_EXPRESSION "Upload\\.xml")
 
   # Use macro, not function so that build can still be driven by CMake 2.4.
   # After 2.6 is required, this could be a function without the extra 'set'
@@ -1825,39 +1903,30 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     ENDIF()
   ENDIF()
 
-  if(NOT DEFINED CTEST_RUN_Java)
-    if(APPLE)
-      set(CTEST_RUN_Java OFF)
-    else()
-      set(CTEST_RUN_Java ON)
-    endif()
-  endif()
-
-  IF(CTEST_RUN_Java)
-    find_package(Java QUIET)
-    IF(JAVA_COMPILE AND JAVA_RUNTIME AND JAVA_ARCHIVE AND NOT MINGW)
-      GET_FILENAME_COMPONENT(JNIPATH ${JAVA_COMPILE} PATH)
-      FIND_FILE(JNI_H jni.h
-        "${JNIPATH}/../include"
-        "${JNIPATH}/../java/include")
-      IF(JNI_H)
-        FILE(READ "${JNI_H}" JNI_FILE)
-        IF("${JNI_FILE}" MATCHES "JDK1_2")
-          ADD_TEST(Java ${CMAKE_CTEST_COMMAND}
-            --build-and-test
-            "${CMake_SOURCE_DIR}/Tests/Java"
-            "${CMake_BINARY_DIR}/Tests/Java"
-            --build-generator ${CMAKE_TEST_GENERATOR}
-            --build-project hello
-            --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-            --build-two-config
-            --build-run-dir "${CMake_BINARY_DIR}/Tests/Java/"
-            --test-command ${JAVA_RUNTIME} -classpath hello.jar HelloWorld)
-          LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Java")
-        ENDIF("${JNI_FILE}" MATCHES "JDK1_2")
-      ENDIF(JNI_H)
-    ENDIF(JAVA_COMPILE AND JAVA_RUNTIME AND JAVA_ARCHIVE AND NOT MINGW)
-  ENDIF(CTEST_RUN_Java)
+  find_package(Java QUIET)
+  IF(JAVA_COMPILE AND JAVA_RUNTIME AND JAVA_ARCHIVE AND NOT MINGW
+      AND NOT "${CMAKE_TEST_GENERATOR}" MATCHES "Xcode")
+    GET_FILENAME_COMPONENT(JNIPATH ${JAVA_COMPILE} PATH)
+    FIND_FILE(JNI_H jni.h
+      "${JNIPATH}/../include"
+      "${JNIPATH}/../java/include")
+    IF(JNI_H AND EXISTS "${JNI_H}") # in case jni.h is a broken symlink
+      FILE(READ "${JNI_H}" JNI_FILE)
+      IF("${JNI_FILE}" MATCHES "JDK1_2")
+        ADD_TEST(Java ${CMAKE_CTEST_COMMAND}
+          --build-and-test
+          "${CMake_SOURCE_DIR}/Tests/Java"
+          "${CMake_BINARY_DIR}/Tests/Java"
+          --build-generator ${CMAKE_TEST_GENERATOR}
+          --build-project hello
+          --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+          --build-two-config
+          --build-run-dir "${CMake_BINARY_DIR}/Tests/Java/"
+          --test-command ${JAVA_RUNTIME} -classpath hello.jar HelloWorld)
+        LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Java")
+      ENDIF("${JNI_FILE}" MATCHES "JDK1_2")
+    ENDIF()
+  ENDIF()
 
   # add some cross compiler tests, for now only with makefile based generators
   IF(CMAKE_TEST_GENERATOR MATCHES "Makefiles" OR CMAKE_TEST_GENERATOR MATCHES "KDevelop")
@@ -1985,6 +2054,25 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     ENDIF()
     SET_TESTS_PROPERTIES(Contracts.${project} PROPERTIES TIMEOUT ${timeout})
   ENDFOREACH()
+
+  IF(TEST_CompileCommandOutput)
+    SET(CompileCommandOutput_EXTRA_OPTIONS
+      --build-options -DMAKE_SUPPORTS_SPACES=${MAKE_IS_GNU})
+    ADD_TEST_MACRO(CompileCommandOutput
+      "${CMake_BINARY_DIR}/Tests/CMakeLib/runcompilecommands")
+  ENDIF()
+
+  ADD_TEST(IncludeDirectories ${CMAKE_CTEST_COMMAND}
+    --build-and-test
+    "${CMake_SOURCE_DIR}/Tests/IncludeDirectories"
+    "${CMake_BINARY_DIR}/Tests/IncludeDirectories"
+    --build-two-config
+    --build-generator ${CMAKE_TEST_GENERATOR}
+    --build-project IncludeDirectories
+    --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+    --test-command IncludeDirectories)
+  LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/IncludeDirectories")
+
 ENDIF(BUILD_TESTING)
 
 SUBDIRS(CMakeTests)

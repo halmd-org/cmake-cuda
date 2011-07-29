@@ -24,6 +24,7 @@
 #include <cmsys/SystemTools.hxx>
 #include <cmsys/Glob.hxx>
 #include <memory> // auto_ptr
+#include <algorithm>
 
 #if defined(__HAIKU__)
 #include <StorageKit.h>
@@ -35,9 +36,7 @@ cmCPackGenerator::cmCPackGenerator()
   this->GeneratorVerbose = false;
   this->MakefileMap = 0;
   this->Logger = 0;
-  this->allGroupInOne = false;
-  this->allComponentInOne = false;
-  this->ignoreComponentGroup = false;
+  this->componentPackageMethod = ONE_PACKAGE_PER_GROUP;
 }
 
 //----------------------------------------------------------------------
@@ -684,7 +683,14 @@ int cmCPackGenerator::InstallProjectViaInstallCMakeProjects(
         if (componentInstall)
           {
           tempInstallDirectory += "/";
-          tempInstallDirectory += installComponent;
+          // Some CPack generators would rather chose
+          // the local installation directory suffix.
+          // Some (e.g. RPM) use
+          //  one install directory for each component **GROUP**
+          // instead of the default
+          //  one install directory for each component.
+          tempInstallDirectory +=
+            GetComponentInstallDirNameSuffix(installComponent);
           }
 
         if (!setDestDir)
@@ -803,7 +809,55 @@ int cmCPackGenerator::InstallProjectViaInstallCMakeProjects(
           {
           mf->AddDefinition("CMAKE_INSTALL_DO_STRIP", "1");
           }
+        // Remember the list of files before installation
+        // of the current component (if we are in component install)
+        const char* InstallPrefix = tempInstallDirectory.c_str();
+        std::vector<std::string> filesBefore;
+        std::string findExpr(InstallPrefix);
+        if (componentInstall)
+          {
+          cmsys::Glob glB;
+          findExpr += "/*";
+          glB.RecurseOn();
+          glB.FindFiles(findExpr);
+          filesBefore = glB.GetFiles();
+          std::sort(filesBefore.begin(),filesBefore.end());
+          }
+        // do installation
         int res = mf->ReadListFile(0, installFile.c_str());
+        // Now rebuild the list of files after installation
+        // of the current component (if we are in component install)
+        if (componentInstall)
+          {
+          cmsys::Glob glA;
+          glA.RecurseOn();
+          glA.FindFiles(findExpr);
+          std::vector<std::string> filesAfter = glA.GetFiles();
+          std::sort(filesAfter.begin(),filesAfter.end());
+          std::vector<std::string>::iterator diff;
+          std::vector<std::string> result(filesAfter.size());
+          diff = std::set_difference (
+                  filesAfter.begin(),filesAfter.end(),
+                  filesBefore.begin(),filesBefore.end(),
+                  result.begin());
+
+          std::vector<std::string>::iterator fit;
+          std::string localFileName;
+          // Populate the File field of each component
+          for (fit=result.begin();fit!=diff;++fit)
+            {
+            localFileName =
+                cmSystemTools::RelativePath(InstallPrefix, fit->c_str());
+            localFileName =
+                localFileName.substr(localFileName.find('/')+1,
+                                     std::string::npos);
+            Components[installComponent].Files.push_back(localFileName);
+            cmCPackLogger(cmCPackLog::LOG_DEBUG, "Adding file <"
+                                <<localFileName<<"> to component <"
+                                <<installComponent<<">"<<std::endl);
+            }
+          }
+
         if (NULL !=mf->GetDefinition("CPACK_ABSOLUTE_DESTINATION_FILES")) {
           if (absoluteDestFiles.length()>0) {
             absoluteDestFiles +=";";
@@ -813,6 +867,28 @@ int cmCPackGenerator::InstallProjectViaInstallCMakeProjects(
           cmCPackLogger(cmCPackLog::LOG_DEBUG,
                                     "Got some ABSOLUTE DESTINATION FILES: "
                                     << absoluteDestFiles << std::endl);
+          // define component specific var
+          if (componentInstall)
+            {
+            std::string absoluteDestFileComponent =
+                std::string("CPACK_ABSOLUTE_DESTINATION_FILES")
+                + "_" + GetComponentInstallDirNameSuffix(installComponent);
+            if (NULL != this->GetOption(absoluteDestFileComponent.c_str()))
+              {
+                std::string absoluteDestFilesListComponent =
+                    this->GetOption(absoluteDestFileComponent.c_str());
+                absoluteDestFilesListComponent +=";";
+                absoluteDestFilesListComponent +=
+                    mf->GetDefinition("CPACK_ABSOLUTE_DESTINATION_FILES");
+                this->SetOption(absoluteDestFileComponent.c_str(),
+                    absoluteDestFilesListComponent.c_str());
+              }
+            else
+              {
+              this->SetOption(absoluteDestFileComponent.c_str(),
+                  mf->GetDefinition("CPACK_ABSOLUTE_DESTINATION_FILES"));
+              }
+            }
         }
         if ( cmSystemTools::GetErrorOccuredFlag() || !res )
           {
@@ -829,8 +905,12 @@ int cmCPackGenerator::InstallProjectViaInstallCMakeProjects(
 //----------------------------------------------------------------------
 bool cmCPackGenerator::ReadListFile(const char* moduleName)
 {
+  bool retval;
   std::string fullPath = this->MakefileMap->GetModulesFile(moduleName);
-  return this->MakefileMap->ReadListFile(0, fullPath.c_str());
+  retval = this->MakefileMap->ReadListFile(0, fullPath.c_str());
+  // include FATAL_ERROR and ERROR in the return status
+  retval = retval && (! cmSystemTools::GetErrorOccuredFlag());
+  return retval;
 }
 
 //----------------------------------------------------------------------
@@ -869,6 +949,12 @@ int cmCPackGenerator::DoPackage()
     "Create package using " << this->Name.c_str() << std::endl);
 
   if ( !this->PrepareNames() )
+    {
+    return 0;
+    }
+
+  // Digest Component grouping specification
+  if ( !this->PrepareGroupingKind() )
     {
     return 0;
     }
@@ -938,35 +1024,6 @@ int cmCPackGenerator::DoPackage()
 
   // The files to be installed
   files = gl.GetFiles();
-
-  // For component installations, determine which files go into which
-  // components.
-  if (!this->Components.empty())
-    {
-    std::vector<std::string>::const_iterator it;
-    for ( it = files.begin(); it != files.end(); ++ it )
-      {
-      // beware we cannot just use tempDirectory as before
-      // because some generator will "CPACK_INCLUDE_TOPLEVEL_DIRECTORY"
-      // we really want "CPACK_TEMPORARY_DIRECTORY"
-      std::string fileN =
-        cmSystemTools::RelativePath(
-          this->GetOption("CPACK_TEMPORARY_DIRECTORY"), it->c_str());
-
-      // Determine which component we are in.
-      std::string componentName = fileN.substr(0, fileN.find('/'));
-
-      // Strip off the component part of the path.
-      fileN = fileN.substr(fileN.find('/')+1, std::string::npos);
-
-      // Add this file to the list of files for the component.
-      this->Components[componentName].Files.push_back(fileN);
-      cmCPackLogger(cmCPackLog::LOG_DEBUG, "Adding file <"
-                    <<fileN<<"> to component <"
-                    <<componentName<<">"<<std::endl);
-      }
-    }
-
 
   packageFileNames.clear();
   /* Put at least one file name into the list of
@@ -1227,17 +1284,23 @@ int cmCPackGenerator::CleanTemporaryDirectory()
 //----------------------------------------------------------------------
 int cmCPackGenerator::PrepareGroupingKind()
 {
-  // The default behavior is to create 1 package by component group
-  // unless the user asked to put all COMPONENTS in a single package
-  allGroupInOne = (NULL !=
-                    (this->GetOption(
-                      "CPACK_COMPONENTS_ALL_GROUPS_IN_ONE_PACKAGE")));
-  allComponentInOne = (NULL !=
-                        (this->GetOption(
-                          "CPACK_COMPONENTS_ALL_IN_ONE_PACKAGE")));
-  ignoreComponentGroup = (NULL !=
-                           (this->GetOption(
-                             "CPACK_COMPONENTS_IGNORE_GROUPS")));
+  // find a component package method specified by the user
+  ComponentPackageMethod method = UNKNOWN_COMPONENT_PACKAGE_METHOD;
+
+  if(this->GetOption("CPACK_COMPONENTS_ALL_IN_ONE_PACKAGE"))
+    {
+    method = ONE_PACKAGE;
+    }
+
+  if(this->GetOption("CPACK_COMPONENTS_IGNORE_GROUPS"))
+    {
+    method = ONE_PACKAGE_PER_COMPONENT;
+    }
+
+  if(this->GetOption("CPACK_COMPONENTS_ONE_PACKAGE_PER_GROUP"))
+    {
+    method = ONE_PACKAGE_PER_GROUP;
+    }
 
   std::string groupingType;
 
@@ -1251,41 +1314,114 @@ int cmCPackGenerator::PrepareGroupingKind()
     cmCPackLogger(cmCPackLog::LOG_VERBOSE,  "["
         << this->Name << "]"
         << " requested component grouping = "<< groupingType <<std::endl);
-    if (groupingType == "ALL_GROUP_IN_ONE")
+    if (groupingType == "ALL_COMPONENTS_IN_ONE")
       {
-      allGroupInOne = true;
-      }
-    else if (groupingType == "ALL_COMPONENT_IN_ONE")
-      {
-      allComponentInOne = true;
+      method = ONE_PACKAGE;
       }
     else if (groupingType == "IGNORE")
       {
-      ignoreComponentGroup = true;
+      method = ONE_PACKAGE_PER_COMPONENT;
+      }
+    else if (groupingType == "ONE_PER_GROUP")
+      {
+      method = ONE_PACKAGE_PER_GROUP;
       }
     else
       {
       cmCPackLogger(cmCPackLog::LOG_WARNING, "["
-              << this->Name << "]"
-              << " requested component grouping type <"<< groupingType
-              << "> UNKNOWN not in (ALL_GROUP_IN_ONE,"
-                    "ALL_COMPONENT_IN_ONE,IGNORE)" <<std::endl);
+          << this->Name << "]"
+          << " requested component grouping type <"<< groupingType
+          << "> UNKNOWN not in (ALL_COMPONENTS_IN_ONE,IGNORE,ONE_PER_GROUP)"
+          << std::endl);
       }
     }
 
   // Some components were defined but NO group
-  // force ignoreGroups
-  if (this->ComponentGroups.empty() && (!this->Components.empty())
-      && (!ignoreComponentGroup)) {
+  // fallback to default if not group based
+  if(method == ONE_PACKAGE_PER_GROUP &&
+     this->ComponentGroups.empty() && !this->Components.empty())
+    {
+    if(componentPackageMethod == ONE_PACKAGE)
+      {
+      method = ONE_PACKAGE;
+      }
+    else
+      {
+      method = ONE_PACKAGE_PER_COMPONENT;
+      }
     cmCPackLogger(cmCPackLog::LOG_WARNING, "["
-              << this->Name << "]"
-              << " Some Components defined but NO component group:"
-              << " Ignoring component group."
-              << std::endl);
-    ignoreComponentGroup = true;
-  }
+         << this->Name << "]"
+         << " One package per component group requested, "
+         << "but NO component groups exist: Ignoring component group."
+         << std::endl);
+    }
+
+  // if user specified packaging method, override the default packaging method
+  if(method != UNKNOWN_COMPONENT_PACKAGE_METHOD)
+    {
+    componentPackageMethod = method;
+    }
+
+  const char* method_names[] =
+    {
+    "ALL_COMPONENTS_IN_ONE",
+    "IGNORE_GROUPS",
+    "ONE_PER_GROUP"
+    };
+
+  cmCPackLogger(cmCPackLog::LOG_VERBOSE,  "["
+        << this->Name << "]"
+        << " requested component grouping = "
+        << method_names[componentPackageMethod]
+        << std::endl);
 
   return 1;
+}
+
+//----------------------------------------------------------------------
+std::string cmCPackGenerator::GetComponentInstallDirNameSuffix(
+    const std::string& componentName) {
+  return componentName;
+}
+//----------------------------------------------------------------------
+std::string cmCPackGenerator::GetComponentPackageFileName(
+    const std::string& initialPackageFileName,
+    const std::string& groupOrComponentName,
+    bool isGroupName) {
+
+  /*
+   * the default behavior is to use the
+   * component [group] name as a suffix
+   */
+  std::string suffix="-"+groupOrComponentName;
+  /* check if we should use DISPLAY name */
+  std::string dispNameVar = "CPACK_"+Name+"_USE_DISPLAY_NAME_IN_FILENAME";
+  if (IsOn(dispNameVar.c_str()))
+    {
+    /* the component Group case */
+    if (isGroupName)
+      {
+      std::string groupDispVar = "CPACK_COMPONENT_GROUP_"
+          + cmSystemTools::UpperCase(groupOrComponentName) + "_DISPLAY_NAME";
+      const char* groupDispName = GetOption(groupDispVar.c_str());
+      if (groupDispName)
+        {
+        suffix = "-"+std::string(groupDispName);
+        }
+      }
+    /* the [single] component case */
+    else
+      {
+      std::string dispVar = "CPACK_COMPONENT_"
+           + cmSystemTools::UpperCase(groupOrComponentName) + "_DISPLAY_NAME";
+            const char* dispName = GetOption(dispVar.c_str());
+            if(dispName)
+              {
+              suffix = "-"+std::string(dispName);
+              }
+            }
+      }
+  return initialPackageFileName + suffix;
 }
 
 //----------------------------------------------------------------------

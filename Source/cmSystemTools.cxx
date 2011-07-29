@@ -9,6 +9,9 @@
   implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
   See the License for more information.
 ============================================================================*/
+#if defined(_MSC_VER) && _MSC_VER < 1300
+# define _WIN32_WINNT 0x0400 /* for wincrypt.h */
+#endif
 #include "cmSystemTools.h"   
 #include <ctype.h>
 #include <errno.h>
@@ -31,7 +34,9 @@
 
 #if defined(_WIN32)
 # include <windows.h>
+# include <wincrypt.h>
 #else
+# include <sys/time.h>
 # include <sys/types.h>
 # include <unistd.h>
 # include <utime.h>
@@ -440,11 +445,27 @@ public:
       args.push_back(*arg);
       }
     }
+  void Store(std::vector<cmStdString>& args) const
+    {
+    for(char** arg = this->ArgV; arg && *arg; ++arg)
+      {
+      args.push_back(*arg);
+      }
+    }
 };
 
 //----------------------------------------------------------------------------
 void cmSystemTools::ParseUnixCommandLine(const char* command,
                                          std::vector<std::string>& args)
+{
+  // Invoke the underlying parser.
+  cmSystemToolsArgV argv = cmsysSystem_Parse_CommandForUnix(command, 0);
+  argv.Store(args);
+}
+
+//----------------------------------------------------------------------------
+void cmSystemTools::ParseUnixCommandLine(const char* command,
+                                         std::vector<cmStdString>& args)
 {
   // Invoke the underlying parser.
   cmSystemToolsArgV argv = cmsysSystem_Parse_CommandForUnix(command, 0);
@@ -2233,6 +2254,71 @@ bool cmSystemTools::FileTimeSet(const char* fname, cmSystemToolsFileTime* t)
 }
 
 //----------------------------------------------------------------------------
+#ifdef _WIN32
+# ifndef CRYPT_SILENT
+#  define CRYPT_SILENT 0x40 /* Not defined by VS 6 version of header.  */
+# endif
+static int WinCryptRandom(void* data, size_t size)
+{
+  int result = 0;
+  HCRYPTPROV hProvider = 0;
+  if(CryptAcquireContextW(&hProvider, 0, 0, PROV_RSA_FULL,
+                          CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
+    {
+    result = CryptGenRandom(hProvider, (DWORD)size, (BYTE*)data)? 1:0;
+    CryptReleaseContext(hProvider, 0);
+    }
+  return result;
+}
+#endif
+
+//----------------------------------------------------------------------------
+unsigned int cmSystemTools::RandomSeed()
+{
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  unsigned int seed = 0;
+
+  // Try using a real random source.
+  if(WinCryptRandom(&seed, sizeof(seed)))
+    {
+    return seed;
+    }
+
+  // Fall back to the time and pid.
+  FILETIME ft;
+  GetSystemTimeAsFileTime(&ft);
+  unsigned int t1 = static_cast<unsigned int>(ft.dwHighDateTime);
+  unsigned int t2 = static_cast<unsigned int>(ft.dwLowDateTime);
+  unsigned int pid = static_cast<unsigned int>(GetCurrentProcessId());
+  return t1 ^ t2 ^ pid;
+#else
+  union
+  {
+    unsigned int integer;
+    char bytes[sizeof(unsigned int)];
+  } seed;
+
+  // Try using a real random source.
+  std::ifstream fin("/dev/urandom");
+  if(fin && fin.read(seed.bytes, sizeof(seed)) &&
+     fin.gcount() == sizeof(seed))
+    {
+    return seed.integer;
+    }
+
+  // Fall back to the time and pid.
+  struct timeval t;
+  gettimeofday(&t, 0);
+  unsigned int pid = static_cast<unsigned int>(getpid());
+  unsigned int tv_sec = static_cast<unsigned int>(t.tv_sec);
+  unsigned int tv_usec = static_cast<unsigned int>(t.tv_usec);
+  // Since tv_usec never fills more than 11 bits we shift it to fill
+  // in the slow-changing high-order bits of tv_sec.
+  return tv_sec ^ (tv_usec << 21) ^ pid;
+#endif
+}
+
+//----------------------------------------------------------------------------
 static std::string cmSystemToolsExecutableDirectory;
 void cmSystemTools::FindExecutableDirectory(const char* argv0)
 {
@@ -2603,7 +2689,7 @@ bool cmSystemTools::VersionCompare(cmSystemTools::CompareOp op,
     else if(lhs[i] > rhs[i])
       {
       // lhs > rhs, so true if operation is GREATER
-        return op == cmSystemTools::OP_GREATER;
+      return op == cmSystemTools::OP_GREATER;
       }
     }
   // lhs == rhs, so true if operation is EQUAL
@@ -2832,4 +2918,36 @@ bool cmSystemTools::RepeatedRemoveDirectory(const char* dir)
     cmSystemTools::Delay(100);
     }
   return false;
+}
+
+//----------------------------------------------------------------------------
+std::vector<std::string> cmSystemTools::tokenize(const std::string& str,
+                                  const std::string& sep)
+{
+  std::vector<std::string> tokens;
+  std::string::size_type tokend = 0;
+
+  do
+    {
+    std::string::size_type tokstart=str.find_first_not_of(sep, tokend);
+    if (tokstart==std::string::npos)
+      {
+      break;    // no more tokens
+      }
+    tokend=str.find_first_of(sep,tokstart);
+    if (tokend==std::string::npos)
+      {
+      tokens.push_back(str.substr(tokstart));
+      }
+    else
+      {
+      tokens.push_back(str.substr(tokstart,tokend-tokstart));
+      }
+    } while (tokend!=std::string::npos);
+
+  if (tokens.empty())
+    {
+    tokens.push_back("");
+    }
+  return tokens;
 }

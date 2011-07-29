@@ -97,6 +97,30 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables that Provide Information");
 
   cm->DefineProperty
+    ("CMAKE_SCRIPT_MODE_FILE", cmProperty::VARIABLE,
+     "Full path to the -P script file currently being processed. ",
+     "When run in -P script mode, CMake sets this variable to the full "
+     "path of the script file. When run to configure a CMakeLists.txt "
+     "file, this variable is not set.", false,
+     "Variables that Provide Information");
+
+  cm->DefineProperty
+    ("CMAKE_ARGC", cmProperty::VARIABLE,
+     "Number of command line arguments passed to CMake in script mode. ",
+     "When run in -P script mode, CMake sets this variable to the number "
+     "of command line arguments. See also CMAKE_ARGV0, 1, 2 ... ", false,
+     "Variables that Provide Information");
+
+  cm->DefineProperty
+    ("CMAKE_ARGV0", cmProperty::VARIABLE,
+     "Command line argument passed to CMake in script mode. ",
+     "When run in -P script mode, CMake sets this variable to "
+     "the first command line argument. It then also sets CMAKE_ARGV1, "
+     "CMAKE_ARGV2, ... and so on, up to the number of command line arguments "
+     "given. See also CMAKE_ARGC.", false,
+     "Variables that Provide Information");
+
+  cm->DefineProperty
     ("CMAKE_BUILD_TOOL", cmProperty::VARIABLE,
      "Tool used for the actual build process.",
      "This variable is set to the program that will be"
@@ -522,7 +546,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "make based generators. If this variable is supported, "
      "then CMake will also provide initial values for the "
      "variables with the name "
-     " CMAKE_C_FLAGS_[Debug|Release|RelWithDebInfo|MinSizeRel]."
+     " CMAKE_C_FLAGS_[DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL]."
      " For example, if CMAKE_BUILD_TYPE is Debug, then "
      "CMAKE_C_FLAGS_DEBUG will be added to the CMAKE_C_FLAGS.",false,
      "Variables That Change Behavior");
@@ -797,6 +821,18 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "systems that support uname, this variable is "
      "set to the output of uname -r. On other "
      "systems this is set to major-minor version numbers.",false,
+     "Variables That Describe the System");
+  cm->DefineProperty
+    ("CMAKE_LIBRARY_ARCHITECTURE", cmProperty::VARIABLE,
+     "Target architecture library directory name, if detected.",
+     "This is the value of CMAKE_<lang>_LIBRARY_ARCHITECTURE as "
+     "detected for one of the enabled languages.",false,
+     "Variables That Describe the System");
+  cm->DefineProperty
+    ("CMAKE_LIBRARY_ARCHITECTURE_REGEX", cmProperty::VARIABLE,
+     "Regex matching possible target architecture library directory names.",
+     "This is used to detect CMAKE_<lang>_LIBRARY_ARCHITECTURE from the "
+     "implicit linker search path by matching the <arch> name.",false,
      "Variables That Describe the System");
 
   cm->DefineProperty
@@ -1336,6 +1372,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables for Languages");
 
   cm->DefineProperty
+    ("CMAKE_<LANG>_LIBRARY_ARCHITECTURE", cmProperty::VARIABLE,
+     "Target architecture library directory name detected for <lang>.",
+     "If the <lang> compiler passes to the linker an architecture-specific "
+     "system library search directory such as <prefix>/lib/<arch> this "
+     "variable contains the <arch> name if/as detected by CMake.",false,
+     "Variables for Languages");
+
+  cm->DefineProperty
     ("CMAKE_<LANG>_LINKER_PREFERENCE_PROPAGATES", cmProperty::VARIABLE,
      "True if CMAKE_<LANG>_LINKER_PREFERENCE propagates across targets.",
      "This is used when CMake selects a linker language for a target.  "
@@ -1450,6 +1494,8 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
   cm->DefineProperty("CMAKE_<LANG>_STANDARD_LIBRARIES",
                      cmProperty::VARIABLE,0,0);
   cm->DefineProperty("CMAKE_<LANG>_STANDARD_LIBRARIES_INIT",
+                     cmProperty::VARIABLE,0,0);
+  cm->DefineProperty("CMAKE_<LANG>_USE_RESPONSE_FILE_FOR_INCLUDES",
                      cmProperty::VARIABLE,0,0);
   cm->DefineProperty("CMAKE_<LANG>_USE_RESPONSE_FILE_FOR_OBJECTS",
                      cmProperty::VARIABLE,0,0);
