@@ -291,13 +291,15 @@ void cmSourceFile::SetProperty(const char* prop, const char* value)
 }
 
 //----------------------------------------------------------------------------
-void cmSourceFile::AppendProperty(const char* prop, const char* value)
+void cmSourceFile::AppendProperty(const char* prop, const char* value,
+                                  bool asString)
 {
   if (!prop)
     {
     return;
     }
-  this->Properties.AppendProperty(prop, value, cmProperty::SOURCE_FILE);
+  this->Properties.AppendProperty(prop, value, cmProperty::SOURCE_FILE,
+                                  asString);
 }
 
 //----------------------------------------------------------------------------
@@ -433,6 +435,15 @@ void cmSourceFile::DefineProperties(cmake *cm)
      "If this property is set to true then the source file "
      "is really an object file and should not be compiled.  "
      "It will still be linked into the target though.");
+
+  cm->DefineProperty
+    ("Fortran_FORMAT", cmProperty::SOURCE_FILE,
+     "Set to FIXED or FREE to indicate the Fortran source layout.",
+     "This property tells CMake whether a given Fortran source file "
+     "uses fixed-format or free-format.  "
+     "CMake will pass the corresponding format flag to the compiler.  "
+     "Consider using the target-wide Fortran_FORMAT property if all "
+     "source files in a target share the same format.");
 
   cm->DefineProperty
     ("GENERATED", cmProperty::SOURCE_FILE, 

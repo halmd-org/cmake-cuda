@@ -191,6 +191,9 @@ void cmFindPackageCommand::GenerateDocumentation()
     "\"<config-file>-version.cmake\" or \"<config-file>Version.cmake\".  "
     "If no such version file is available then the configuration file "
     "is assumed to not be compatible with any requested version.  "
+    "A basic version file containing generic version matching code can be "
+    "created using the macro write_basic_config_version_file(), see its "
+    "documentation for more details.  "
     "When a version file is found it is loaded to check the requested "
     "version number.  "
     "The version file is loaded in a nested scope in which the following "
@@ -335,6 +338,10 @@ void cmFindPackageCommand::GenerateDocumentation()
   this->CommandDocumentation += this->GenericDocumentationPathsOrder;
   this->CommandDocumentation +=
     "\n"
+    "Every non-REQUIRED find_package() call can be disabled by setting the "
+    "variable CMAKE_DISABLE_FIND_PACKAGE_<package> to TRUE. See the "
+    "documentation for the CMAKE_DISABLE_FIND_PACKAGE_<package> variable for "
+    "more information.\n"
     "See the cmake_policy() command documentation for discussion of the "
     "NO_POLICY_SCOPE option."
     ;
@@ -606,6 +613,24 @@ bool cmFindPackageCommand
       default: break;
       }
     }
+
+  std::string disableFindPackageVar = "CMAKE_DISABLE_FIND_PACKAGE_";
+  disableFindPackageVar += this->Name;
+  if(this->Makefile->IsOn(disableFindPackageVar.c_str()))
+    {
+    if (this->Required)
+      {
+      cmOStringStream e;
+      e << "for module " << this->Name << " called with REQUIRED, but "
+        << disableFindPackageVar
+        << " is enabled. A REQUIRED package cannot be disabled.";
+      this->SetError(e.str().c_str());
+      return false;
+      }
+
+    return true;
+    }
+
 
   this->SetModuleVariables(components);
 
@@ -1174,19 +1199,19 @@ void cmFindPackageCommand::AppendSuccessInformation()
   if ((cmSystemTools::IsOn(result)) || (cmSystemTools::IsOn(upperResult)))
     {
     this->AppendToProperty("PACKAGES_FOUND");
-    if (!this->Quiet)
-      {
-      this->AppendToProperty("ENABLED_FEATURES");
-      }
     }
   else
     {
     this->AppendToProperty("PACKAGES_NOT_FOUND");
-    if (!this->Quiet)
-      {
-      this->AppendToProperty("DISABLED_FEATURES");
-      }
     }
+
+  // Record whether the find was quiet or not, so this can be used
+  // e.g. in FeatureSummary.cmake
+  std::string quietInfoPropName = "_CMAKE_";
+  quietInfoPropName += this->Name;
+  quietInfoPropName += "_QUIET";
+  this->Makefile->GetCMakeInstance()->SetProperty(quietInfoPropName.c_str(),
+                                               this->Quiet ? "TRUE" : "FALSE");
 
   // set a global property to record the required version of this package
   std::string versionInfoPropName = "_CMAKE_";

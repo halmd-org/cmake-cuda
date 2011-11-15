@@ -74,11 +74,11 @@ public:
   virtual std::string GetUserMacrosRegKeyBase();
   virtual const char* GetCMakeCFGInitDirectory() 
     { return "$(Configuration)";}
+  bool Find64BitTools(cmMakefile* mf);
 protected:
   virtual const char* GetIDEVersion() { return "10.0"; }
 
   std::string PlatformToolset;
-private:
   bool ExpressEdition;
 };
 #endif

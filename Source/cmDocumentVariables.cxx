@@ -719,6 +719,20 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables That Change Behavior");
 
   cm->DefineProperty
+    ("CMAKE_DISABLE_FIND_PACKAGE_<PackageName>", cmProperty::VARIABLE,
+     "Variable for disabling find_package() calls.",
+     "Every non-REQUIRED find_package() call in a project can be disabled "
+     "by setting the variable CMAKE_DISABLE_FIND_PACKAGE_<PackageName> to "
+     "TRUE. This can be used to build a project without an optional package, "
+     "although that package is installed.\n"
+     "This switch should be used during the initial CMake run. Otherwise if "
+     "the package has already been found in a previous CMake run, the "
+     "variables which have been stored in the cache will still be there. "
+     "In the case it is recommended to remove the cache variables for "
+     "this package from the cache using the cache editor or cmake -U", false,
+     "Variables That Change Behavior");
+
+  cm->DefineProperty
     ("CMAKE_USER_MAKE_RULES_OVERRIDE", cmProperty::VARIABLE,
      "Specify a CMake file that overrides platform information.",
      "CMake loads the specified file while enabling support for each "
@@ -939,7 +953,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
   cm->DefineProperty
     ("WIN32", cmProperty::VARIABLE,
      "True on windows systems, including win64.",
-     "Set to true when the target system is Windows and on cygwin.",false,
+     "Set to true when the target system is Windows.",false,
      "Variables That Describe the System");
 
   cm->DefineProperty
@@ -1035,6 +1049,15 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables that Control the Build");
 
   cm->DefineProperty
+    ("CMAKE_Fortran_FORMAT", cmProperty::VARIABLE,
+     "Set to FIXED or FREE to indicate the Fortran source layout.",
+     "This variable is used to initialize the Fortran_FORMAT "
+     "property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
     ("CMAKE_Fortran_MODULE_DIRECTORY", cmProperty::VARIABLE,
      "Fortran module output directory.",
      "This variable is used to initialize the "
@@ -1066,6 +1089,15 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Where to put all the RUNTIME targets when built.",
      "This variable is used to initialize the "
      "RUNTIME_OUTPUT_DIRECTORY property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
+    ("CMAKE_AUTOMOC", cmProperty::VARIABLE,
+     "Whether to handle moc automatically for Qt targets.",
+     "This variable is used to initialize the "
+     "AUTOMOC property on all the targets. "
      "See that target property for additional information.",
      false,
      "Variables that Control the Build");

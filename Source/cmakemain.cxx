@@ -62,6 +62,7 @@ static const char * cmDocumentationDescription[][3] =
   "  --config <cfg> = For multi-configuration tools, choose <cfg>.\n"   \
   "  --clean-first  = Build target 'clean' first, then build.\n"        \
   "                   (To clean only, use --target 'clean'.)\n"         \
+  "  --use-stderr  =  Don't merge stdout/stderr.\n"                     \
   "  --             = Pass remaining options to the native tool.\n"
 
 //----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ static const char * cmDocumentationOptions[][3] =
   {"-E", "CMake command mode.",
    "For true platform independence, CMake provides a list of commands "
    "that can be used on all systems. Run with -E help for the usage "
-   "information. Commands available are: build, chdir, compare_files, copy, "
+   "information. Commands available are: chdir, compare_files, copy, "
    "copy_directory, copy_if_different, echo, echo_append, environment, "
    "make_directory, md5sum, remove, remove_directory, rename, tar, time, "
    "touch, touch_nocreate. In addition, some platform specific commands "
@@ -102,6 +103,11 @@ static const char * cmDocumentationOptions[][3] =
    "No configure or generate step is performed and the cache is not"
    " modified. If variables are defined using -D, this must be done "
    "before the -P argument."},
+  {"--find-package", "Run in pkg-config like mode.",
+   "Search a package using find_package() and print the resulting flags "
+   "to stdout. This can be used to use cmake instead of pkg-config to find "
+   "installed libraries in plain Makefile-based projects or in "
+   "autoconf-based projects (via share/aclocal/cmake.m4)."},
   {"--graphviz=[file]", "Generate graphviz of dependencies.",
    "Generate a graphviz input file that will contain all the library and "
    "executable dependencies in the project."},
@@ -433,7 +439,7 @@ int do_cmake(int ac, char** av)
   bool list_all_cached = false;
   bool list_help = false;
   bool view_only = false;
-  bool script_mode = false;
+  cmake::WorkingMode workingMode = cmake::NORMAL_MODE;
   std::vector<std::string> args;
   for(int i =0; i < ac; ++i)
     {
@@ -481,11 +487,17 @@ int do_cmake(int ac, char** av)
         }
       else
         {
-        script_mode = true;
+        workingMode = cmake::SCRIPT_MODE;
         args.push_back(av[i]);
         i++;
         args.push_back(av[i]);
         }
+      }
+    else if (!command && strncmp(av[i], "--find-package",
+                                 strlen("--find-package")) == 0)
+      {
+      workingMode = cmake::FIND_PACKAGE_MODE;
+      args.push_back(av[i]);
       }
     else 
       {
@@ -511,7 +523,7 @@ int do_cmake(int ac, char** av)
   cmake cm;  
   cmSystemTools::SetErrorCallback(cmakemainErrorCallback, (void *)&cm);
   cm.SetProgressCallback(cmakemainProgressCallback, (void *)&cm);
-  cm.SetScriptMode(script_mode);
+  cm.SetWorkingMode(workingMode);
 
   int res = cm.Run(args, view_only);
   if ( list_cached || list_all_cached )
@@ -568,6 +580,7 @@ static int do_build(int ac, char** av)
   std::string dir;
   std::vector<std::string> nativeOptions;
   bool clean = false;
+  cmSystemTools::OutputOption outputflag = cmSystemTools::OUTPUT_MERGE;
 
   enum Doing { DoingNone, DoingDir, DoingTarget, DoingConfig, DoingNative};
   Doing doing = DoingDir;
@@ -589,6 +602,10 @@ static int do_build(int ac, char** av)
       {
       clean = true;
       doing = DoingNone;
+      }
+    else if(strcmp(av[i], "--use-stderr") == 0)
+      {
+        outputflag = cmSystemTools::OUTPUT_NORMAL;
       }
     else if(strcmp(av[i], "--") == 0)
       {
@@ -635,6 +652,6 @@ static int do_build(int ac, char** av)
     }
 
   cmake cm;
-  return cm.Build(dir, target, config, nativeOptions, clean);
+  return cm.Build(dir, target, config, nativeOptions, clean, outputflag);
 #endif
 }

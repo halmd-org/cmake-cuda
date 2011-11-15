@@ -2753,6 +2753,10 @@ cmFileCommand::HandleDownloadCommand(std::vector<std::string> const& args)
   ::CURLcode res = ::curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
   check_curl_result(res, "DOWNLOAD cannot set url: ");
 
+  // enable HTTP ERROR parsing
+  res = ::curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+  check_curl_result(res, "DOWNLOAD cannot set http failure option: ");
+
   res = ::curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
                            cmWriteToFileCallback);
   check_curl_result(res, "DOWNLOAD cannot set write function: ");
@@ -2982,6 +2986,7 @@ cmFileCommand::HandleUploadCommand(std::vector<std::string> const& args)
     std::string errStr = "UPLOAD cannot stat file '";
     errStr += filename + "'.";
     this->SetError(errStr.c_str());
+    fclose(fin);
     return false;
     }
 
@@ -2991,6 +2996,7 @@ cmFileCommand::HandleUploadCommand(std::vector<std::string> const& args)
   if(!curl)
     {
     this->SetError("UPLOAD error initializing curl.");
+    fclose(fin);
     return false;
     }
 

@@ -384,7 +384,9 @@ bool cmMakefile::ExecuteCommand(const cmListFileFunction& lff,
 
     // Decide whether to invoke the command.
     if(pcmd->GetEnabled() && !cmSystemTools::GetFatalErrorOccured()  &&
-       (!this->GetCMakeInstance()->GetScriptMode() || pcmd->IsScriptable()))
+       (this->GetCMakeInstance()->GetWorkingMode() != cmake::SCRIPT_MODE
+       || pcmd->IsScriptable()))
+
       {
       // if trace is one, print out invoke information
       if(this->GetCMakeInstance()->GetTrace())
@@ -411,7 +413,7 @@ bool cmMakefile::ExecuteCommand(const cmListFileFunction& lff,
           this->IssueMessage(cmake::FATAL_ERROR, pcmd->GetError());
           }
         result = false;
-        if ( this->GetCMakeInstance()->GetScriptMode() )
+        if ( this->GetCMakeInstance()->GetWorkingMode() != cmake::NORMAL_MODE)
           {
           cmSystemTools::SetFatalErrorOccured();
           }
@@ -422,7 +424,7 @@ bool cmMakefile::ExecuteCommand(const cmListFileFunction& lff,
         this->UsedCommands.push_back(pcmd.release());
         }
       }
-    else if ( this->GetCMakeInstance()->GetScriptMode()
+    else if ( this->GetCMakeInstance()->GetWorkingMode() == cmake::SCRIPT_MODE
               && !pcmd->IsScriptable() )
       {
       std::string error = "Command ";
@@ -1759,6 +1761,10 @@ void cmMakefile::AddDefinition(const char* name, bool value)
 
 void cmMakefile::CheckForUnusedVariables() const
 {
+  if (!this->WarnUnused)
+    {
+    return;
+    }
   const cmDefinitions& defs = this->Internal->VarStack.top();
   const std::set<cmStdString>& locals = defs.LocalKeys();
   std::set<cmStdString>::const_iterator it = locals.begin();
@@ -1882,7 +1888,7 @@ void cmMakefile::AddGlobalLinkInformation(const char* name, cmTarget& target)
 }
 
 
-void cmMakefile::AddLibrary(const char* lname, cmTarget::TargetType type,
+cmTarget* cmMakefile::AddLibrary(const char* lname, cmTarget::TargetType type,
                             const std::vector<std::string> &srcs,
                             bool excludeFromAll)
 {
@@ -1905,6 +1911,7 @@ void cmMakefile::AddLibrary(const char* lname, cmTarget::TargetType type,
     }
   target->AddSources(srcs);
   this->AddGlobalLinkInformation(lname, *target);
+  return target;
 }
 
 cmTarget* cmMakefile::AddExecutable(const char *exeName,
@@ -3020,8 +3027,15 @@ cmCacheManager *cmMakefile::GetCacheManager() const
 
 void cmMakefile::DisplayStatus(const char* message, float s)
 {
-  this->GetLocalGenerator()->GetGlobalGenerator()
-    ->GetCMakeInstance()->UpdateProgress(message, s);
+  cmake* cm = this->GetLocalGenerator()->GetGlobalGenerator()
+                                                          ->GetCMakeInstance();
+  if (cm->GetWorkingMode() == cmake::FIND_PACKAGE_MODE)
+    {
+    // don't output any STATUS message in FIND_PACKAGE_MODE, since they will
+    // directly be fed to the compiler, which will be confused.
+    return;
+    }
+  cm->UpdateProgress(message, s);
 }
 
 std::string cmMakefile::GetModulesFile(const char* filename)
@@ -3332,7 +3346,8 @@ void cmMakefile::SetProperty(const char* prop, const char* value)
   this->Properties.SetProperty(prop,value,cmProperty::DIRECTORY);
 }
 
-void cmMakefile::AppendProperty(const char* prop, const char* value)
+void cmMakefile::AppendProperty(const char* prop, const char* value,
+                                bool asString)
 {
   if (!prop)
     {
@@ -3365,7 +3380,7 @@ void cmMakefile::AppendProperty(const char* prop, const char* value)
     return;
     }
 
-  this->Properties.AppendProperty(prop,value,cmProperty::DIRECTORY);
+  this->Properties.AppendProperty(prop,value,cmProperty::DIRECTORY,asString);
 }
 
 const char *cmMakefile::GetPropertyOrDefinition(const char* prop)

@@ -244,6 +244,14 @@ public:
   /** Escape the given string as an argument in a CMake script.  */
   std::string EscapeForCMake(const char* str);
 
+  enum FortranFormat
+    {
+    FortranFormatNone,
+    FortranFormatFixed,
+    FortranFormatFree
+    };
+  FortranFormat GetFortranFormat(const char* value);
+
   /** Return the directories into which object files will be put.
    *  There maybe more than one for fat binary systems like OSX.
    */
@@ -307,7 +315,6 @@ public:
                                              std::string const& dir_max,
                                              bool* hasSourceExtension = 0);
 
-protected:
   /** Fill out these strings for the given target.  Libraries to link,
    *  flags, and linkflags. */
   void GetTargetFlags(std::string& linkLibs, 
@@ -315,6 +322,7 @@ protected:
                       std::string& linkFlags,
                       cmTarget&target);
   
+protected:
   ///! put all the libraries for a target on into the given stream
   virtual void OutputLinkLibraries(std::ostream&, cmTarget&, bool relink);
   
