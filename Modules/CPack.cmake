@@ -215,7 +215,7 @@
 #
 #   CPACK_INSTALL_COMMANDS - Extra commands to install components.
 #
-#   CPACK_INSTALL_DIRECTORIES - Extra directories to install.
+#   CPACK_INSTALLED_DIRECTORIES - Extra directories to install.
 #
 
 #=============================================================================
@@ -322,7 +322,7 @@ cpack_set_if_not_set(CPACK_PACKAGE_FILE_NAME
 cpack_set_if_not_set(CPACK_PACKAGE_INSTALL_DIRECTORY
   "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
 cpack_set_if_not_set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY
-  "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
+  "${CPACK_PACKAGE_INSTALL_DIRECTORY}")
 cpack_set_if_not_set(CPACK_PACKAGE_DEFAULT_LOCATION "/")
 cpack_set_if_not_set(CPACK_PACKAGE_RELOCATABLE "true")
 

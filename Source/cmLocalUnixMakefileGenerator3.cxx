@@ -68,8 +68,6 @@ cmLocalUnixMakefileGenerator3::cmLocalUnixMakefileGenerator3()
   this->ColorMakefile = false;
   this->SkipPreprocessedSourceRules = false;
   this->SkipAssemblySourceRules = false;
-  this->NativeEchoCommand = "@echo ";
-  this->NativeEchoWindows = true;
   this->MakeCommandEscapeTargetTwice = false;
   this->IsMakefileGenerator = true;
   this->BorlandMakeCurlyHack = false;
@@ -1242,9 +1240,8 @@ cmLocalUnixMakefileGenerator3::AppendEcho(std::vector<std::string>& commands,
         if(color_name.empty())
           {
           // Use the native echo command.
-          cmd = this->NativeEchoCommand;
-          cmd += this->EscapeForShell(line.c_str(), false,
-                                      this->NativeEchoWindows);
+          cmd = "@echo ";
+          cmd += this->EscapeForShell(line.c_str(), false, true);
           }
         else
           {
@@ -1286,6 +1283,7 @@ cmLocalUnixMakefileGenerator3
   // and there are no "." charactors in the string, then return the
   // unmodified combination.
   if((!this->MakefileVariableSize && unmodified.find('.') == s.npos)
+     && (!this->MakefileVariableSize && unmodified.find('+') == s.npos)
      && (!this->MakefileVariableSize && unmodified.find('-') == s.npos))
     {
     return unmodified;
@@ -1307,6 +1305,7 @@ cmLocalUnixMakefileGenerator3
     {
     cmSystemTools::ReplaceString(ret, ".", "_");
     cmSystemTools::ReplaceString(ret, "-", "__");
+    cmSystemTools::ReplaceString(ret, "+", "___");
     int ni = 0;
     char buffer[5];
     // make sure the _ version is not already used, if

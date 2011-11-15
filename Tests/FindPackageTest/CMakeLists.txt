@@ -75,7 +75,7 @@ ENDIF()
 
 # For purposes of the test wipe out previous find results.
 SET(PACKAGES
-  foo Foo Bar TFramework Tframework TApp Tapp Special
+  foo Foo Bar Blub TFramework Tframework TApp Tapp Special
   VersionedA VersionedB VersionedC VersionedD VersionedE
   WrongA WrongB WrongC WrongD
   wibbleA wibbleB
@@ -104,6 +104,8 @@ set(CMAKE_IGNORE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/cmake/zot-3.1)
 FIND_PACKAGE(foo NO_MODULE)
 FIND_PACKAGE(Foo CONFIGS FooConfig.cmake)
 FIND_PACKAGE(Bar)
+SET(CMAKE_DISABLE_FIND_PACKAGE_Blub TRUE)
+FIND_PACKAGE(Blub NO_MODULE)
 FIND_PACKAGE(TFramework CONFIGS TFrameworkConfig.cmake)
 FIND_PACKAGE(Tframework)
 FIND_PACKAGE(TApp)
@@ -169,6 +171,7 @@ ENDIF()
 SET(foo_EXPECTED "lib/foo-1.2/foo-config.cmake")
 SET(Foo_EXPECTED "lib/foo-1.2/CMake/FooConfig.cmake")
 SET(Bar_EXPECTED "lib/Bar/BarConfig.cmake")
+SET(Blub_MISSING "")
 SET(Special_EXPECTED "lib/suffix/test/SuffixTestConfig.cmake")
 SET(TFramework_EXPECTED
   "TFramework.framework/Versions/A/Resources/CMake/TFrameworkConfig.cmake")
@@ -300,3 +303,94 @@ SET(CMakeTestExportPackage_DIR "" CACHE FILEPATH
   "Wipe out find results for testing." FORCE)
 STRING(REGEX REPLACE "-.*$" "" version ${CMAKE_VERSION})
 FIND_PACKAGE(CMakeTestExportPackage 1.${version} EXACT REQUIRED)
+
+#-----------------------------------------------------------------------------
+# Test write_basic_config_version_file().
+
+include(WriteBasicConfigVersionFile)
+
+write_basic_config_version_file(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake
+                                VERSION 1.2.3
+                                COMPATIBILITY AnyNewerVersion)
+
+set(PACKAGE_FIND_VERSION 2.3.4)
+include(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Foo123 with version 1.2.3, but 2.3.4 was requested !")
+endif()
+
+set(PACKAGE_FIND_VERSION 0.0.1)
+include(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Foo123 with version 1.2.3 (0.0.1 was requested) !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.0.0)
+include(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Foo123 with version 1.2.3 (1.0.0 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.2.3)
+include(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Foo123 with version 1.2.3 (1.2.3 was requested) !")
+endif()
+if(NOT PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT not set, although it should be !")
+endif()
+
+
+#######################
+
+write_basic_config_version_file(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake
+                                VERSION 1.2.3
+                                COMPATIBILITY SameMajorVersion)
+
+set(PACKAGE_VERSION_EXACT FALSE)
+set(PACKAGE_FIND_VERSION 2.3.4)
+set(PACKAGE_FIND_VERSION_MAJOR 2)
+include(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Boo123 with version 1.2.3, but 2.3.4 was requested !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 0.0.1)
+set(PACKAGE_FIND_VERSION_MAJOR 0)
+include(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Boo123 with version 1.2.3, but 0.0.1 was requested !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.0.0)
+set(PACKAGE_FIND_VERSION_MAJOR 1)
+include(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Boo123 with version 1.2.3 (1.0.0 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.2.3)
+set(PACKAGE_FIND_VERSION_MAJOR 1)
+include(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Boo123 with version 1.2.3 (1.2.3 was requested) !")
+endif()
+if(NOT PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT not set, although it should be !")
+endif()
+
+if(PACKAGE_VERSION_UNSUITABLE)
+  message(SEND_ERROR "PACKAGE_VERSION_UNSUITABLE set, but must not be !")
+endif()

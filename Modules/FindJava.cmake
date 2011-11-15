@@ -5,6 +5,8 @@
 #
 #  Java_JAVA_EXECUTABLE    = the full path to the Java runtime
 #  Java_JAVAC_EXECUTABLE   = the full path to the Java compiler
+#  Java_JAVAH_EXECUTABLE   = the full path to the Java header generator
+#  Java_JAVADOC_EXECUTABLE = the full path to the Java documention generator
 #  Java_JAR_EXECUTABLE     = the full path to the Java archiver
 #  Java_VERSION_STRING     = Version of the package found (java version), eg. 1.6.0_12
 #  Java_VERSION_MAJOR      = The major version of the package found.
@@ -128,11 +130,6 @@ IF(Java_JAVA_EXECUTABLE)
       else( )
         set(Java_VERSION ${Java_VERSION_MAJOR}.${Java_VERSION_MINOR}.${Java_VERSION_PATCH}.${Java_VERSION_TWEAK})
       endif( )
-      # display info
-      #MESSAGE( STATUS "Java version ${Java_VERSION_STRING} configured successfully!" ) # keep me, used for debug
-      IF(NOT Java_FIND_QUIETLY)
-        MESSAGE( STATUS "Java version ${Java_VERSION} configured successfully!" )
-      ENDIF(NOT Java_FIND_QUIETLY)
     ENDIF()
 
 ENDIF(Java_JAVA_EXECUTABLE)
@@ -150,6 +147,18 @@ FIND_PROGRAM(Java_JAVAC_EXECUTABLE
   PATHS ${_JAVA_PATHS}
 )
 
+FIND_PROGRAM(Java_JAVAH_EXECUTABLE
+  NAMES javah
+  HINTS ${_JAVA_HINTS}
+  PATHS ${_JAVA_PATHS}
+)
+
+FIND_PROGRAM(Java_JAVADOC_EXECUTABLE
+  NAMES javadoc
+  HINTS ${_JAVA_HINTS}
+  PATHS ${_JAVA_PATHS}
+)
+
 include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
 if(Java_FIND_COMPONENTS)
   foreach(component ${Java_FIND_COMPONENTS})
@@ -162,6 +171,7 @@ if(Java_FIND_COMPONENTS)
     elseif(component STREQUAL "Development")
       find_package_handle_standard_args(Java
         REQUIRED_VARS Java_JAVA_EXECUTABLE Java_JAR_EXECUTABLE Java_JAVAC_EXECUTABLE
+                      Java_JAVAH_EXECUTABLE Java_JAVADOC_EXECUTABLE
         VERSION_VAR Java_VERSION
         )
     else()
@@ -173,6 +183,7 @@ else()
   # Check for everything
   find_package_handle_standard_args(Java
     REQUIRED_VARS Java_JAVA_EXECUTABLE Java_JAR_EXECUTABLE Java_JAVAC_EXECUTABLE
+                  Java_JAVAH_EXECUTABLE Java_JAVADOC_EXECUTABLE
     VERSION_VAR Java_VERSION
     )
 endif()
@@ -182,6 +193,8 @@ MARK_AS_ADVANCED(
   Java_JAVA_EXECUTABLE
   Java_JAR_EXECUTABLE
   Java_JAVAC_EXECUTABLE
+  Java_JAVAH_EXECUTABLE
+  Java_JAVADOC_EXECUTABLE
   )
 
 # LEGACY

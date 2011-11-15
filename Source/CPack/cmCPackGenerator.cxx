@@ -33,7 +33,7 @@
 //----------------------------------------------------------------------
 cmCPackGenerator::cmCPackGenerator()
 {
-  this->GeneratorVerbose = false;
+  this->GeneratorVerbose = cmSystemTools::OUTPUT_NONE;
   this->MakefileMap = 0;
   this->Logger = 0;
   this->componentPackageMethod = ONE_PACKAGE_PER_GROUP;
@@ -1000,6 +1000,7 @@ int cmCPackGenerator::DoPackage()
   std::string findExpr = tempDirectory;
   findExpr += "/*";
   gl.RecurseOn();
+  gl.SetRecurseThroughSymlinks(false);
   if ( !gl.FindFiles(findExpr) )
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,

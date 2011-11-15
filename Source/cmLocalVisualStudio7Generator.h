@@ -57,7 +57,6 @@ public:
   void SetVersion8() {this->Version = 8;}
   void SetVersion9() {this->Version = 9;}
   void SetPlatformName(const char* n) { this->PlatformName = n;}
-  virtual void ConfigureFinalPass();
   void GetTargetObjectFileDirectories(cmTarget* target,
                                       std::vector<std::string>& 
                                       dirs); 
@@ -75,6 +74,8 @@ public:
 
   virtual void ReadAndStoreExternalGUID(const char* name,
                                         const char* path);
+protected:
+  void CreateSingleVCProj(const char *lname, cmTarget &tgt);
 private:
   typedef cmVisualStudioGeneratorOptions Options;
   typedef cmLocalVisualStudio7GeneratorFCInfo FCInfo;
@@ -84,8 +85,7 @@ private:
   void WriteProjectFiles();
   void WriteVCProjHeader(std::ostream& fout, const char *libName,
                          cmTarget &tgt, std::vector<cmSourceGroup> &sgs);
-  void WriteVCProjFooter(std::ostream& fout);
-  void CreateSingleVCProj(const char *lname, cmTarget &tgt);
+  void WriteVCProjFooter(std::ostream& fout, cmTarget &target);
   void WriteVCProjFile(std::ostream& fout, const char *libName, 
                        cmTarget &tgt);
   void WriteConfigurations(std::ostream& fout,
