@@ -214,6 +214,12 @@ ENDMACRO(CMAKE_SET_TARGET_FOLDER)
 #-----------------------------------------------------------------------
 MACRO (CMAKE_BUILD_UTILITIES)
   #---------------------------------------------------------------------
+  # Create the KWIML library for CMake.
+  SET(KWIML cmIML)
+  SET(KWIML_HEADER_ROOT ${CMake_BINARY_DIR}/Utilities)
+  ADD_SUBDIRECTORY(Utilities/KWIML)
+
+  #---------------------------------------------------------------------
   # Create the kwsys library for CMake.
   SET(KWSYS_NAMESPACE cmsys)
   SET(KWSYS_USE_SystemTools 1)
@@ -418,9 +424,9 @@ ENDIF()
 # The CMake version number.
 SET(CMake_VERSION_MAJOR 2)
 SET(CMake_VERSION_MINOR 8)
-SET(CMake_VERSION_PATCH 6)
+SET(CMake_VERSION_PATCH 7)
 SET(CMake_VERSION_TWEAK 0)
-#SET(CMake_VERSION_RC 4)
+#SET(CMake_VERSION_RC 2)
 
 # Releases define a tweak level.
 IF(DEFINED CMake_VERSION_TWEAK)

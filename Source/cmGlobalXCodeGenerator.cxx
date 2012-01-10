@@ -458,8 +458,7 @@ void cmGlobalXCodeGenerator::CreateReRunCMakeFile(
   std::vector<std::string>::iterator new_end =
     std::unique(lfiles.begin(), lfiles.end());
   lfiles.erase(new_end, lfiles.end());
-  std::string dir = mf->GetHomeOutputDirectory();
-  this->CurrentReRunCMakeMakefile = dir;
+  this->CurrentReRunCMakeMakefile = mf->GetStartOutputDirectory();
   this->CurrentReRunCMakeMakefile += "/CMakeScripts";
   cmSystemTools::MakeDirectory(this->CurrentReRunCMakeMakefile.c_str());
   this->CurrentReRunCMakeMakefile += "/ReRunCMake.make";
@@ -1328,6 +1327,8 @@ cmGlobalXCodeGenerator::AddCommandsToBuildPhase(cmXCodeObject* buildphase,
   cmSystemTools::ReplaceString(makecmd, "\\ ", "\\\\ ");
   buildphase->AddAttribute("shellScript",
                            this->CreateString(makecmd.c_str()));
+  buildphase->AddAttribute("showEnvVarsInLog",
+                           this->CreateString("0"));
 }
 
 //----------------------------------------------------------------------------
@@ -2065,6 +2066,9 @@ cmGlobalXCodeGenerator::CreateUtilityTarget(cmTarget& cmtarget)
   shellBuildPhase->AddAttribute("shellScript",
                                 this->CreateString(
                                   "# shell script goes here\nexit 0"));
+  shellBuildPhase->AddAttribute("showEnvVarsInLog",
+                                this->CreateString("0"));
+
   cmXCodeObject* target =
     this->CreateObject(cmXCodeObject::PBXAggregateTarget);
   target->SetComment(cmtarget.GetName());

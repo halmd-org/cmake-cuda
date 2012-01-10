@@ -470,6 +470,8 @@ void cmLocalUnixMakefileGenerator3::WriteDirectoryInformationFile()
     << "SET(CMAKE_CXX_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
   infoFileStream
     << "SET(CMAKE_Fortran_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
+  infoFileStream
+    << "SET(CMAKE_ASM_INCLUDE_PATH ${CMAKE_C_INCLUDE_PATH})\n";
 
   // Store the include regular expressions for this directory.
   infoFileStream
@@ -608,6 +610,27 @@ cmLocalUnixMakefileGenerator3
 }
 
 //----------------------------------------------------------------------------
+std::string
+cmLocalUnixMakefileGenerator3
+::ConvertShellCommand(std::string const& cmd, RelativeRoot root)
+{
+  if(this->WatcomWMake &&
+     cmSystemTools::FileIsFullPath(cmd.c_str()) &&
+     cmd.find_first_of("( )") != cmd.npos)
+    {
+    // On Watcom WMake use the windows short path for the command
+    // name.  This is needed to avoid funny quoting problems on
+    // lines with shell redirection operators.
+    std::string scmd;
+    if(cmSystemTools::GetShortPath(cmd.c_str(), scmd))
+      {
+      return this->Convert(scmd.c_str(), NONE, SHELL);
+      }
+    }
+  return this->Convert(cmd.c_str(), root, SHELL);
+}
+
+//----------------------------------------------------------------------------
 void
 cmLocalUnixMakefileGenerator3
 ::WriteMakeVariables(std::ostream& makefileStream)
@@ -646,13 +669,13 @@ cmLocalUnixMakefileGenerator3
   makefileStream
     << "# The CMake executable.\n"
     << "CMAKE_COMMAND = "
-    << this->Convert(cmakecommand.c_str(), FULL, SHELL).c_str()
+    << this->ConvertShellCommand(cmakecommand, FULL)
     << "\n"
     << "\n";
   makefileStream
     << "# The command to remove a file.\n"
     << "RM = "
-    << this->Convert(cmakecommand.c_str(),FULL,SHELL).c_str()
+    << this->ConvertShellCommand(cmakecommand, FULL)
     << " -E remove -f\n"
     << "\n";
 
@@ -662,7 +685,7 @@ cmLocalUnixMakefileGenerator3
     makefileStream
       << "# The program to use to edit the cache.\n"
       << "CMAKE_EDIT_COMMAND = "
-      << this->Convert(edit_cmd,FULL,SHELL) << "\n"
+      << this->ConvertShellCommand(edit_cmd, FULL) << "\n"
       << "\n";
     }
 
@@ -697,7 +720,7 @@ cmLocalUnixMakefileGenerator3
   // This should be the first target except for the default_target in
   // the interface Makefile.
   this->WriteMakeRule(
-    makefileStream, "Disable implicit rules so canoncical targets will work.",
+    makefileStream, "Disable implicit rules so canonical targets will work.",
     ".SUFFIXES", no_depends, no_commands, false);
 
   if(!this->NMake && !this->WatcomWMake && !this->BorlandMakeCurlyHack)
@@ -1019,22 +1042,9 @@ cmLocalUnixMakefileGenerator3
         // without the current directory being in the search path.
         cmd = "./" + cmd;
         }
-      if(this->WatcomWMake &&
-         cmSystemTools::FileIsFullPath(cmd.c_str()) &&
-         cmd.find(" ") != cmd.npos)
-        {
-        // On Watcom WMake use the windows short path for the command
-        // name.  This is needed to avoid funny quoting problems on
-        // lines with shell redirection operators.
-        std::string scmd;
-        if(cmSystemTools::GetShortPath(cmd.c_str(), scmd))
-          {
-          cmd = scmd;
-          }
-        }
       std::string launcher =
         this->MakeLauncher(cc, target, workingDir? NONE : START_OUTPUT);
-      cmd = launcher + this->Convert(cmd.c_str(),NONE,SHELL);
+      cmd = launcher + this->ConvertShellCommand(cmd, NONE);
 
       ccg.AppendArguments(c, cmd);
       if(content)
@@ -1559,7 +1569,7 @@ cmLocalUnixMakefileGenerator3
 
     // Create the scanner for this language
     cmDepends *scanner = 0;
-    if(lang == "C" || lang == "CXX" || lang == "RC")
+    if(lang == "C" || lang == "CXX" || lang == "RC" || lang == "ASM")
       {
       // TODO: Handle RC (resource files) dependencies correctly.
       scanner = new cmDependsC(this, targetDir, lang.c_str(), &validDeps);

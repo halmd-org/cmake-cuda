@@ -220,10 +220,20 @@ IF(BUILD_TESTING)
 
   SET(CMAKE_BUILD_TEST_SOURCE_DIR "${CMake_SOURCE_DIR}/Tests/COnly")
   SET(CMAKE_BUILD_TEST_BINARY_DIR "${CMake_BINARY_DIR}/Tests/CMakeBuildCOnly")
+  SET(CMAKE_BUILD_TEST_EXE COnly)
   CONFIGURE_FILE("${CMake_SOURCE_DIR}/Tests/CMakeBuildTest.cmake.in"
     "${CMake_BINARY_DIR}/Tests/CMakeBuildTest.cmake" @ONLY)
   ADD_TEST(CMakeBuildTest ${CMAKE_CMAKE_COMMAND} -P
     "${CMake_BINARY_DIR}/Tests/CMakeBuildTest.cmake")
+  LIST(APPEND TEST_BUILD_DIRS ${CMAKE_BUILD_TEST_BINARY_DIR})
+  # now do it again for a project that has two project commands
+  SET(CMAKE_BUILD_TEST_SOURCE_DIR "${CMake_SOURCE_DIR}/Tests/DoubleProject")
+  SET(CMAKE_BUILD_TEST_BINARY_DIR "${CMake_BINARY_DIR}/Tests/DoubleProject")
+  SET(CMAKE_BUILD_TEST_EXE just_silly)
+  CONFIGURE_FILE("${CMake_SOURCE_DIR}/Tests/CMakeBuildTest.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CMakeBuildDoubleProjectTest.cmake" @ONLY)
+  ADD_TEST(CMakeDoubleProject ${CMAKE_CMAKE_COMMAND} -P
+    "${CMake_BINARY_DIR}/Tests/CMakeBuildDoubleProjectTest.cmake")
   LIST(APPEND TEST_BUILD_DIRS ${CMAKE_BUILD_TEST_BINARY_DIR})
 
   ADD_TEST_MACRO(Module.CheckTypeSize CheckTypeSize)
@@ -1206,6 +1216,111 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/MakeClean")
   ENDIF("${CMAKE_TEST_GENERATOR}" MATCHES "Makefile")
 
+  if(NOT DEFINED CTEST_RUN_MFC)
+    set(CTEST_RUN_MFC OFF)
+
+    if(MSVC)
+      set(CTEST_RUN_MFC ON)
+
+      # Look for evidence that this is a VCExpress build. If so, avoid
+      # the MFC test by default.
+      string(TOLOWER "${CMAKE_TEST_MAKEPROGRAM}" mkprog)
+      if(mkprog MATCHES "vcexpress")
+        message(STATUS
+          "CMAKE_TEST_MAKEPROGRAM indicates vcexpress, avoiding MFC test")
+        set(CTEST_RUN_MFC OFF)
+      endif()
+
+      # Since MSBuild might also be the "makeprogram" for a VCExpress
+      # build tree, use one more heuristic, too. The string representing
+      # the .vcproj file type contains "VCExpress" on machines where an
+      # express edition of VS was installed last:
+      if(CTEST_RUN_MFC)
+        execute_process(COMMAND cmd /c assoc .vcproj
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+          OUTPUT_VARIABLE ov)
+        if(ov MATCHES "VCExpress")
+          message(STATUS
+            ".vcproj file association indicates VCExpress, avoiding MFC test")
+          set(CTEST_RUN_MFC OFF)
+        endif()
+      endif()
+
+      # For the Watcom WMake generator, avoid the MFC test by default.
+      if(CTEST_RUN_MFC)
+        if("${CMAKE_TEST_GENERATOR}" MATCHES "WMake")
+          message(STATUS
+            "using the Watcom WMake generator, avoiding MFC test")
+          set(CTEST_RUN_MFC OFF)
+        endif()
+      endif()
+
+      # Last resort, after quick checks are done. Do a try_compile, and avoid
+      # the MFC test if the simplest possible MFC app cannot be compiled.
+      if(CTEST_RUN_MFC AND NOT DEFINED HAVE_MFC)
+        configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/MFC/try_compile/CMakeLists.txt
+          ${CMAKE_CURRENT_BINARY_DIR}/MFC/try_compile/CMakeLists.txt
+          COPYONLY
+          )
+        configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/MFC/mfc1/stdafx.cpp
+          ${CMAKE_CURRENT_BINARY_DIR}/MFC/try_compile/stdafx.cpp
+          COPYONLY
+          )
+        configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/MFC/mfc1/stdafx.h
+          ${CMAKE_CURRENT_BINARY_DIR}/MFC/try_compile/stdafx.h
+          COPYONLY
+          )
+
+        message(STATUS "Looking for MFC")
+
+        try_compile(HAVE_MFC
+          ${CMAKE_CURRENT_BINARY_DIR}/MFC/try_compile/build
+          ${CMAKE_CURRENT_BINARY_DIR}/MFC/try_compile
+          try_compile_mfc
+          OUTPUT_VARIABLE HAVE_MFC_OUTPUT)
+
+        if(HAVE_MFC)
+          message(STATUS "Looking for MFC - found")
+          set(HAVE_MFC 1 CACHE INTERNAL "Have MFC")
+          file(APPEND
+            ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
+            "Determining if MFC exists passed with the following output:\n"
+            "${HAVE_MFC_OUTPUT}\n\n")
+        else()
+          message(STATUS "Looking for MFC - not found")
+          set(HAVE_MFC "" CACHE INTERNAL "Have MFC")
+          file(APPEND
+            ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeError.log
+            "Determining if MFC exists failed with the following output:\n"
+            "${HAVE_MFC_OUTPUT}\n\n")
+        endif()
+      endif()
+
+      if(CTEST_RUN_MFC AND NOT HAVE_MFC)
+        message(STATUS
+          "cannot compile simplest ever MFC app, avoiding MFC test")
+        set(CTEST_RUN_MFC OFF)
+      endif()
+    endif()
+  endif()
+
+  if(CTEST_RUN_MFC)
+    add_test(MFC ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/MFC"
+      "${CMake_BINARY_DIR}/Tests/MFC"
+      --build-two-config
+      --build-generator ${CMAKE_TEST_GENERATOR}
+      --build-project mfc_driver
+      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+      --test-command ${CMAKE_CTEST_COMMAND}
+        -C \${CTEST_CONFIGURATION_TYPE} -VV)
+    list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/MFC")
+  endif()
+
   IF(${CMAKE_TEST_GENERATOR} MATCHES "Visual Studio")
     ADD_TEST(VSExternalInclude ${CMAKE_CTEST_COMMAND}
       --build-and-test
@@ -1531,6 +1646,35 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   SET_TESTS_PROPERTIES(CTestTestUpload PROPERTIES
     PASS_REGULAR_EXPRESSION "Upload\\.xml")
 
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestConfigFileInBuildDir/test1.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir1/test1.cmake"
+    @ONLY ESCAPE_QUOTES)
+  ADD_TEST(CTestTestConfigFileInBuildDir1 ${CMAKE_CTEST_COMMAND}
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir1/test1.cmake" -V
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir1/testOut1.log"
+    )
+  SET_TESTS_PROPERTIES(CTestTestConfigFileInBuildDir1 PROPERTIES DEPENDS CTestTestNoBuild
+    PASS_REGULAR_EXPRESSION
+      "Reading ctest configuration file: ${CMake_SOURCE_DIR}.Tests.CTestTestConfigFileInBuildDir.CTestConfig.cmake")
+
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestConfigFileInBuildDir/test2.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/test2.cmake"
+    @ONLY ESCAPE_QUOTES)
+  CONFIGURE_FILE(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestConfigFileInBuildDir/CTestConfig.cmake"
+    "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/CTestConfig.cmake"
+    @ONLY ESCAPE_QUOTES COPYONLY)
+  ADD_TEST(CTestTestConfigFileInBuildDir2 ${CMAKE_CTEST_COMMAND}
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/test2.cmake" -V
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/testOut2.log"
+    )
+  SET_TESTS_PROPERTIES(CTestTestConfigFileInBuildDir2 PROPERTIES DEPENDS CTestTestNoBuild
+    REQUIRED_FILES ${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/CTestConfig.cmake
+    PASS_REGULAR_EXPRESSION
+      "Reading ctest configuration file: ${CMake_BINARY_DIR}.Tests.CTestTestConfigFileInBuildDir2.CTestConfig.cmake")
+
   # Use macro, not function so that build can still be driven by CMake 2.4.
   # After 2.6 is required, this could be a function without the extra 'set'
   # calls.
@@ -1573,6 +1717,8 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     -Dgen=${CMAKE_TEST_GENERATOR}
     -P "${CMake_SOURCE_DIR}/Tests/CMakeCommands/build_command/RunCMake.cmake"
   )
+
+  ADD_TEST_MACRO(CMakeCommands.target_link_libraries target_link_libraries)
 
   CONFIGURE_FILE(
     "${CMake_SOURCE_DIR}/Tests/CTestTestCrash/test.cmake.in"
