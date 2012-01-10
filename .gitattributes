@@ -1,4 +1,5 @@
 .gitattributes   export-ignore
+.hooks*          export-ignore
 
 bootstrap        crlf=input
 configure        crlf=input
@@ -7,6 +8,7 @@ configure        crlf=input
 *.sh.in          crlf=input
 
 *.bat           -crlf
+*.bat.in        -crlf
 *.dsp           -crlf
 *.dsptemplate   -crlf
 *.dsw           -crlf

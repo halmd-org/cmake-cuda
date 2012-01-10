@@ -118,7 +118,7 @@ MACRO (QT4_CREATE_MOC_COMMAND infile outfile moc_flags moc_options)
     ADD_CUSTOM_COMMAND(OUTPUT ${outfile}
                        COMMAND ${QT_MOC_EXECUTABLE}
                        ARGS ${moc_flags} ${moc_options} -o ${outfile} ${infile}
-                       DEPENDS ${infile})
+                       DEPENDS ${infile} VERBATIM)
   ENDIF (WIN32)
 ENDMACRO (QT4_CREATE_MOC_COMMAND)
 
@@ -165,7 +165,7 @@ MACRO (QT4_WRAP_UI outfiles )
     ADD_CUSTOM_COMMAND(OUTPUT ${outfile}
       COMMAND ${QT_UIC_EXECUTABLE}
       ARGS ${ui_options} -o ${outfile} ${infile}
-      MAIN_DEPENDENCY ${infile})
+      MAIN_DEPENDENCY ${infile} VERBATIM)
     SET(${outfiles} ${${outfiles}} ${outfile})
   ENDFOREACH (it)
 
@@ -203,7 +203,7 @@ MACRO (QT4_ADD_RESOURCES outfiles )
       COMMAND ${QT_RCC_EXECUTABLE}
       ARGS ${rcc_options} -name ${outfilename} -o ${outfile} ${infile}
       MAIN_DEPENDENCY ${infile}
-      DEPENDS ${_RC_DEPENDS} "${out_depends}")
+      DEPENDS ${_RC_DEPENDS} "${out_depends}" VERBATIM)
     SET(${outfiles} ${${outfiles}} ${outfile})
   ENDFOREACH (it)
 
@@ -216,13 +216,26 @@ MACRO(QT4_ADD_DBUS_INTERFACE _sources _interface _basename)
   SET(_impl   ${CMAKE_CURRENT_BINARY_DIR}/${_basename}.cpp)
   SET(_moc    ${CMAKE_CURRENT_BINARY_DIR}/${_basename}.moc)
 
-  # handling more arguments (as in FindQt4.cmake from KDE4) will come soon, then
-  # _params will be used for more than just -m
-  SET(_params -m)
+  GET_SOURCE_FILE_PROPERTY(_nonamespace ${_interface} NO_NAMESPACE)
+  IF(_nonamespace)
+    SET(_params -N -m)
+  ELSE(_nonamespace)
+    SET(_params -m)
+  ENDIF(_nonamespace)
+
+  GET_SOURCE_FILE_PROPERTY(_classname ${_interface} CLASSNAME)
+  IF(_classname)
+    SET(_params ${_params} -c ${_classname})
+  ENDIF(_classname)
+
+  GET_SOURCE_FILE_PROPERTY(_include ${_interface} INCLUDE)
+  IF(_include)
+    SET(_params ${_params} -i ${_include})
+  ENDIF(_include)
 
   ADD_CUSTOM_COMMAND(OUTPUT ${_impl} ${_header}
       COMMAND ${QT_DBUSXML2CPP_EXECUTABLE} ${_params} -p ${_basename} ${_infile}
-      DEPENDS ${_infile})
+      DEPENDS ${_infile} VERBATIM)
 
   SET_SOURCE_FILES_PROPERTIES(${_impl} PROPERTIES SKIP_AUTOMOC TRUE)
 
@@ -267,7 +280,7 @@ MACRO(QT4_GENERATE_DBUS_INTERFACE _header) # _customName OPTIONS -some -options 
 
   ADD_CUSTOM_COMMAND(OUTPUT ${_target}
       COMMAND ${QT_DBUSCPP2XML_EXECUTABLE} ${_qt4_dbus_options} ${_in_file} -o ${_target}
-      DEPENDS ${_in_file}
+      DEPENDS ${_in_file} VERBATIM
   )
 ENDMACRO(QT4_GENERATE_DBUS_INTERFACE)
 
@@ -291,12 +304,12 @@ MACRO(QT4_ADD_DBUS_ADAPTOR _sources _xml_file _include _parentClass) # _optional
   IF(_optionalClassName)
     ADD_CUSTOM_COMMAND(OUTPUT ${_impl} ${_header}
        COMMAND ${QT_DBUSXML2CPP_EXECUTABLE} -m -a ${_basename} -c ${_optionalClassName} -i ${_include} -l ${_parentClass} ${_infile}
-       DEPENDS ${_infile}
+       DEPENDS ${_infile} VERBATIM
     )
   ELSE(_optionalClassName)
     ADD_CUSTOM_COMMAND(OUTPUT ${_impl} ${_header}
        COMMAND ${QT_DBUSXML2CPP_EXECUTABLE} -m -a ${_basename} -i ${_include} -l ${_parentClass} ${_infile}
-       DEPENDS ${_infile}
+       DEPENDS ${_infile} VERBATIM
      )
   ENDIF(_optionalClassName)
 
@@ -385,7 +398,7 @@ MACRO(QT4_CREATE_TRANSLATION _qm_files)
      ADD_CUSTOM_COMMAND(OUTPUT ${_ts_file}
         COMMAND ${QT_LUPDATE_EXECUTABLE}
         ARGS ${_lupdate_options} ${_ts_pro} ${_my_dirs} -ts ${_ts_file}
-        DEPENDS ${_my_sources} ${_ts_pro})
+        DEPENDS ${_my_sources} ${_ts_pro} VERBATIM)
    ENDFOREACH(_ts_file)
    QT4_ADD_TRANSLATION(${_qm_files} ${_my_tsfiles})
 ENDMACRO(QT4_CREATE_TRANSLATION)
@@ -406,7 +419,7 @@ MACRO(QT4_ADD_TRANSLATION _qm_files)
     ADD_CUSTOM_COMMAND(OUTPUT ${qm}
        COMMAND ${QT_LRELEASE_EXECUTABLE}
        ARGS ${_abs_FILE} -qm ${qm}
-       DEPENDS ${_abs_FILE}
+       DEPENDS ${_abs_FILE} VERBATIM
     )
     SET(${_qm_files} ${${_qm_files}} ${qm})
   ENDFOREACH (_current_FILE)

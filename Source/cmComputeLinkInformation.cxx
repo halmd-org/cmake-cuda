@@ -161,7 +161,9 @@ listed on the command line.
   - On Windows, DLLs are not directly linked, and the import libraries
     have no transitive dependencies.
 
-  - On Mac, we need to actually list the transitive dependencies.
+  - On Mac OS X 10.5 and above transitive dependencies are not needed.
+
+  - On Mac OS X 10.4 and below we need to actually list the dependencies.
     Otherwise when using -isysroot for universal binaries it cannot
     find the dependent libraries.  Listing them on the command line
     tells the linker where to find them, but unfortunately also links
@@ -1318,8 +1320,9 @@ void cmComputeLinkInformation::AddFrameworkItem(std::string const& item)
   this->AddFrameworkPath(this->SplitFramework.match(1));
 
   // Add the item using the -framework option.
-  std::string fw = "-framework ";
-  fw += this->SplitFramework.match(2);
+  this->Items.push_back(Item("-framework", false));
+  std::string fw = this->SplitFramework.match(2);
+  fw = this->LocalGenerator->EscapeForShell(fw.c_str());
   this->Items.push_back(Item(fw, false));
 }
 
