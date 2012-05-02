@@ -144,7 +144,7 @@
 #   set_property(DIRECTORY PROPERTY EP_STEP_TARGETS configure build test)
 
 #=============================================================================
-# Copyright 2008-2009 Kitware, Inc.
+# Copyright 2008-2012 Kitware, Inc.
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.
@@ -833,6 +833,12 @@ function(ExternalProject_Add_StepTargets name)
   foreach(step ${steps})
     add_custom_target(${name}-${step}
       DEPENDS ${stamp_dir}${cfgdir}/${name}-${step})
+
+    # Depend on other external projects (target-level).
+    get_property(deps TARGET ${name} PROPERTY _EP_DEPENDS)
+    foreach(arg IN LISTS deps)
+      add_dependencies(${name}-${step} ${arg})
+    endforeach()
   endforeach()
 endfunction(ExternalProject_Add_StepTargets)
 
@@ -954,6 +960,7 @@ function(_ep_get_git_version git_EXECUTABLE git_version_var)
     execute_process(
       COMMAND "${git_EXECUTABLE}" --version
       OUTPUT_VARIABLE ov
+      ERROR_VARIABLE ev
       OUTPUT_STRIP_TRAILING_WHITESPACE
       )
     string(REGEX REPLACE "^git version (.+)$" "\\1" version "${ov}")
@@ -1450,9 +1457,18 @@ function(ExternalProject_Add name)
   # depends on the 'done' mark so that it rebuilds when this project
   # rebuilds.  It is important that 'done' is not the output of any
   # custom command so that CMake does not propagate build rules to
-  # other external project targets.
+  # other external project targets, which may cause problems during
+  # parallel builds.  However, the Ninja generator needs to see the entire
+  # dependency graph, and can cope with custom commands belonging to
+  # multiple targets, so we add the 'done' mark as an output for Ninja only.
+  set(complete_outputs ${cmf_dir}${cfgdir}/${name}-complete)
+  if(${CMAKE_GENERATOR} MATCHES "Ninja")
+    set(complete_outputs
+        ${complete_outputs} ${stamp_dir}${cfgdir}/${name}-done)
+  endif()
+
   add_custom_command(
-    OUTPUT ${cmf_dir}${cfgdir}/${name}-complete
+    OUTPUT ${complete_outputs}
     COMMENT "Completed '${name}'"
     COMMAND ${CMAKE_COMMAND} -E make_directory ${cmf_dir}${cfgdir}
     COMMAND ${CMAKE_COMMAND} -E touch ${cmf_dir}${cfgdir}/${name}-complete

@@ -131,6 +131,8 @@ void (*cmSystemTools::s_ErrorCallback)(const char*, const char*,
 void (*cmSystemTools::s_StdoutCallback)(const char*, int len, void*);
 void* cmSystemTools::s_ErrorCallbackClientData = 0;
 void* cmSystemTools::s_StdoutCallbackClientData = 0;
+bool (*cmSystemTools::s_InterruptCallback)(void*);
+void* cmSystemTools::s_InterruptCallbackClientData = 0;
 
 // replace replace with with as many times as it shows up in source.
 // write the result into source.
@@ -196,6 +198,20 @@ std::string cmSystemTools::EscapeQuotes(const char* str)
   return result;
 }
 
+std::string cmSystemTools::TrimWhitespace(const std::string& s)
+{
+  std::string::const_iterator start = s.begin();
+  while(start != s.end() && *start == ' ')
+    ++start;
+  if (start == s.end())
+    return "";
+
+  std::string::const_iterator stop = s.end()-1;
+  while(*stop == ' ')
+    --stop;
+  return std::string(start, stop+1);
+}
+
 void cmSystemTools::Error(const char* m1, const char* m2,
                           const char* m3, const char* m4)
 {
@@ -220,6 +236,20 @@ void cmSystemTools::Error(const char* m1, const char* m2,
   cmSystemTools::Message(message.c_str(),"Error");
 }
 
+void cmSystemTools::SetInterruptCallback(InterruptCallback f, void* clientData)
+{
+  s_InterruptCallback = f;
+  s_InterruptCallbackClientData = clientData;
+}
+
+bool cmSystemTools::GetInterruptFlag()
+{
+  if(s_InterruptCallback)
+    {
+    return (*s_InterruptCallback)(s_InterruptCallbackClientData);
+    }
+  return false;
+}
 
 void cmSystemTools::SetErrorCallback(ErrorCallback f, void* clientData)
 {
@@ -1866,7 +1896,11 @@ long copy_data(struct archive *ar, struct archive *aw)
   long r;
   const void *buff;
   size_t size;
+#if defined(ARCHIVE_VERSION_NUMBER) && ARCHIVE_VERSION_NUMBER >= 3000000
+  __LA_INT64_T offset;
+#else
   off_t offset;
+#endif
 
   for (;;)
     {

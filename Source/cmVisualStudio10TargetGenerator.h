@@ -15,6 +15,7 @@
 
 class cmTarget;
 class cmMakefile;
+class cmGeneratorTarget;
 class cmGeneratedFileStream;
 class cmGlobalVisualStudio10Generator;
 class cmSourceFile;
@@ -46,9 +47,11 @@ private:
   void WriteString(const char* line, int indentLevel);
   void WriteProjectConfigurations();
   void WriteProjectConfigurationValues();
-  void WriteCLSources();
+  void WriteSource(const char* tool, cmSourceFile* sf, bool end = true);
+  void WriteSources(const char* tool, std::vector<cmSourceFile*> const&);
+  void WriteAllSources();
   void WriteDotNetReferences();
-  void WriteObjSources();
+  void WriteWinRTReferences();
   void WritePathAndIncrementalLinkOptions();
   void WriteItemDefinitionGroups();
   bool ComputeClOptions();
@@ -74,7 +77,6 @@ private:
   void WriteEvents(std::string const& configName);
   void WriteEvent(const char* name, std::vector<cmCustomCommand> & commands,
                   std::string const& configName);
-  void ComputeObjectNames();
   void WriteGroupSources(const char* name,
                          std::vector<cmSourceFile*> const& sources,
                          std::vector<cmSourceGroup>& );
@@ -86,9 +88,9 @@ private:
   typedef cmVisualStudioGeneratorOptions Options;
   typedef std::map<cmStdString, Options*> OptionsMap;
   OptionsMap ClOptions;
-  std::string ModuleDefinitionFile;
   std::string PathToVcxproj;
   cmTarget* Target;
+  cmGeneratorTarget* GeneratorTarget;
   cmMakefile* Makefile;
   std::string Platform;
   std::string GUID;

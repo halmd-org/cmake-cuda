@@ -63,6 +63,12 @@ cmCPackDragNDropGenerator::~cmCPackDragNDropGenerator()
 //----------------------------------------------------------------------
 int cmCPackDragNDropGenerator::InitializeInternal()
 {
+  // Starting with Xcode 4.3, look in "/Applications/Xcode.app" first:
+  //
+  std::vector<std::string> paths;
+  paths.push_back("/Applications/Xcode.app/Contents/Developer/Tools");
+  paths.push_back("/Developer/Tools");
+
   const std::string hdiutil_path = cmSystemTools::FindProgram("hdiutil",
     std::vector<std::string>(), false);
   if(hdiutil_path.empty())
@@ -75,7 +81,7 @@ int cmCPackDragNDropGenerator::InitializeInternal()
   this->SetOptionIfNotSet("CPACK_COMMAND_HDIUTIL", hdiutil_path.c_str());
 
   const std::string setfile_path = cmSystemTools::FindProgram("SetFile",
-    std::vector<std::string>(1, "/Developer/Tools"), false);
+    paths, false);
   if(setfile_path.empty())
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
@@ -86,7 +92,7 @@ int cmCPackDragNDropGenerator::InitializeInternal()
   this->SetOptionIfNotSet("CPACK_COMMAND_SETFILE", setfile_path.c_str());
   
   const std::string rez_path = cmSystemTools::FindProgram("Rez",
-    std::vector<std::string>(1, "/Developer/Tools"), false);
+    paths, false);
   if(rez_path.empty())
     {
     cmCPackLogger(cmCPackLog::LOG_ERROR,
@@ -421,6 +427,7 @@ int cmCPackDragNDropGenerator::CreateDMG(const std::string& src_dir,
     if(ifs.is_open())
     {
       cmGeneratedFileStream osf(sla_r.c_str());
+      osf << "#include <CoreServices/CoreServices.r>\n\n";
       osf << SLAHeader;
       osf << "\n";
       osf << "data 'TEXT' (5002, \"English\") {\n";
@@ -481,13 +488,11 @@ int cmCPackDragNDropGenerator::CreateDMG(const std::string& src_dir,
  
     // Rez the SLA 
     cmOStringStream embed_sla_command;
-    embed_sla_command << "/bin/bash -c \"";   // need expansion of "*.r"
     embed_sla_command << this->GetOption("CPACK_COMMAND_REZ");
-    embed_sla_command << " /Developer/Headers/FlatCarbon/*.r ";
-    embed_sla_command << "'" << sla_r << "'";
+    embed_sla_command << " \"" << sla_r << "\"";
     embed_sla_command << " -a -o ";
-    embed_sla_command << "'" << temp_udco << "'\"";
-    
+    embed_sla_command << "\"" << temp_udco << "\"";
+
     if(!this->RunCommand(embed_sla_command, &error))
       {
       cmCPackLogger(cmCPackLog::LOG_ERROR,

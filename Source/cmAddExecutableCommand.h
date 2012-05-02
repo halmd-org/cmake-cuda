@@ -41,12 +41,12 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "add_executable";}
+  virtual const char* GetName() const { return "add_executable";}
 
   /**
    * Succinct documentation.
    */
-  virtual const char* GetTerseDocumentation()
+  virtual const char* GetTerseDocumentation() const
     {
     return
       "Add an executable to the project using the specified source files.";
@@ -55,7 +55,7 @@ public:
   /**
    * More documentation.
    */
-  virtual const char* GetFullDocumentation()
+  virtual const char* GetFullDocumentation() const
     {
     return
       "  add_executable(<name> [WIN32] [MACOSX_BUNDLE]\n"
@@ -92,12 +92,12 @@ public:
       "\n"
       "The add_executable command can also create IMPORTED executable "
       "targets using this signature:\n"
-      "  add_executable(<name> IMPORTED)\n"
+      "  add_executable(<name> IMPORTED [GLOBAL])\n"
       "An IMPORTED executable target references an executable file located "
       "outside the project.  "
       "No rules are generated to build it.  "
       "The target name has scope in the directory in which it is created "
-      "and below.  "
+      "and below, but the GLOBAL option extends visibility.  "
       "It may be referenced like any target built within the project.  "
       "IMPORTED executables are useful for convenient reference from "
       "commands like add_custom_command.  "

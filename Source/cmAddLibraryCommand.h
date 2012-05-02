@@ -41,12 +41,12 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "add_library";}
+  virtual const char* GetName() const { return "add_library";}
 
   /**
    * Succinct documentation.
    */
-  virtual const char* GetTerseDocumentation() 
+  virtual const char* GetTerseDocumentation() const
     {
     return "Add a library to the project using the specified source files.";
     }
@@ -54,7 +54,7 @@ public:
   /**
    * More documentation.
    */
-  virtual const char* GetFullDocumentation()
+  virtual const char* GetFullDocumentation() const
     {
     return
       "  add_library(<name> [STATIC | SHARED | MODULE]\n"
@@ -96,12 +96,13 @@ public:
       "\n"
       "The add_library command can also create IMPORTED library "
       "targets using this signature:\n"
-      "  add_library(<name> <SHARED|STATIC|MODULE|UNKNOWN> IMPORTED)\n"
+      "  add_library(<name> <SHARED|STATIC|MODULE|UNKNOWN> IMPORTED\n"
+      "              [GLOBAL])\n"
       "An IMPORTED library target references a library file located "
       "outside the project.  "
       "No rules are generated to build it.  "
       "The target name has scope in the directory in which it is created "
-      "and below.  "
+      "and below, but the GLOBAL option extends visibility.  "
       "It may be referenced like any target built within the project.  "
       "IMPORTED libraries are useful for convenient reference from "
       "commands like target_link_libraries.  "
@@ -111,6 +112,26 @@ public:
       "(and its per-configuration version IMPORTED_LOCATION_<CONFIG>) "
       "which specifies the location of the main library file on disk.  "
       "See documentation of the IMPORTED_* properties for more information."
+      "\n"
+      "The signature\n"
+      "  add_library(<name> OBJECT <src>...)\n"
+      "creates a special \"object library\" target.  "
+      "An object library compiles source files but does not archive or link "
+      "their object files into a library.  "
+      "Instead other targets created by add_library or add_executable may "
+      "reference the objects using an expression of the form "
+      "$<TARGET_OBJECTS:objlib> as a source, where \"objlib\" is the "
+      "object library name.  "
+      "For example:\n"
+      "  add_library(... $<TARGET_OBJECTS:objlib> ...)\n"
+      "  add_executable(... $<TARGET_OBJECTS:objlib> ...)\n"
+      "will include objlib's object files in a library and an executable "
+      "along with those compiled from their own sources.  "
+      "Object libraries may contain only sources (and headers) that compile "
+      "to object files.  "
+      "They may contain custom commands generating such sources, but not "
+      "PRE_BUILD, PRE_LINK, or POST_BUILD commands.  "
+      "Object libraries cannot be imported, exported, installed, or linked."
       ;
     }
   

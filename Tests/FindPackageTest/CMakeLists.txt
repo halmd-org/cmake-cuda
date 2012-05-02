@@ -37,6 +37,12 @@ FIND_PACKAGE(VersionTestB 1.2)
 FIND_PACKAGE(VersionTestC 1.2.3)
 FIND_PACKAGE(VersionTestD 1.2.3.4)
 
+
+FIND_PACKAGE(LotsOfComponents COMPONENTS AComp OPTIONAL_COMPONENTS BComp CComp)
+IF(NOT LOTSOFCOMPONENTS_FOUND)
+  MESSAGE(SEND_ERROR "LotsOfComponents not found !")
+ENDIF()
+
 #-----------------------------------------------------------------------------
 # Test system package registry if possible.
 SET(CMakeTestSystemPackage "")
@@ -82,6 +88,7 @@ SET(PACKAGES
   RecursiveA RecursiveB RecursiveC
   ArchA ArchB ArchC ArchD
   EnvA EnvB
+  SetFoundTRUE SetFoundFALSE
   ${CMakeTestSystemPackage}
   )
 FOREACH(p ${PACKAGES})
@@ -116,6 +123,10 @@ FIND_PACKAGE(VersionedB 3.1 EXACT NAMES zot)
 FIND_PACKAGE(VersionedC 4.0 EXACT NAMES zot)
 FIND_PACKAGE(VersionedD 1.1 EXACT NAMES Baz)
 FIND_PACKAGE(VersionedE 1.2 EXACT NAMES Baz)
+
+# Test Config files which set Xyz_FOUND themselves:
+FIND_PACKAGE(SetFoundTRUE NO_MODULE)
+FIND_PACKAGE(SetFoundFALSE NO_MODULE)
 
 # Test wrong initial path when result is present.
 SET(WrongA_DIR "${VersionedD_DIR}")
@@ -201,6 +212,8 @@ SET(ArchC_EXPECTED "lib/arch/zot-3.1/zot-config.cmake")
 SET(ArchD_EXPECTED "lib/arch/cmake/zot-4.0/zot-config.cmake")
 SET(EnvA_EXPECTED "lib/zot-3.1/zot-config.cmake")
 SET(EnvB_MISSING "EnvB_DIR-NOTFOUND")
+SET(SetFoundTRUE_EXPECTED "cmake/SetFoundTRUEConfig.cmake")
+SET(SetFoundFALSE_MISSING "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET(CMakeTestSystemPackage_EXPECTED "SystemPackage/CMakeTestSystemPackageConfig.cmake")
 
 # Check the results.
@@ -211,6 +224,11 @@ FOREACH(p ${PACKAGES})
       MESSAGE(SEND_ERROR
         "Package ${p} should have been [${${p}_MISSING}] but "
         "was [${${p}_DIR}]")
+    ENDIF()
+    IF(${p}_FOUND)
+      MESSAGE(SEND_ERROR
+        "Package ${p} should not have been found, but ${p}_FOUND is set to "
+        "\"${${p}_FOUND}\"")
     ENDIF()
   ELSEIF(${p}_FOUND)
     # Convert to relative path for comparison to expected location.
@@ -305,13 +323,49 @@ STRING(REGEX REPLACE "-.*$" "" version ${CMAKE_VERSION})
 FIND_PACKAGE(CMakeTestExportPackage 1.${version} EXACT REQUIRED)
 
 #-----------------------------------------------------------------------------
+# Test configure_package_config_file().
+
+include(CMakePackageConfigHelpers)
+
+set(INCLUDE_INSTALL_DIR include )
+set(SHARE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/" )
+set(CURRENT_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}" )
+
+configure_package_config_file(RelocatableConfig.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/RelocatableConfig.cmake"
+                              INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}"
+                              PATH_VARS INCLUDE_INSTALL_DIR SHARE_INSTALL_DIR CURRENT_BUILD_DIR
+                             )
+
+set(Relocatable_FIND_COMPONENTS AComp BComp CComp)
+set(Relocatable_FIND_REQUIRED_BComp 1)
+include("${CMAKE_CURRENT_BINARY_DIR}/RelocatableConfig.cmake")
+
+if(NOT "${RELOC_INCLUDE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/include")
+  message(SEND_ERROR "RELOC_INCLUDE_DIR set by configure_package_config_file() is set to \"${RELOC_INCLUDE_DIR}\" (expected \"${CMAKE_CURRENT_BINARY_DIR}/include\")")
+endif()
+
+if(NOT "${RELOC_SHARE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}/share/")
+  message(SEND_ERROR "RELOC_SHARE_DIR set by configure_package_config_file() is set to \"${RELOC_SHARE_DIR}\" (expected \"${CMAKE_CURRENT_BINARY_DIR}/share/\")")
+endif()
+
+if(NOT "${RELOC_BUILD_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
+  message(SEND_ERROR "RELOC_BUILD_DIR set by configure_package_config_file() is set to \"${RELOC_BUILD_DIR}\" (expected \"${CMAKE_CURRENT_BINARY_DIR}\")")
+endif()
+
+if(NOT DEFINED Relocatable_FOUND)
+  message(SEND_ERROR "Relocatable_FOUND not defined !")
+endif()
+
+if(Relocatable_FOUND)
+  message(SEND_ERROR "Relocatable_FOUND set to TRUE !")
+endif()
+
+#-----------------------------------------------------------------------------
 # Test write_basic_config_version_file().
 
-include(WriteBasicConfigVersionFile)
-
-write_basic_config_version_file(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake
-                                VERSION 1.2.3
-                                COMPATIBILITY AnyNewerVersion)
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake
+                                 VERSION 1.2.3
+                                 COMPATIBILITY AnyNewerVersion)
 
 set(PACKAGE_FIND_VERSION 2.3.4)
 include(${CMAKE_CURRENT_BINARY_DIR}/Foo123ConfigVersion.cmake)
@@ -345,6 +399,7 @@ endif()
 
 
 #######################
+include(WriteBasicConfigVersionFile)
 
 write_basic_config_version_file(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake
                                 VERSION 1.2.3
@@ -386,6 +441,76 @@ set(PACKAGE_FIND_VERSION_MAJOR 1)
 include(${CMAKE_CURRENT_BINARY_DIR}/Boo123ConfigVersion.cmake)
 if(NOT PACKAGE_VERSION_COMPATIBLE)
   message(SEND_ERROR "Did not find Boo123 with version 1.2.3 (1.2.3 was requested) !")
+endif()
+if(NOT PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT not set, although it should be !")
+endif()
+
+if(PACKAGE_VERSION_UNSUITABLE)
+  message(SEND_ERROR "PACKAGE_VERSION_UNSUITABLE set, but must not be !")
+endif()
+
+#######################
+
+write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake
+                                 VERSION 1.2.3.17
+                                 COMPATIBILITY ExactVersion)
+
+set(PACKAGE_VERSION_EXACT FALSE)
+set(PACKAGE_FIND_VERSION 2.3.4)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Bar123 with version 1.2.3 (2.3.4 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.2)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Bar123 with version 1.2.3 (1.2 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Found Bar123 with version 1.2.3 (1 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.2.3.4)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Bar123 with version 1.2.3 (1.2.3.4 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+set(PACKAGE_FIND_VERSION 1.2.3)
+set(PACKAGE_VERSION_EXACT FALSE)
+set(PACKAGE_VERSION_COMPATIBLE FALSE)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Bar123 with version 1.2.3 (1.2.3 was requested) !")
+endif()
+if(PACKAGE_VERSION_EXACT)
+  message(SEND_ERROR "PACKAGE_VERSION_EXACT set, although it should not be !")
+endif()
+
+
+set(PACKAGE_FIND_VERSION 1.2.3.17)
+set(PACKAGE_VERSION_EXACT FALSE)
+set(PACKAGE_VERSION_COMPATIBLE FALSE)
+include(${CMAKE_CURRENT_BINARY_DIR}/Bar123ConfigVersion.cmake)
+if(NOT PACKAGE_VERSION_COMPATIBLE)
+  message(SEND_ERROR "Did not find Bar123 with version 1.2.3 (1.2.3.17 was requested) !")
 endif()
 if(NOT PACKAGE_VERSION_EXACT)
   message(SEND_ERROR "PACKAGE_VERSION_EXACT not set, although it should be !")

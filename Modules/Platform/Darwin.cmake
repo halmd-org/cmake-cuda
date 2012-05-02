@@ -6,6 +6,8 @@ SET(APPLE 1)
 #   8.x == Mac OSX 10.4 (Tiger)
 #   9.x == Mac OSX 10.5 (Leopard)
 #  10.x == Mac OSX 10.6 (Snow Leopard)
+#  11.x == Mac OSX 10.7 (Lion)
+#  12.x == Mac OSX 10.8 (Mountain Lion)
 STRING(REGEX REPLACE "^([0-9]+)\\.([0-9]+).*$" "\\1" DARWIN_MAJOR_VERSION "${CMAKE_SYSTEM_VERSION}")
 STRING(REGEX REPLACE "^([0-9]+)\\.([0-9]+).*$" "\\2" DARWIN_MINOR_VERSION "${CMAKE_SYSTEM_VERSION}")
 
@@ -54,24 +56,31 @@ SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib" ".so" ".a")
 # hardcode CMAKE_INSTALL_NAME_TOOL here to install_name_tool, so it behaves as it did before, Alex
 IF(NOT DEFINED CMAKE_INSTALL_NAME_TOOL)
   FIND_PROGRAM(CMAKE_INSTALL_NAME_TOOL install_name_tool)
+  MARK_AS_ADVANCED(CMAKE_INSTALL_NAME_TOOL)
 ENDIF(NOT DEFINED CMAKE_INSTALL_NAME_TOOL)
 
 # Set the assumed (Pre 10.5 or Default) location of the developer tools
 SET(OSX_DEVELOPER_ROOT "/Developer")
 
-# Find installed SDKs
-FILE(GLOB _CMAKE_OSX_SDKS "${OSX_DEVELOPER_ROOT}/SDKs/*")
+# Use the xcode-select tool if it's available (Xcode >= 3.0 installations)
+FIND_PROGRAM(CMAKE_XCODE_SELECT xcode-select)
+MARK_AS_ADVANCED(CMAKE_XCODE_SELECT)
+IF(CMAKE_XCODE_SELECT)
+  EXECUTE_PROCESS(COMMAND ${CMAKE_XCODE_SELECT} "-print-path"
+    OUTPUT_VARIABLE OSX_DEVELOPER_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+ENDIF(CMAKE_XCODE_SELECT)
 
-# If nothing is found there, then try locating the dev tools based on the xcode-select tool
-# (available in Xcode >= 3.0 installations)
+# Find installed SDKs
+# Start with Xcode-4.3+ default SDKs directory
+SET(_CMAKE_OSX_SDKS_DIR
+  "${OSX_DEVELOPER_ROOT}/Platforms/MacOSX.platform/Developer/SDKs")
+FILE(GLOB _CMAKE_OSX_SDKS "${_CMAKE_OSX_SDKS_DIR}/*")
+
+# If not present, try pre-4.3 SDKs directory
 IF(NOT _CMAKE_OSX_SDKS)
-  FIND_PROGRAM(CMAKE_XCODE_SELECT xcode-select)
-  IF(CMAKE_XCODE_SELECT)
-    EXECUTE_PROCESS(COMMAND ${CMAKE_XCODE_SELECT} "-print-path"
-      OUTPUT_VARIABLE OSX_DEVELOPER_ROOT
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-    FILE(GLOB _CMAKE_OSX_SDKS "${OSX_DEVELOPER_ROOT}/SDKs/*")
-  ENDIF(CMAKE_XCODE_SELECT)
+SET(_CMAKE_OSX_SDKS_DIR "${OSX_DEVELOPER_ROOT}/SDKs")
+  FILE(GLOB _CMAKE_OSX_SDKS "${_CMAKE_OSX_SDKS_DIR}/*")
 ENDIF(NOT _CMAKE_OSX_SDKS)
 
 EXECUTE_PROCESS(COMMAND sw_vers -productVersion
@@ -103,16 +112,16 @@ SET(ENV_SDKROOT "$ENV{SDKROOT}")
 # Set CMAKE_OSX_SYSROOT_DEFAULT based on _CURRENT_OSX_VERSION,
 # accounting for the known specially named SDKs.
 SET(CMAKE_OSX_SYSROOT_DEFAULT
-  "${OSX_DEVELOPER_ROOT}/SDKs/MacOSX${_CURRENT_OSX_VERSION}.sdk")
+  "${_CMAKE_OSX_SDKS_DIR}/MacOSX${_CURRENT_OSX_VERSION}.sdk")
 
 IF(_CURRENT_OSX_VERSION STREQUAL "10.4")
   SET(CMAKE_OSX_SYSROOT_DEFAULT
-    "${OSX_DEVELOPER_ROOT}/SDKs/MacOSX10.4u.sdk")
+    "${_CMAKE_OSX_SDKS_DIR}/MacOSX10.4u.sdk")
 ENDIF(_CURRENT_OSX_VERSION STREQUAL "10.4")
 
 IF(_CURRENT_OSX_VERSION STREQUAL "10.3")
   SET(CMAKE_OSX_SYSROOT_DEFAULT
-    "${OSX_DEVELOPER_ROOT}/SDKs/MacOSX10.3.9.sdk")
+    "${_CMAKE_OSX_SDKS_DIR}/MacOSX10.3.9.sdk")
 ENDIF(_CURRENT_OSX_VERSION STREQUAL "10.3")
 
 # Use environment or default as initial cache value:
@@ -232,10 +241,22 @@ SET(CMAKE_SYSTEM_FRAMEWORK_PATH
 # default to searching for application bundles first
 SET(CMAKE_FIND_APPBUNDLE FIRST)
 # set up the default search directories for application bundles
+SET(_apps_paths)
+FOREACH(_path
+  "~/Applications"
+  "/Applications"
+  "${OSX_DEVELOPER_ROOT}/../Applications" # Xcode 4.3+
+  "${OSX_DEVELOPER_ROOT}/Applications"    # pre-4.3
+  )
+  GET_FILENAME_COMPONENT(_apps "${_path}" ABSOLUTE)
+  IF(EXISTS "${_apps}")
+    LIST(APPEND _apps_paths "${_apps}")
+  ENDIF()
+ENDFOREACH()
+LIST(REMOVE_DUPLICATES _apps_paths)
 SET(CMAKE_SYSTEM_APPBUNDLE_PATH
-  ~/Applications
-  /Applications
-  /Developer/Applications)
+  ${_apps_paths})
+UNSET(_apps_paths)
 
 INCLUDE(Platform/UnixPaths)
 LIST(APPEND CMAKE_SYSTEM_PREFIX_PATH

@@ -248,6 +248,10 @@ cmComputeLinkInformation
   this->GlobalGenerator = this->LocalGenerator->GetGlobalGenerator();
   this->CMakeInstance = this->GlobalGenerator->GetCMakeInstance();
 
+  // Check whether to recognize OpenBSD-style library versioned names.
+  this->OpenBSD = this->Makefile->GetCMakeInstance()
+    ->GetPropertyAsBool("FIND_LIBRARY_USE_OPENBSD_VERSIONING");
+
   // The configuration being linked.
   this->Config = config;
 
@@ -973,7 +977,15 @@ cmComputeLinkInformation
     }
 
   // Finish the list.
-  libext += ")$";
+  libext += ")";
+
+  // Add an optional OpenBSD version component.
+  if(this->OpenBSD)
+    {
+    libext += "(\\.[0-9]+\\.[0-9]+)?";
+    }
+
+  libext += "$";
   return libext;
 }
 
@@ -1760,6 +1772,7 @@ void cmComputeLinkInformation::GetRPath(std::vector<std::string>& runtimeDirs,
      !linking_for_install);
   bool use_link_rpath =
     outputRuntime && linking_for_install &&
+    !this->Makefile->IsOn("CMAKE_SKIP_INSTALL_RPATH") &&
     this->Target->GetPropertyAsBool("INSTALL_RPATH_USE_LINK_PATH");
 
   // Construct the RPATH.

@@ -41,12 +41,12 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return "install";}
+  virtual const char* GetName() const { return "install";}
 
   /**
    * Succinct documentation.
    */
-  virtual const char* GetTerseDocumentation()
+  virtual const char* GetTerseDocumentation() const
     {
     return "Specify rules to run at install time.";
     }
@@ -54,7 +54,7 @@ public:
   /**
    * More documentation.
    */
-  virtual const char* GetFullDocumentation()
+  virtual const char* GetFullDocumentation() const
     {
     return
       "This command generates installation rules for a project.  "
@@ -168,9 +168,7 @@ public:
       "On non-DLL platforms mySharedLib will be installed to <prefix>/lib "
       "and /some/full/path.  On DLL platforms the mySharedLib DLL will be "
       "installed to <prefix>/bin and /some/full/path and its import library "
-      "will be installed to <prefix>/lib/static and /some/full/path. "
-      "On non-DLL platforms mySharedLib will be installed to <prefix>/lib "
-      "and /some/full/path."
+      "will be installed to <prefix>/lib/static and /some/full/path."
       "\n"
       "The EXPORT option associates the installed target files with an "
       "export called <export-name>.  "

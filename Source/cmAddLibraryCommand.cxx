@@ -31,6 +31,7 @@ bool cmAddLibraryCommand
     }
   bool excludeFromAll = false;
   bool importTarget = false;
+  bool importGlobal = false;
 
   std::vector<std::string>::const_iterator s = args.begin();
 
@@ -63,6 +64,12 @@ bool cmAddLibraryCommand
       type = cmTarget::MODULE_LIBRARY;
       haveSpecifiedType = true;
       }
+    else if(libType == "OBJECT")
+      {
+      ++s;
+      type = cmTarget::OBJECT_LIBRARY;
+      haveSpecifiedType = true;
+      }
     else if(libType == "UNKNOWN")
       {
       ++s;
@@ -78,6 +85,11 @@ bool cmAddLibraryCommand
       {
       ++s;
       importTarget = true;
+      }
+    else if(importTarget && *s == "GLOBAL")
+      {
+      ++s;
+      importGlobal = true;
       }
     else
       {
@@ -112,6 +124,14 @@ bool cmAddLibraryCommand
       this->SetError("called with IMPORTED argument but no library type.");
       return false;
       }
+    if(type == cmTarget::OBJECT_LIBRARY)
+      {
+      this->Makefile->IssueMessage(
+        cmake::FATAL_ERROR,
+        "The OBJECT library type may not be used for IMPORTED libraries."
+        );
+      return true;
+      }
 
     // Make sure the target does not already exist.
     if(this->Makefile->FindTargetToUse(libName.c_str()))
@@ -124,7 +144,7 @@ bool cmAddLibraryCommand
       }
 
     // Create the imported target.
-    this->Makefile->AddImportedTarget(libName.c_str(), type);
+    this->Makefile->AddImportedTarget(libName.c_str(), type, importGlobal);
     return true;
     }
 

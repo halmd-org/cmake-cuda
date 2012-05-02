@@ -501,6 +501,7 @@ void cmExtraEclipseCDT4Generator::CreateLinksForTargets(
         case cmTarget::STATIC_LIBRARY:
         case cmTarget::SHARED_LIBRARY:
         case cmTarget::MODULE_LIBRARY:
+        case cmTarget::OBJECT_LIBRARY:
           {
           const char* prefix = (ti->second.GetType()==cmTarget::EXECUTABLE ?
                                                           "[exe] " : "[lib] ");
@@ -893,9 +894,13 @@ void cmExtraEclipseCDT4Generator::CreateCProjectFile() const
        it != this->GlobalGenerator->GetLocalGenerators().end();
        ++it)
     {
-    const std::vector<std::string>& includeDirs
-      = (*it)->GetMakefile()->GetIncludeDirectories();
-    this->AppendIncludeDirectories(fout, includeDirs, emmited);
+    cmTargets & targets = (*it)->GetMakefile()->GetTargets();
+    for (cmTargets::iterator l = targets.begin(); l != targets.end(); ++l)
+      {
+      std::vector<std::string> includeDirs;
+      (*it)->GetIncludeDirectories(includeDirs, &l->second);
+      this->AppendIncludeDirectories(fout, includeDirs, emmited);
+      }
     }
   // now also the system include directories, in case we found them in
   // CMakeSystemSpecificInformation.cmake. This makes Eclipse find the
@@ -1013,6 +1018,7 @@ void cmExtraEclipseCDT4Generator::CreateCProjectFile() const
        case cmTarget::STATIC_LIBRARY:
        case cmTarget::SHARED_LIBRARY:
        case cmTarget::MODULE_LIBRARY:
+       case cmTarget::OBJECT_LIBRARY:
          {
          const char* prefix = (ti->second.GetType()==cmTarget::EXECUTABLE ?
                                                           "[exe] " : "[lib] ");
@@ -1045,10 +1051,6 @@ void cmExtraEclipseCDT4Generator::CreateCProjectFile() const
           }
          }
          break;
-        // ignore these:
-        case cmTarget::INSTALL_FILES:
-        case cmTarget::INSTALL_PROGRAMS:
-        case cmTarget::INSTALL_DIRECTORY:
         default:
           break;
         }
