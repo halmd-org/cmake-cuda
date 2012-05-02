@@ -354,8 +354,10 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "If true, do not add run time path information.",
      "If this is set to TRUE, then the rpath information "
      "is not added to compiled executables.  The default "
-     "is to add rpath information if the platform supports it."
-     "This allows for easy running from the build tree.",false,
+     "is to add rpath information if the platform supports it.  "
+     "This allows for easy running from the build tree.  To omit RPATH"
+     "in the install step, but not the build step, use "
+     "CMAKE_SKIP_INSTALL_RPATH instead.",false,
      "Variables that Provide Information");
   cm->DefineProperty
     ("CMAKE_SOURCE_DIR", cmProperty::VARIABLE,
@@ -746,6 +748,26 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables That Change Behavior");
 
   cm->DefineProperty
+    ("CMAKE_FIND_PACKAGE_WARN_NO_MODULE", cmProperty::VARIABLE,
+     "Tell find_package to warn if called without an explicit mode.",
+     "If find_package is called without an explicit mode option "
+     "(MODULE, CONFIG or NO_MODULE) and no Find<pkg>.cmake module is "
+     "in CMAKE_MODULE_PATH then CMake implicitly assumes that the "
+     "caller intends to search for a package configuration file.  "
+     "If no package configuration file is found then the wording "
+     "of the failure message must account for both the case that the "
+     "package is really missing and the case that the project has a "
+     "bug and failed to provide the intended Find module.  "
+     "If instead the caller specifies an explicit mode option then "
+     "the failure message can be more specific."
+     "\n"
+     "Set CMAKE_FIND_PACKAGE_WARN_NO_MODULE to TRUE to tell find_package "
+     "to warn when it implicitly assumes Config mode.  "
+     "This helps developers enforce use of an explicit mode in all calls "
+     "to find_package within a project.", false,
+     "Variables That Change Behavior");
+
+  cm->DefineProperty
     ("CMAKE_USER_MAKE_RULES_OVERRIDE", cmProperty::VARIABLE,
      "Specify a CMake file that overrides platform information.",
      "CMake loads the specified file while enabling support for each "
@@ -895,7 +917,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   cm->DefineProperty
     ("BORLAND", cmProperty::VARIABLE,
-     "True of the borland compiler is being used.",
+     "True if the borland compiler is being used.",
      "This is set to true if the Borland compiler is being used.",false,
      "Variables That Describe the System");
 
@@ -1181,6 +1203,20 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables that Control the Build");
 
   cm->DefineProperty
+    ("CMAKE_SKIP_INSTALL_RPATH", cmProperty::VARIABLE,
+     "Do not include RPATHs in the install tree.",
+     "Normally CMake uses the build tree for the RPATH when building "
+     "executables etc on systems that use RPATH. When the software "
+     "is installed the executables etc are relinked by CMake to have "
+     "the install RPATH. If this variable is set to true then the software "
+     "is always installed without RPATH, even if RPATH is enabled when "
+     "building.  This can be useful for example to allow running tests from "
+     "the build directory with RPATH enabled before the installation step.  "
+     "To omit RPATH in both the build and install steps, use "
+     "CMAKE_SKIP_RPATH instead.",false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
     ("CMAKE_EXE_LINKER_FLAGS", cmProperty::VARIABLE,
      "Linker flags used to create executables.",
      "Flags used by the linker when creating an executable.",false,
@@ -1258,6 +1294,22 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "See that target property for additional information.",
      false,
      "Variables that Control the Build");
+  cm->DefineProperty
+    ("CMAKE_WIN32_EXECUTABLE", cmProperty::VARIABLE,
+     "Default value for WIN32_EXECUTABLE of targets.",
+     "This variable is used to initialize the "
+     "WIN32_EXECUTABLE property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+  cm->DefineProperty
+    ("CMAKE_MACOSX_BUNDLE", cmProperty::VARIABLE,
+     "Default value for MACOSX_BUNDLE of targets.",
+     "This variable is used to initialize the "
+     "MACOSX_BUNDLE property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
 
 //   Variables defined when the a language is enabled These variables will
 // also be defined whenever CMake has loaded its support for compiling (LANG)
@@ -1297,6 +1349,15 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
     ("CMAKE_<LANG>_COMPILER_ABI", cmProperty::VARIABLE,
      "An internal variable subject to change.",
      "This is used in determining the compiler ABI and is subject to change.",
+     false,
+     "Variables for Languages");
+
+  cm->DefineProperty
+    ("CMAKE_<LANG>_COMPILER_VERSION", cmProperty::VARIABLE,
+     "An internal variable subject to change.",
+     "Compiler version in major[.minor[.patch[.tweak]]] format.  "
+     "This variable is reserved for internal use by CMake and is not "
+     "guaranteed to be set.",
      false,
      "Variables for Languages");
 

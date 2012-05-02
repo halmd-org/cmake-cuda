@@ -23,6 +23,17 @@ public:
   ~cmFunctionHelperCommand() {};
 
   /**
+   * This is used to avoid including this command
+   * in documentation. This is mainly used by
+   * cmMacroHelperCommand and cmFunctionHelperCommand
+   * which cannot provide appropriate documentation.
+   */
+  virtual bool ShouldAppearInDocumentation() const
+    {
+    return false;
+    }
+
+  /**
    * This is a virtual constructor for the command.
    */
   virtual cmCommand* Clone()
@@ -38,7 +49,7 @@ public:
   /**
    * This determines if the command is invoked when in script mode.
    */
-  virtual bool IsScriptable() { return true; }
+  virtual bool IsScriptable() const { return true; }
 
   /**
    * This is called when the command is first encountered in
@@ -53,12 +64,12 @@ public:
   /**
    * The name of the command as specified in CMakeList.txt.
    */
-  virtual const char* GetName() { return this->Args[0].c_str(); }
+  virtual const char* GetName() const { return this->Args[0].c_str(); }
   
   /**
    * Succinct documentation.
    */
-  virtual const char* GetTerseDocumentation()
+  virtual const char* GetTerseDocumentation() const
   {
     std::string docs = "Function named: ";
     docs += this->GetName();
@@ -68,7 +79,7 @@ public:
   /**
    * More documentation.
    */
-  virtual const char* GetFullDocumentation()
+  virtual const char* GetFullDocumentation() const
   {
     return this->GetTerseDocumentation();
   }

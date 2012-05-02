@@ -59,8 +59,8 @@ class cmTarget
 public:
   cmTarget();
   enum TargetType { EXECUTABLE, STATIC_LIBRARY,
-                    SHARED_LIBRARY, MODULE_LIBRARY, UTILITY, GLOBAL_TARGET,
-                    INSTALL_FILES, INSTALL_PROGRAMS, INSTALL_DIRECTORY,
+                    SHARED_LIBRARY, MODULE_LIBRARY,
+                    OBJECT_LIBRARY, UTILITY, GLOBAL_TARGET,
                     UNKNOWN_LIBRARY};
   static const char* GetTargetTypeName(TargetType targetType);
   enum CustomCommandType { PRE_BUILD, PRE_LINK, POST_BUILD };
@@ -117,6 +117,10 @@ public:
    */
   std::vector<cmSourceFile*> const& GetSourceFiles();
   void AddSourceFile(cmSourceFile* sf);
+  std::vector<std::string> const& GetObjectLibraries() const
+    {
+    return this->ObjectLibraries;
+    }
 
   /** Get sources that must be built before the given source.  */
   std::vector<cmSourceFile*> const* GetSourceDepends(cmSourceFile* sf);
@@ -404,9 +408,6 @@ public:
   // Define the properties
   static void DefineProperties(cmake *cm);
 
-  // Compute the OBJECT_FILES property only when requested
-  void ComputeObjectFiles();
-
   /** Get the macro to define when building sources in this target.
       If no macro should be defined null is returned.  */
   const char* GetExportMacro();
@@ -457,6 +458,9 @@ public:
   /** Return whether this target uses the default value for its output
       directory.  */
   bool UsesDefaultOutputDir(const char* config, bool implib);
+
+  /** Get the include directories for this target.  */
+  std::vector<std::string> GetIncludeDirectories();
 
 private:
   /**
@@ -549,6 +553,7 @@ private:
   std::vector<cmCustomCommand> PostBuildCommands;
   TargetType TargetTypeValue;
   std::vector<cmSourceFile*> SourceFiles;
+  std::vector<std::string> ObjectLibraries;
   LinkLibraryVectorType LinkLibraries;
   LinkLibraryVectorType PrevLinkedLibraries;
   bool LinkLibrariesAnalyzed;
@@ -589,6 +594,8 @@ private:
   void ClearLinkMaps();
 
   void MaybeInvalidatePropertyCache(const char* prop);
+
+  void ProcessSourceExpression(std::string const& expr);
 
   // The cmMakefile instance that owns this target.  This should
   // always be set.

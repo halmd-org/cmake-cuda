@@ -146,8 +146,8 @@ public:
   ///! Append flags to a string.
   virtual void AppendFlags(std::string& flags, const char* newFlags);
   ///! Get the include flags for the current makefile and language
-  const char* GetIncludeFlags(const char* lang,
-                              bool forResponseFile = false);
+  std::string GetIncludeFlags(const std::vector<std::string> &includes,
+                              const char* lang, bool forResponseFile = false);
 
   /**
    * Encode a list of preprocessor definitions for the compiler
@@ -160,15 +160,18 @@ public:
   void AppendFeatureOptions(std::string& flags, const char* lang,
                             const char* feature);
 
-  /** Translate a dependency as given in CMake code to the name to
-      appear in a generated build file.  If the given name is that of
-      a utility target, returns false.  If the given name is that of
-      a CMake target it will be transformed to the real output
-      location of that target for the given configuration.  If the
-      given name is the full path to a file it will be returned.
-      Otherwise the name is treated as a relative path with respect to
-      the source directory of this generator.  This should only be
-      used for dependencies of custom commands.  */
+  /** \brief Get absolute path to dependency \a name
+   *
+   * Translate a dependency as given in CMake code to the name to
+   * appear in a generated build file.
+   * - If \a name is a utility target, returns false.
+   * - If \a name is a CMake target, it will be transformed to the real output
+   *   location of that target for the given configuration.
+   * - If \a name is the full path to a file, it will be returned.
+   * - Otherwise \a name is treated as a relative path with respect to
+   *   the source directory of this generator.  This should only be
+   *   used for dependencies of custom commands.
+   */
   bool GetRealDependency(const char* name, const char* config,
                          std::string& dep);
 
@@ -195,6 +198,7 @@ public:
 
   /** Get the include flags for the current makefile and language.  */
   void GetIncludeDirectories(std::vector<std::string>& dirs,
+                             cmTarget* target,
                              const char* lang = "C");
 
   /** Compute the language used to compile the given source file.  */
@@ -247,7 +251,7 @@ public:
   std::string EscapeForShellOldStyle(const char* str);
 
   /** Escape the given string as an argument in a CMake script.  */
-  std::string EscapeForCMake(const char* str);
+  static std::string EscapeForCMake(const char* str);
 
   enum FortranFormat
     {
@@ -256,14 +260,6 @@ public:
     FortranFormatFree
     };
   FortranFormat GetFortranFormat(const char* value);
-
-  /** Return the directories into which object files will be put.
-   *  There maybe more than one for fat binary systems like OSX.
-   */
-  virtual void
-  GetTargetObjectFileDirectories(cmTarget* target,
-                                 std::vector<std::string>&
-                                 dirs);
 
   /**
    * Convert the given remote path to a relative path with respect to
@@ -392,7 +388,6 @@ protected:
   std::vector<std::string> StartOutputDirectoryComponents;
   cmLocalGenerator* Parent;
   std::vector<cmLocalGenerator*> Children;
-  std::map<cmStdString, cmStdString> LanguageToIncludeFlags;
   std::map<cmStdString, cmStdString> UniqueObjectNamesMap;
   std::string::size_type ObjectPathMax;
   std::set<cmStdString> ObjectMaxPathViolations;

@@ -84,6 +84,10 @@
 #endif
 #include "cmGlobalUnixMakefileGenerator3.h"
 
+#ifdef CMAKE_USE_NINJA
+#  include "cmGlobalNinjaGenerator.h"
+#endif
+
 #if defined(CMAKE_HAVE_VS_GENERATORS)
 #include "cmCallVisualStudioMacro.h"
 #endif
@@ -131,7 +135,7 @@ void cmNeedBackwardsCompatibility(const std::string& variable,
       " that has not been defined. Some variables were always defined "
       "by CMake in versions prior to 1.6. To fix this you might need to set "
       "the cache value of CMAKE_BACKWARDS_COMPATIBILITY to 1.4 or less. If "
-      "you are writing a CMakeList file, (or have already set "
+      "you are writing a CMakeLists file, (or have already set "
       "CMAKE_BACKWARDS_COMPATABILITY to 1.4 or less) then you probably need "
       "to include a CMake module to test for the feature this variable "
       "defines.";
@@ -598,14 +602,10 @@ bool cmake::FindPackage(const std::vector<std::string>& args)
     std::string includes = mf->GetSafeDefinition("PACKAGE_INCLUDE_DIRS");
     std::vector<std::string> includeDirs;
     cmSystemTools::ExpandListArgument(includes, includeDirs);
-    for(std::vector<std::string>::const_iterator dirIt=includeDirs.begin();
-            dirIt != includeDirs.end();
-            ++dirIt)
-      {
-      mf->AddIncludeDirectory(dirIt->c_str(), false);
-      }
 
-    std::string includeFlags = lg->GetIncludeFlags(language.c_str(), false);
+    std::string includeFlags = lg->GetIncludeFlags(includeDirs,
+                                                   language.c_str(), false);
+
     std::string definitions = mf->GetSafeDefinition("PACKAGE_DEFINITIONS");
     printf("%s %s\n", includeFlags.c_str(), definitions.c_str());
     }
@@ -1433,7 +1433,7 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
     // Command to start progress for a build
     else if (args[1] == "cmake_progress_start" && args.size() == 4)
       {
-      // bascially remove the directory
+      // basically remove the directory
       std::string dirName = args[2];
       dirName += "/Progress";
       cmSystemTools::RemoveADirectory(dirName.c_str());
@@ -1930,7 +1930,7 @@ void cmake::SetGlobalGenerator(cmGlobalGenerator *gg)
     {
     delete this->GlobalGenerator;
     // restore the original environment variables CXX and CC
-    // Restor CC
+    // Restore CC
     std::string env = "CC=";
     if(this->CCEnvironment.size())
       {
@@ -2126,32 +2126,8 @@ int cmake::Configure()
 
 }
 
-bool cmake::RejectUnsupportedPaths(const char* desc, std::string const& path)
-{
-  // Some characters are not well-supported by native build systems.
-  std::string::size_type pos = path.find_first_of("=");
-  if(pos == std::string::npos)
-    {
-    return false;
-    }
-  cmOStringStream e;
-  e << "The path to the " << desc << " directory:\n"
-    << "  " << path << "\n"
-    << "contains unsupported character '" << path[pos] << "'.\n"
-    << "Please use a different " << desc << " directory name.";
-  cmListFileBacktrace bt;
-  this->IssueMessage(cmake::FATAL_ERROR, e.str(), bt);
-  return true;
-}
-
 int cmake::ActualConfigure()
 {
-  if(this->RejectUnsupportedPaths("source", this->cmHomeDirectory) ||
-     this->RejectUnsupportedPaths("binary", this->HomeOutputDirectory))
-    {
-    return 1;
-    }
-
   // Construct right now our path conversion table before it's too late:
   this->UpdateConversionPathTable();
   this->CleanupCommandsAndMacros();
@@ -2204,8 +2180,11 @@ int cmake::ActualConfigure()
       std::string installedCompiler;
       // Try to find the newest VS installed on the computer and
       // use that as a default if -G is not specified
-      std::string vsregBase =
-        "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\";
+      const std::string vsregBase =
+        "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\";
+      std::vector<std::string> vsVerions;
+      vsVerions.push_back("VisualStudio\\");
+      vsVerions.push_back("VCExpress\\");
       struct VSRegistryEntryName
       {
         const char* MSVersion;
@@ -2219,14 +2198,18 @@ int cmake::ActualConfigure()
         {"9.0", "Visual Studio 9 2008"},
         {"10.0", "Visual Studio 10"},
         {0, 0}};
-      for(int i =0; version[i].MSVersion != 0; i++)
+      for(size_t b=0; b < vsVerions.size() && installedCompiler.empty(); b++)
         {
-        std::string reg = vsregBase + version[i].MSVersion;
-        reg += ";InstallDir]";
-        cmSystemTools::ExpandRegistryValues(reg);
-        if (!(reg == "/registry"))
+        for(int i =0; version[i].MSVersion != 0; i++)
           {
-          installedCompiler = version[i].GeneratorName;
+          std::string reg = vsregBase + vsVerions[b] + version[i].MSVersion;
+          reg += ";InstallDir]";
+          cmSystemTools::ExpandRegistryValues(reg,
+                                              cmSystemTools::KeyWOW64_32);
+          if (!(reg == "/registry"))
+            {
+            installedCompiler = version[i].GeneratorName;
+            }
           }
         }
       cmGlobalGenerator* gen
@@ -2614,6 +2597,10 @@ void cmake::AddDefaultGenerators()
 #endif
   this->Generators[cmGlobalUnixMakefileGenerator3::GetActualName()] =
     &cmGlobalUnixMakefileGenerator3::New;
+#ifdef CMAKE_USE_NINJA
+  this->Generators[cmGlobalNinjaGenerator::GetActualName()] =
+    &cmGlobalNinjaGenerator::New;
+#endif
 #ifdef CMAKE_USE_XCODE
   this->Generators[cmGlobalXCodeGenerator::GetActualName()] =
     &cmGlobalXCodeGenerator::New;
@@ -2625,7 +2612,7 @@ int cmake::LoadCache()
   // could we not read the cache
   if (!this->CacheManager->LoadCache(this->GetHomeOutputDirectory()))
     {
-    // if it does exist, but isn;t readable then warn the user
+    // if it does exist, but isn't readable then warn the user
     std::string cacheFile = this->GetHomeOutputDirectory();
     cacheFile += "/CMakeCache.txt";
     if(cmSystemTools::FileExists(cacheFile.c_str()))
@@ -2677,7 +2664,9 @@ void cmake::GetCommandDocumentation(std::vector<cmDocumentationEntry>& v,
       j != this->Commands.end(); ++j)
     {
     if (((  withCompatCommands == false) && ( (*j).second->IsDiscouraged()))
-        || ((withCurrentCommands == false) && (!(*j).second->IsDiscouraged())))
+        || ((withCurrentCommands == false) && (!(*j).second->IsDiscouraged()))
+        || (!((*j).second->ShouldAppearInDocumentation()))
+        )
       {
       continue;
       }
@@ -3384,19 +3373,21 @@ void cmake::DefineProperties(cmake *cm)
   cm->DefineProperty
     ("ENABLED_FEATURES", cmProperty::GLOBAL,
      "List of features which are enabled during the CMake run.",
-     "List of features which are enabled during the CMake run. Be default "
+     "List of features which are enabled during the CMake run. By default "
      "it contains the names of all packages which were found. This is "
      "determined using the <NAME>_FOUND variables. Packages which are "
      "searched QUIET are not listed. A project can add its own features to "
-     "this list.This property is used by the macros in FeatureSummary.cmake.");
+     "this list. "
+     "This property is used by the macros in FeatureSummary.cmake.");
   cm->DefineProperty
     ("DISABLED_FEATURES", cmProperty::GLOBAL,
      "List of features which are disabled during the CMake run.",
-     "List of features which are disabled during the CMake run. Be default "
+     "List of features which are disabled during the CMake run. By default "
      "it contains the names of all packages which were not found. This is "
      "determined using the <NAME>_FOUND variables. Packages which are "
      "searched QUIET are not listed. A project can add its own features to "
-     "this list.This property is used by the macros in FeatureSummary.cmake.");
+     "this list. "
+     "This property is used by the macros in FeatureSummary.cmake.");
   cm->DefineProperty
     ("PACKAGES_FOUND", cmProperty::GLOBAL,
      "List of packages which were found during the CMake run.",

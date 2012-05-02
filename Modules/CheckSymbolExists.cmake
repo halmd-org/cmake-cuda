@@ -35,6 +35,9 @@
 # (To distribute this file outside of CMake, substitute the full
 #  License text for the above reference.)
 
+INCLUDE("${CMAKE_CURRENT_LIST_DIR}/CMakeExpandImportedTargets.cmake")
+
+
 MACRO(CHECK_SYMBOL_EXISTS SYMBOL FILES VARIABLE)
   _CHECK_SYMBOL_EXISTS("${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp/CheckSymbolExists.c" "${SYMBOL}" "${FILES}" "${VARIABLE}" )
 ENDMACRO(CHECK_SYMBOL_EXISTS)
@@ -44,8 +47,10 @@ MACRO(_CHECK_SYMBOL_EXISTS SOURCEFILE SYMBOL FILES VARIABLE)
     SET(CMAKE_CONFIGURABLE_FILE_CONTENT "/* */\n")
     SET(MACRO_CHECK_SYMBOL_EXISTS_FLAGS ${CMAKE_REQUIRED_FLAGS})
     IF(CMAKE_REQUIRED_LIBRARIES)
+      # this one translates potentially used imported library targets to their files on disk
+      CMAKE_EXPAND_IMPORTED_TARGETS(_ADJUSTED_CMAKE_REQUIRED_LIBRARIES  LIBRARIES  ${CMAKE_REQUIRED_LIBRARIES} CONFIGURATION "${CMAKE_TRY_COMPILE_CONFIGURATION}")
       SET(CHECK_SYMBOL_EXISTS_LIBS
-        "-DLINK_LIBRARIES:STRING=${CMAKE_REQUIRED_LIBRARIES}")
+        "-DLINK_LIBRARIES:STRING=${_ADJUSTED_CMAKE_REQUIRED_LIBRARIES}")
     ELSE(CMAKE_REQUIRED_LIBRARIES)
       SET(CHECK_SYMBOL_EXISTS_LIBS)
     ENDIF(CMAKE_REQUIRED_LIBRARIES)
@@ -60,7 +65,7 @@ MACRO(_CHECK_SYMBOL_EXISTS SOURCEFILE SYMBOL FILES VARIABLE)
         "${CMAKE_CONFIGURABLE_FILE_CONTENT}#include <${FILE}>\n")
     ENDFOREACH(FILE)
     SET(CMAKE_CONFIGURABLE_FILE_CONTENT
-      "${CMAKE_CONFIGURABLE_FILE_CONTENT}\nvoid cmakeRequireSymbol(int dummy,...){(void)dummy;}\nint main()\n{\n#ifndef ${SYMBOL}\n  cmakeRequireSymbol(0,&${SYMBOL});\n#endif\n  return 0;\n}\n")
+      "${CMAKE_CONFIGURABLE_FILE_CONTENT}\nint main(int argc, char** argv)\n{\n  (void)argv;\n#ifndef ${SYMBOL}\n  return ((int*)(&${SYMBOL}))[argc];\n#else\n  (void)argc;\n  return 0;\n#endif\n}\n")
 
     CONFIGURE_FILE("${CMAKE_ROOT}/Modules/CMakeConfigurableFile.in"
       "${SOURCEFILE}" @ONLY IMMEDIATE)

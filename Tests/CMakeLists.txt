@@ -16,6 +16,11 @@ MACRO(ADD_TEST_MACRO NAME COMMAND)
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/${dir}")
 ENDMACRO(ADD_TEST_MACRO)
 
+MACRO(REGEX_ESCAPE_STRING _OUT _IN)
+    # Escape special regex metacharacters with a backslash
+    string(REGEX REPLACE "([$^.[|*+?()]|])" "\\\\\\1" ${_OUT} "${_IN}")
+ENDMACRO(REGEX_ESCAPE_STRING _OUT _IN)
+
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CheckFortran.cmake)
 
 # Fake a user home directory to avoid polluting the real one.
@@ -47,6 +52,8 @@ IF(BUILD_TESTING)
   ENDIF()
 
   ADD_SUBDIRECTORY(CMakeLib)
+  ADD_SUBDIRECTORY(CMakeOnly)
+  ADD_SUBDIRECTORY(RunCMake)
 
   ADD_SUBDIRECTORY(FindPackageModeMakefileTest)
 
@@ -162,10 +169,37 @@ IF(BUILD_TESTING)
   IF(CMAKE_Fortran_COMPILER)
     ADD_TEST_MACRO(FortranOnly FortranOnly)
   ENDIF()
+  # test Visual Studio GNU Fortran mixing with cmake_add_fortran_subdirectory
+  # run this project if we have a working fortran compiler or
+  # the test is enabled with CMAKE_TEST_CMAKE_ADD_FORTRAN cache variable.
+  # If you enable the test, CMake should find the MinGW fortran install,
+  # or in some cases you might need to set the PATH so that cmake can find
+  # the gfortran from mingw.
+  IF(CMAKE_Fortran_COMPILER OR CMAKE_TEST_CMAKE_ADD_FORTRAN)
+    SET(CMAKE_SKIP_VSGNUFortran FALSE)
+    # disable test for apple builds using ifort if they are building
+    # more than one architecture, as ifort does not support that.
+    IF(APPLE AND (CMAKE_Fortran_COMPILER MATCHES ifort))
+      LIST(LENGTH CMAKE_OSX_ARCHITECTURES len)
+      IF("${len}" GREATER 1)
+        MESSAGE(STATUS "Skip VSGNUFortran for ifort dual cpu mac build")
+        SET(CMAKE_SKIP_VSGNUFortran TRUE)
+      ENDIF()
+    ENDIF()
+    IF((CMAKE_C_COMPILER MATCHES lsb)
+        AND (CMAKE_Fortran_COMPILER MATCHES ifort))
+      MESSAGE(STATUS "Skip VSGNUFortran for ifort and lsb compilers")
+      SET(CMAKE_SKIP_VSGNUFortran TRUE)
+    ENDIF()
+    IF(NOT CMAKE_SKIP_VSGNUFortran)
+      ADD_TEST_MACRO(VSGNUFortran ${CMAKE_COMMAND} -P runtest.cmake)
+    ENDIF()
+  ENDIF()
   ADD_TEST_MACRO(COnly COnly)
   ADD_TEST_MACRO(CxxOnly CxxOnly)
   ADD_TEST_MACRO(IPO COnly/COnly)
   ADD_TEST_MACRO(OutDir runtime/OutDir)
+  ADD_TEST_MACRO(ObjectLibrary UseCshared)
   ADD_TEST_MACRO(NewlineArgs NewlineArgs)
   ADD_TEST_MACRO(SetLang SetLang)
   ADD_TEST_MACRO(ExternalOBJ ExternalOBJ)
@@ -200,12 +234,35 @@ IF(BUILD_TESTING)
 
   LIST(APPEND TEST_BUILD_DIRS ${CMake_TEST_INSTALL_PREFIX})
 
+  IF(NOT QT4_FOUND)
+    FIND_PACKAGE(Qt4)
+  ENDIF(NOT QT4_FOUND)
+
+  IF(QT4_FOUND)
+    # test whether the Qt4 which has been found works, on some machines
+    # which run nightly builds there were errors like "wrong file format"
+    # for libQtCore.so. So first check it works, and only if it does add
+    # the automoc test.
+    INCLUDE(CheckCXXSourceCompiles)
+    SET(_save_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
+    SET(_save_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
+
+    SET(CMAKE_REQUIRED_INCLUDES ${QT_INCLUDES})
+    SET(CMAKE_REQUIRED_LIBRARIES ${QT_QTCORE_LIBRARIES})
+
+    CHECK_CXX_SOURCE_COMPILES("#include <QCoreApplication>\n int main() {return (qApp == 0 ? 0 : 1); }\n"
+                              QT4_WORKS)
+
+    SET(CMAKE_REQUIRED_INCLUDES "${_save_CMAKE_REQUIRED_INCLUDES}")
+    SET(CMAKE_REQUIRED_LIBRARIES "${_save_CMAKE_REQUIRED_LIBRARIES}")
+  ENDIF()
 
   # run test for BundleUtilities on supported platforms/compilers
   if(MSVC OR
      CMAKE_SYSTEM_NAME MATCHES "Linux" OR
      CMAKE_SYSTEM_NAME MATCHES "Darwin")
   if(NOT "${CMAKE_TEST_GENERATOR}" STREQUAL "Watcom WMake")
+
     ADD_TEST(BundleUtilities ${CMAKE_CTEST_COMMAND}
       --build-and-test
       "${CMake_SOURCE_DIR}/Tests/BundleUtilities"
@@ -215,6 +272,24 @@ IF(BUILD_TESTING)
       --build-project BundleUtilities
       )
     LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleUtilities")
+
+    # run test for DeployQt4 on supported platforms/compilers (which depends on BundleUtilities)
+    # this test also depends on the existence of the standard qtiff plugin
+    if(QT4_WORKS AND QT_QTSQL_FOUND)
+      ADD_TEST(Qt4Deploy ${CMAKE_CTEST_COMMAND}
+        --build-and-test
+        "${CMake_SOURCE_DIR}/Tests/Qt4Deploy"
+        "${CMake_BINARY_DIR}/Tests/Qt4Deploy"
+        --build-generator ${CMAKE_TEST_GENERATOR}
+        --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+        --build-project Qt4Deploy
+        --build-options
+        -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+        -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
+        )
+      LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Qt4Deploy")
+    endif()
+
   endif()
   endif()
 
@@ -239,8 +314,6 @@ IF(BUILD_TESTING)
   ADD_TEST_MACRO(Module.CheckTypeSize CheckTypeSize)
 
   ADD_TEST_MACRO(Module.GenerateExportHeader GenerateExportHeader)
-
-  ADD_TEST_MACRO(Module.CheckCXXCompilerFlag CheckCXXCompilerFlag)
 
   ADD_TEST(LinkFlags-prepare
     ${CMAKE_CTEST_COMMAND} -C \${CTEST_CONFIGURATION_TYPE}
@@ -335,6 +408,15 @@ IF(BUILD_TESTING)
       --build-target car
       --test-command car
       )
+
+    IF(${CMAKE_TEST_GENERATOR} MATCHES "Ninja")
+      # The Ninja generator does not create a recursive build system.  Start
+      # from the root directory.
+      SET(SubProject_SUBDIR)
+    ELSE()
+      SET(SubProject_SUBDIR "/foo")
+    ENDIF()
+
     # For stage 2, do not run cmake again.
     # Then build the foo sub project which should build
     # the bar library which should be referenced because
@@ -342,13 +424,14 @@ IF(BUILD_TESTING)
     # directly in the foo sub project
     ADD_TEST(SubProject-Stage2  ${CMAKE_CTEST_COMMAND}
       --build-and-test
-      "${CMake_SOURCE_DIR}/Tests/SubProject/foo"
-      "${CMake_BINARY_DIR}/Tests/SubProject/foo"
+      "${CMake_SOURCE_DIR}/Tests/SubProject${SubProject_SUBDIR}"
+      "${CMake_BINARY_DIR}/Tests/SubProject${SubProject_SUBDIR}"
       --build-generator ${CMAKE_TEST_GENERATOR}
       --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
       --build-nocmake
       --build-project foo
       --build-target foo
+      --build-exe-dir "${CMake_BINARY_DIR}/Tests/SubProject/foo"
       --test-command foo
       )
     SET_TESTS_PROPERTIES ( SubProject-Stage2 PROPERTIES DEPENDS SubProject)
@@ -560,6 +643,14 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   set(CTEST_package_X11_TEST ${CTEST_TEST_CPACK})
   set(CTEST_RUN_CPackComponentsForAll ${CTEST_TEST_CPACK})
 
+  if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+    find_program(RPMBUILD NAMES rpmbuild)
+  endif(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+  # Do not try to build RPM
+  if (NOT RPMBUILD)
+    set(CPACK_BINARY_RPM OFF)
+  endif(NOT RPMBUILD)
+
   find_program(NSIS_MAKENSIS_EXECUTABLE NAMES makensis
     PATHS [HKEY_LOCAL_MACHINE\\SOFTWARE\\NSIS]
     DOC "makensis program location"
@@ -766,77 +857,36 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     )
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/LoadCommandOneConfig")
 
-  # Como does not seem to support shared libraries.
-  GET_FILENAME_COMPONENT(CMAKE_BASE_NAME ${CMAKE_CXX_COMPILER} NAME_WE)
-  IF(CMAKE_BASE_NAME MATCHES "^como$")
-    SET(COMPILER_IS_COMO 1)
-  ENDIF(CMAKE_BASE_NAME MATCHES "^como$")
-  IF(NOT COMPILER_IS_COMO)
-    SET(COMPLEX_TEST_CMAKELIB 1)
-    IF(CMAKE_TEST_DIFFERENT_GENERATOR OR CMAKE_TEST_SYSTEM_LIBRARIES)
-      SET(COMPLEX_TEST_CMAKELIB 0)
-    ENDIF(CMAKE_TEST_DIFFERENT_GENERATOR OR CMAKE_TEST_SYSTEM_LIBRARIES)
-    IF(BORLAND)
-      SET(COMPLEX_TEST_CMAKELIB 0)
-    ENDIF(BORLAND)
-    ADD_TEST(complex  ${CMAKE_CTEST_COMMAND}
-      --build-and-test
-      "${CMake_SOURCE_DIR}/Tests/Complex"
-      "${CMake_BINARY_DIR}/Tests/Complex"
-      --build-two-config
-      --build-config-sample "${CMAKE_CTEST_COMMAND}"
-      --build-generator ${CMAKE_TEST_GENERATOR}
-      --build-project Complex
-      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-      --build-exe-dir "${CMake_BINARY_DIR}/Tests/Complex/bin"
-      --build-options
-      -DCOMPLEX_TEST_CMAKELIB:BOOL=${COMPLEX_TEST_CMAKELIB}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-      --test-command complex
-      )
-    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Complex")
+  ADD_TEST(complex  ${CMAKE_CTEST_COMMAND}
+    --build-and-test
+    "${CMake_SOURCE_DIR}/Tests/Complex"
+    "${CMake_BINARY_DIR}/Tests/Complex"
+    --build-two-config
+    --build-config-sample "${CMAKE_CTEST_COMMAND}"
+    --build-generator ${CMAKE_TEST_GENERATOR}
+    --build-project Complex
+    --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+    --build-exe-dir "${CMake_BINARY_DIR}/Tests/Complex/bin"
+    --build-options
+    -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+    --test-command complex
+    )
+  LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Complex")
 
-    ADD_TEST(complexOneConfig  ${CMAKE_CTEST_COMMAND}
-      --build-and-test
-      "${CMake_SOURCE_DIR}/Tests/ComplexOneConfig"
-      "${CMake_BINARY_DIR}/Tests/ComplexOneConfig"
-      --build-generator ${CMAKE_TEST_GENERATOR}
-      --build-project Complex
-      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-      --build-exe-dir "${CMake_BINARY_DIR}/Tests/ComplexOneConfig/bin"
-      --build-options
-      -DCOMPLEX_TEST_CMAKELIB:BOOL=${COMPLEX_TEST_CMAKELIB}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-      --test-command complex)
-    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/ComplexOneConfig")
-    # because of the registry write these tests depend on each other
-    SET_TESTS_PROPERTIES ( complex PROPERTIES DEPENDS complexOneConfig)
-
-# This fails on VS 70
-# works on Xcode and makefiles
-#      ADD_TEST(ConvLibrary ${CMAKE_CTEST_COMMAND}
-#        --build-and-test
-#        "${CMake_SOURCE_DIR}/Tests/ConvLibrary"
-#        "${CMake_BINARY_DIR}/Tests/ConvLibrary"
-#        --build-two-config
-#        --build-generator ${CMAKE_TEST_GENERATOR}
-#        --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-#        --build-project ConvLibrary
-#        --test-command bartest)
-
-
-#    ADD_TEST(complexRelativePaths  ${CMAKE_CTEST_COMMAND}
-#      --build-and-test
-#      "${CMake_SOURCE_DIR}/Tests/ComplexRelativePaths"
-#      "${CMake_BINARY_DIR}/Tests/ComplexRelativePaths"
-#      --build-generator ${CMAKE_TEST_GENERATOR}
-#      --build-project complex
-#      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-#      --build-exe-dir "${CMake_BINARY_DIR}/Tests/ComplexRelativePaths/bin"
-#      --build-options -DCMAKE_USE_RELATIVE_PATHS:BOOL=ON
-#      --test-command complex)
-
-  ENDIF(NOT COMPILER_IS_COMO)
+  ADD_TEST(complexOneConfig  ${CMAKE_CTEST_COMMAND}
+    --build-and-test
+    "${CMake_SOURCE_DIR}/Tests/ComplexOneConfig"
+    "${CMake_BINARY_DIR}/Tests/ComplexOneConfig"
+    --build-generator ${CMAKE_TEST_GENERATOR}
+    --build-project Complex
+    --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+    --build-exe-dir "${CMake_BINARY_DIR}/Tests/ComplexOneConfig/bin"
+    --build-options
+    -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+    --test-command complex)
+  LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/ComplexOneConfig")
+  # because of the registry write these tests depend on each other
+  SET_TESTS_PROPERTIES ( complex PROPERTIES DEPENDS complexOneConfig)
 
   ADD_TEST(Example ${CMAKE_CTEST_COMMAND}
     --build-and-test
@@ -863,43 +913,20 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     )
   LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Environment")
 
-  IF(NOT QT4_FOUND)
-    FIND_PACKAGE(Qt4)
-  ENDIF(NOT QT4_FOUND)
-
-  IF(QT4_FOUND)
-    # test whether the Qt4 which has been found works, on some machines
-    # which run nightly builds there were errors like "wrong file format"
-    # for libQtCore.so. So first check it works, and only if it does add
-    # the automoc test.
-    INCLUDE(CheckCXXSourceCompiles)
-    SET(_save_CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES}")
-    SET(_save_CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES}")
-
-    SET(CMAKE_REQUIRED_INCLUDES ${QT_INCLUDES})
-    SET(CMAKE_REQUIRED_LIBRARIES ${QT_QTCORE_LIBRARIES})
-
-    CHECK_CXX_SOURCE_COMPILES("#include <QCoreApplication>\n int main() {return (qApp == 0 ? 0 : 1); }\n"
-                              QT4_WORKS_FOR_AUTOMOC_TEST)
-
-    SET(CMAKE_REQUIRED_INCLUDES "${_save_CMAKE_REQUIRED_INCLUDES}")
-    SET(CMAKE_REQUIRED_LIBRARIES "${_save_CMAKE_REQUIRED_LIBRARIES}")
-
-    IF(QT4_WORKS_FOR_AUTOMOC_TEST)
-      ADD_TEST(QtAutomoc ${CMAKE_CTEST_COMMAND}
-        --build-and-test
-        "${CMake_SOURCE_DIR}/Tests/QtAutomoc"
-        "${CMake_BINARY_DIR}/Tests/QtAutomoc"
-        --build-generator ${CMAKE_TEST_GENERATOR}
-        --build-project QtAutomoc
-        --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-        --build-exe-dir "${CMake_BINARY_DIR}/Tests/QtAutomoc"
-        --force-new-ctest-process
-        --build-options -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
-        --test-command ${CMAKE_CTEST_COMMAND} -V
-        )
-      LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/QtAutomoc")
-    ENDIF()
+  IF(QT4_WORKS AND QT_QTGUI_FOUND)
+    ADD_TEST(QtAutomoc ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/QtAutomoc"
+      "${CMake_BINARY_DIR}/Tests/QtAutomoc"
+      --build-generator ${CMAKE_TEST_GENERATOR}
+      --build-project QtAutomoc
+      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+      --build-exe-dir "${CMake_BINARY_DIR}/Tests/QtAutomoc"
+      --force-new-ctest-process
+      --build-options -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
+      --test-command ${CMAKE_CTEST_COMMAND} -V
+      )
+    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/QtAutomoc")
   ENDIF()
 
   ADD_TEST(ExternalProject ${CMAKE_CTEST_COMMAND}
@@ -1322,6 +1349,10 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   endif()
 
   IF(${CMAKE_TEST_GENERATOR} MATCHES "Visual Studio")
+    IF(NOT MSVC60)
+      ADD_TEST_MACRO(SBCS SBCS)
+    ENDIF(NOT MSVC60)
+
     ADD_TEST(VSExternalInclude ${CMAKE_CTEST_COMMAND}
       --build-and-test
       "${CMake_SOURCE_DIR}/Tests/VSExternalInclude"
@@ -1654,9 +1685,10 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     -S "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir1/test1.cmake" -V
     --output-log "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir1/testOut1.log"
     )
+  REGEX_ESCAPE_STRING(CTEST_TEST_ESCAPED_SOURCE_DIR "${CMake_SOURCE_DIR}")
   SET_TESTS_PROPERTIES(CTestTestConfigFileInBuildDir1 PROPERTIES DEPENDS CTestTestNoBuild
     PASS_REGULAR_EXPRESSION
-      "Reading ctest configuration file: ${CMake_SOURCE_DIR}.Tests.CTestTestConfigFileInBuildDir.CTestConfig.cmake")
+      "Reading ctest configuration file: ${CTEST_TEST_ESCAPED_SOURCE_DIR}.Tests.CTestTestConfigFileInBuildDir.CTestConfig.cmake")
 
   CONFIGURE_FILE(
     "${CMake_SOURCE_DIR}/Tests/CTestTestConfigFileInBuildDir/test2.cmake.in"
@@ -1670,10 +1702,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     -S "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/test2.cmake" -V
     --output-log "${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/testOut2.log"
     )
+  REGEX_ESCAPE_STRING(CTEST_TEST_ESCAPED_BINARY_DIR "${CMake_BINARY_DIR}")
   SET_TESTS_PROPERTIES(CTestTestConfigFileInBuildDir2 PROPERTIES DEPENDS CTestTestNoBuild
     REQUIRED_FILES ${CMake_BINARY_DIR}/Tests/CTestTestConfigFileInBuildDir2/CTestConfig.cmake
     PASS_REGULAR_EXPRESSION
-      "Reading ctest configuration file: ${CMake_BINARY_DIR}.Tests.CTestTestConfigFileInBuildDir2.CTestConfig.cmake")
+      "Reading ctest configuration file: ${CTEST_TEST_ESCAPED_BINARY_DIR}.Tests.CTestTestConfigFileInBuildDir2.CTestConfig.cmake")
 
   # Use macro, not function so that build can still be driven by CMake 2.4.
   # After 2.6 is required, this could be a function without the extra 'set'
@@ -1710,13 +1743,6 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   add_config_tests(MinSizeRel)
   add_config_tests(Release)
   add_config_tests(RelWithDebInfo)
-
-  add_test(CMakeCommands.build_command ${CMAKE_CMAKE_COMMAND}
-    -DCMake_SOURCE_DIR=${CMake_SOURCE_DIR}
-    -Ddir=${CMake_BINARY_DIR}/Tests/CMakeCommands/build_command
-    -Dgen=${CMAKE_TEST_GENERATOR}
-    -P "${CMake_SOURCE_DIR}/Tests/CMakeCommands/build_command/RunCMake.cmake"
-  )
 
   ADD_TEST_MACRO(CMakeCommands.target_link_libraries target_link_libraries)
 

@@ -34,6 +34,7 @@ public:
   virtual ~cmLocalVisualStudio6Generator();
 
   virtual void AddHelperCommands();
+  virtual void AddCMakeListsRules();
 
   /**
    * Generate the makefile for this directory. 
@@ -50,9 +51,7 @@ public:
   void SetBuildType(BuildType, const char* libName, cmTarget&);
 
   virtual std::string GetTargetDirectory(cmTarget const& target) const;
-  void GetTargetObjectFileDirectories(cmTarget* target,
-                                      std::vector<std::string>& 
-                                      dirs);
+  virtual std::string ComputeLongestObjectDirectory(cmTarget&) const;
 private:
   std::string DSPHeaderTemplate;
   std::string DSPFooterTemplate;
@@ -89,7 +88,9 @@ private:
   void ComputeLinkOptions(cmTarget& target, const char* configName,
                           const std::string extraOptions,
                           std::string& options);
-  std::string IncludeOptions;
+  void OutputObjects(cmTarget& target, const char* tool,
+                     std::string& options);
+  std::string GetTargetIncludeOptions(cmTarget &target);
   std::vector<std::string> Configurations;
 
   std::string GetConfigName(std::string const& configuration) const;

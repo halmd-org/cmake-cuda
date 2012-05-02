@@ -354,6 +354,20 @@ function (interrogate_mpi_compiler lang try_libs)
         # Extract the set of libraries to link against from the link command
         # line
         string(REGEX MATCHALL "(^| )-l([^\" ]+|\"[^\"]+\")" MPI_LIBNAMES "${MPI_LINK_CMDLINE}")
+        # add the compiler implicit directories because some compilers
+        # such as the intel compiler have libraries that show up
+        # in the showme list that can only be found in the implicit
+        # link directories of the compiler. Do this for C++ and C
+        # compilers if the implicit link directories are defined.
+        if (DEFINED CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES)
+          set(MPI_LINK_PATH
+            "${MPI_LINK_PATH};${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
+        endif ()
+
+        if (DEFINED CMAKE_C_IMPLICIT_LINK_DIRECTORIES)
+          set(MPI_LINK_PATH
+            "${MPI_LINK_PATH};${CMAKE_C_IMPLICIT_LINK_DIRECTORIES}")
+        endif ()
 
         # Determine full path names for all of the libraries that one needs
         # to link against in an MPI program
@@ -413,7 +427,7 @@ function (interrogate_mpi_compiler lang try_libs)
           HINTS         ${_MPI_BASE_DIR} ${_MPI_PREFIX_PATH}
           PATH_SUFFIXES lib)
         if (MPI_LIBRARIES_WORK AND MPI_LIB)
-          set(MPI_LIBRARIES_WORK "${MPI_LIBRARIES_WORK} ${MPI_LIB}")
+          list(APPEND MPI_LIBRARIES_WORK ${MPI_LIB})
         endif()
       endif()
 
