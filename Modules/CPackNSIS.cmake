@@ -31,18 +31,34 @@
 ##end
 #
 ##variable
-#   CPACK_NSIS_EXTRA_INSTALL_COMMANDS - Extra NSIS commands that will
-#   be added to the install Section.
+#   CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS - Extra NSIS commands that
+#   will be added to the beginning of the install Section, before your
+#   install tree is available on the target system.
+##end
+#
+##variable
+#   CPACK_NSIS_EXTRA_INSTALL_COMMANDS - Extra NSIS commands that
+#   will be added to the end of the install Section, after your
+#   install tree is available on the target system.
 ##end
 #
 ##variable
 #   CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS - Extra NSIS commands that will
-#   be added to the uninstall Section.
+#   be added to the uninstall Section, before your install tree is
+#   removed from the target system.
 ##end
 #
 ##variable
 #   CPACK_NSIS_COMPRESSOR - The arguments that will be passed to the
 #   NSIS SetCompressor command.
+##end
+#
+##variable
+#   CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL - Ask about uninstalling
+#   previous versions first.
+#   If this is set to "ON", then an installer will look for previous
+#   installed versions and if one is found, ask the user whether to
+#   uninstall it before proceeding with the install.
 ##end
 #
 ##variable

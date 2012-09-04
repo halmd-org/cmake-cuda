@@ -130,7 +130,7 @@
 #   Example:
 #   create_javadoc(my_example_doc
 #     PACKAGES com.exmaple.foo com.example.bar
-#     SOURCEPATH ${CMAKE_CURRENT_SOURCE_PATH}
+#     SOURCEPATH "${CMAKE_CURRENT_SOURCE_DIR}"
 #     CLASSPATH ${CMAKE_JAVA_INCLUDE_PATH}
 #     WINDOWTITLE "My example"
 #     DOCTITLE "<h1>My example</h1>"
@@ -533,9 +533,9 @@ function (find_jar VARIABLE)
         endif (${_state} STREQUAL "name")
     endforeach (arg ${ARGN})
 
-    if (${_jar_names} STREQUAL "")
+    if (NOT _jar_names)
         message(FATAL_ERROR "find_jar: No name to search for given")
-    endif (${_jar_names} STREQUAL "")
+    endif (NOT _jar_names)
 
     foreach (jar_name ${_jar_names})
         foreach (version ${_jar_versions})

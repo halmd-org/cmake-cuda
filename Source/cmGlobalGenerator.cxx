@@ -586,6 +586,16 @@ cmGlobalGenerator::EnableLanguage(std::vector<std::string>const& languages,
           }
         } // end if in try compile
       } // end need test language
+    // Store the shared library flags so that we can satisfy CMP0018
+    std::string sharedLibFlagsVar = "CMAKE_SHARED_LIBRARY_";
+    sharedLibFlagsVar += lang;
+    sharedLibFlagsVar += "_FLAGS";
+    const char* sharedLibFlags =
+      mf->GetSafeDefinition(sharedLibFlagsVar.c_str());
+    if (sharedLibFlags)
+      {
+      this->LanguageToOriginalSharedLibFlags[lang] = sharedLibFlags;
+      }
     } // end for each language
 
   // Now load files that can override any settings on the platform or for
@@ -2092,6 +2102,32 @@ cmTarget cmGlobalGenerator::CreateGlobalTarget(
 }
 
 //----------------------------------------------------------------------------
+std::string
+cmGlobalGenerator::GenerateRuleFile(std::string const& output) const
+{
+  std::string ruleFile = output;
+  ruleFile += ".rule";
+  const char* dir = this->GetCMakeCFGIntDir();
+  if(dir && dir[0] == '$')
+    {
+    cmSystemTools::ReplaceString(ruleFile, dir,
+                                 cmake::GetCMakeFilesDirectory());
+    }
+  return ruleFile;
+}
+
+//----------------------------------------------------------------------------
+std::string cmGlobalGenerator::GetSharedLibFlagsForLanguage(
+                                                        std::string const& l)
+{
+  if(this->LanguageToOriginalSharedLibFlags.count(l) > 0)
+    {
+    return this->LanguageToOriginalSharedLibFlags[l];
+    }
+  return "";
+}
+
+//----------------------------------------------------------------------------
 void cmGlobalGenerator::AppendDirectoryForConfig(const char*, const char*,
                                                  const char*, std::string&)
 {
@@ -2458,4 +2494,17 @@ void cmGlobalGenerator::WriteSummary(cmTarget* target)
     {
     cmSystemTools::RemoveFile(file.c_str());
     }
+}
+
+//----------------------------------------------------------------------------
+// static
+std::string cmGlobalGenerator::EscapeJSON(const std::string& s) {
+  std::string result;
+  for (std::string::size_type i = 0; i < s.size(); ++i) {
+    if (s[i] == '"' || s[i] == '\\') {
+      result += '\\';
+    }
+    result += s[i];
+  }
+  return result;
 }

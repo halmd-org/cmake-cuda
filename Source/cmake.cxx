@@ -70,6 +70,7 @@
 #    include "cmGlobalVisualStudio10Win64Generator.h"
 #    include "cmGlobalVisualStudio11Generator.h"
 #    include "cmGlobalVisualStudio11Win64Generator.h"
+#    include "cmGlobalVisualStudio11ARMGenerator.h"
 #    include "cmGlobalVisualStudio8Win64Generator.h"
 #    include "cmGlobalBorlandMakefileGenerator.h"
 #    include "cmGlobalNMakeMakefileGenerator.h"
@@ -83,10 +84,8 @@
 #else
 #endif
 #include "cmGlobalUnixMakefileGenerator3.h"
+#include "cmGlobalNinjaGenerator.h"
 
-#ifdef CMAKE_USE_NINJA
-#  include "cmGlobalNinjaGenerator.h"
-#endif
 
 #if defined(CMAKE_HAVE_VS_GENERATORS)
 #include "cmCallVisualStudioMacro.h"
@@ -1698,8 +1697,8 @@ int cmake::ExecuteCMakeCommand(std::vector<std::string>& args)
     else if (args[1] == "cmake_automoc")
       {
         cmQtAutomoc automoc;
-        automoc.Run(args[2].c_str());
-        return 0;
+        bool automocSuccess = automoc.Run(args[2].c_str());
+        return automocSuccess ? 0 : 1;
       }
 #endif
 
@@ -2569,6 +2568,8 @@ void cmake::AddDefaultGenerators()
     &cmGlobalVisualStudio11Generator::New;
   this->Generators[cmGlobalVisualStudio11Win64Generator::GetActualName()] =
     &cmGlobalVisualStudio11Win64Generator::New;
+  this->Generators[cmGlobalVisualStudio11ARMGenerator::GetActualName()] =
+    &cmGlobalVisualStudio11ARMGenerator::New;
   this->Generators[cmGlobalVisualStudio71Generator::GetActualName()] =
     &cmGlobalVisualStudio71Generator::New;
   this->Generators[cmGlobalVisualStudio8Generator::GetActualName()] =
@@ -2597,10 +2598,8 @@ void cmake::AddDefaultGenerators()
 #endif
   this->Generators[cmGlobalUnixMakefileGenerator3::GetActualName()] =
     &cmGlobalUnixMakefileGenerator3::New;
-#ifdef CMAKE_USE_NINJA
   this->Generators[cmGlobalNinjaGenerator::GetActualName()] =
     &cmGlobalNinjaGenerator::New;
-#endif
 #ifdef CMAKE_USE_XCODE
   this->Generators[cmGlobalXCodeGenerator::GetActualName()] =
     &cmGlobalXCodeGenerator::New;

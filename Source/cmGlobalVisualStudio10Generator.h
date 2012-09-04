@@ -46,6 +46,8 @@ public:
   ///! create the correct local generator
   virtual cmLocalGenerator *CreateLocalGenerator();
 
+  virtual void Generate();
+
   /**
    * Try to determine system infomation such as shared library
    * extension, pthreads, byte order etc.  
@@ -75,10 +77,29 @@ public:
   virtual const char* GetCMakeCFGIntDir() const
     { return "$(Configuration)";}
   bool Find64BitTools(cmMakefile* mf);
+
+  /** Generate an <output>.rule file path for a given command output.  */
+  virtual std::string GenerateRuleFile(std::string const& output) const;
+
+  void PathTooLong(cmTarget* target, cmSourceFile* sf,
+                   std::string const& sfRel);
 protected:
   virtual const char* GetIDEVersion() { return "10.0"; }
 
   std::string PlatformToolset;
   bool ExpressEdition;
+
+  bool UseFolderProperty();
+
+private:
+  struct LongestSourcePath
+  {
+    LongestSourcePath(): Length(0), Target(0), SourceFile(0) {}
+    size_t Length;
+    cmTarget* Target;
+    cmSourceFile* SourceFile;
+    std::string SourceRel;
+  };
+  LongestSourcePath LongestSource;
 };
 #endif

@@ -1,6 +1,6 @@
 #=============================================================================
 # CMake - Cross Platform Makefile Generator
-# Copyright 2000-2011 Kitware, Inc., Insight Software Consortium
+# Copyright 2000-2012 Kitware, Inc., Insight Software Consortium
 #
 # Distributed under the OSI-approved BSD License (the "License");
 # see accompanying file Copyright.txt for details.
@@ -9,7 +9,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #=============================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.3 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.2 FATAL_ERROR)
 SET(CMAKE_LEGACY_CYGWIN_WIN32 0) # Remove when CMake >= 2.8.4 is required
 PROJECT(CMake)
 
@@ -324,10 +324,9 @@ MACRO (CMAKE_BUILD_UTILITIES)
   #---------------------------------------------------------------------
   # Build or use system libarchive for CMake and CTest.
   IF(CMAKE_USE_SYSTEM_LIBARCHIVE)
-    IF(EXISTS ${CMAKE_ROOT}/Modules/FindLibArchive.cmake)
+    IF(EXISTS ${CMAKE_ROOT}/Modules/FindLibArchive.cmake) # added in 2.8.3
       FIND_PACKAGE(LibArchive)
     ELSE()
-      CMAKE_MINIMUM_REQUIRED(VERSION 2.8.0 FATAL_ERROR)
       INCLUDE(${CMake_SOURCE_DIR}/Modules/FindLibArchive.cmake)
     ENDIF()
     IF(NOT LibArchive_FOUND)
@@ -422,26 +421,13 @@ ENDIF()
 # The main section of the CMakeLists file
 #
 #-----------------------------------------------------------------------
-# The CMake version number.
-SET(CMake_VERSION_MAJOR 2)
-SET(CMake_VERSION_MINOR 8)
-SET(CMake_VERSION_PATCH 8)
-SET(CMake_VERSION_TWEAK 0)
-#SET(CMake_VERSION_RC 2)
-
-# Releases define a tweak level.
-IF(DEFINED CMake_VERSION_TWEAK)
+INCLUDE(Source/CMakeVersion.cmake)
+# Releases define a small tweak level.
+IF("${CMake_VERSION_TWEAK}" VERSION_LESS 20000000)
   SET(CMake_VERSION_IS_RELEASE 1)
   SET(CMake_VERSION_SOURCE "")
 ELSE()
   SET(CMake_VERSION_IS_RELEASE 0)
-
-  # Use the date as the tweak level.
-  INCLUDE(${CMake_SOURCE_DIR}/Source/kwsys/kwsysDateStamp.cmake)
-  SET(CMake_VERSION_TWEAK
-    "${KWSYS_DATE_STAMP_YEAR}${KWSYS_DATE_STAMP_MONTH}${KWSYS_DATE_STAMP_DAY}"
-    )
-
   INCLUDE(${CMake_SOURCE_DIR}/Source/CMakeVersionSource.cmake)
 ENDIF()
 
@@ -632,6 +618,9 @@ INSTALL(
                               GROUP_READ GROUP_EXECUTE
                               WORLD_READ WORLD_EXECUTE
   )
+
+# process docs related install
+ADD_SUBDIRECTORY(Docs)
 
 #-----------------------------------------------------------------------
 # End of the main section of the CMakeLists file
