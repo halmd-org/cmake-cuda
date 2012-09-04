@@ -85,7 +85,10 @@ public:
       "with which the install rule is associated, such as \"runtime\" or "
       "\"development\".  During component-specific installation only "
       "install rules associated with the given component name will be "
-      "executed.  During a full installation all components are installed.\n"
+      "executed.  During a full installation all components are installed."
+      " If COMPONENT is not provided a default component \"Unspecified\" is"
+      " created. The default component name may be controlled with the "
+      "CMAKE_INSTALL_DEFAULT_COMPONENT_NAME variable.\n"
       "The RENAME argument specifies a name for an installed file that "
       "may be different from the original file.  Renaming is allowed only "
       "when a single file is installed by the command.\n"
@@ -337,10 +340,12 @@ private:
   bool HandleFilesMode(std::vector<std::string> const& args);
   bool HandleDirectoryMode(std::vector<std::string> const& args);
   bool HandleExportMode(std::vector<std::string> const& args);
-  bool MakeFilesFullPath(const char* modeName, 
+  bool MakeFilesFullPath(const char* modeName,
                          const std::vector<std::string>& relFiles,
                          std::vector<std::string>& absFiles);
   bool CheckCMP0006(bool& failure);
+
+  std::string DefaultComponentName;
 };
 
 

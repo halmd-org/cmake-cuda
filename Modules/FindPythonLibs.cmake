@@ -13,6 +13,11 @@
 # The Python_ADDITIONAL_VERSIONS variable can be used to specify a list of
 # version numbers that should be taken into account when searching for Python.
 # You need to set this variable before calling find_package(PythonLibs).
+#
+# If you'd like to specify the installation of Python to use, you should modify
+# the following cache variables:
+#  PYTHON_LIBRARY             - path to the python library
+#  PYTHON_INCLUDE_DIR         - path to where Python.h is found
 
 #=============================================================================
 # Copyright 2001-2009 Kitware, Inc.
@@ -40,13 +45,19 @@ IF(PythonLibs_FIND_VERSION)
         STRING(REGEX REPLACE "^([0-9]+\\.[0-9]+).*" "\\1" _PYTHON_FIND_MAJ_MIN "${PythonLibs_FIND_VERSION}")
         STRING(REGEX REPLACE "^([0-9]+).*" "\\1" _PYTHON_FIND_MAJ "${_PYTHON_FIND_MAJ_MIN}")
         UNSET(_PYTHON_FIND_OTHER_VERSIONS)
-        IF(NOT PythonLibs_FIND_VERSION_EXACT)
+        IF(PythonLibs_FIND_VERSION_EXACT)
+            IF(_PYTHON_FIND_MAJ_MIN STREQUAL PythonLibs_FIND_VERSION)
+                SET(_PYTHON_FIND_OTHER_VERSIONS "${PythonLibs_FIND_VERSION}")
+            ELSE(_PYTHON_FIND_MAJ_MIN STREQUAL PythonLibs_FIND_VERSION)
+                SET(_PYTHON_FIND_OTHER_VERSIONS "${PythonLibs_FIND_VERSION}" "${_PYTHON_FIND_MAJ_MIN}")
+            ENDIF(_PYTHON_FIND_MAJ_MIN STREQUAL PythonLibs_FIND_VERSION)
+        ELSE(PythonLibs_FIND_VERSION_EXACT)
             FOREACH(_PYTHON_V ${_PYTHON${_PYTHON_FIND_MAJ}_VERSIONS})
                 IF(NOT _PYTHON_V VERSION_LESS _PYTHON_FIND_MAJ_MIN)
                     LIST(APPEND _PYTHON_FIND_OTHER_VERSIONS ${_PYTHON_V})
                 ENDIF()
              ENDFOREACH()
-        ENDIF(NOT PythonLibs_FIND_VERSION_EXACT)
+        ENDIF(PythonLibs_FIND_VERSION_EXACT)
         UNSET(_PYTHON_FIND_MAJ_MIN)
         UNSET(_PYTHON_FIND_MAJ)
     ELSE(PythonLibs_FIND_VERSION MATCHES "^[0-9]+\\.[0-9]+(\\.[0-9]+.*)?$")
@@ -82,7 +93,12 @@ FOREACH(_CURRENT_VERSION ${_Python_VERSIONS})
   ENDIF(WIN32)
 
   FIND_LIBRARY(PYTHON_LIBRARY
-    NAMES python${_CURRENT_VERSION_NO_DOTS} python${_CURRENT_VERSION}
+    NAMES
+    python${_CURRENT_VERSION_NO_DOTS}
+    python${_CURRENT_VERSION}mu
+    python${_CURRENT_VERSION}m
+    python${_CURRENT_VERSION}u
+    python${_CURRENT_VERSION}
     PATHS
       [HKEY_LOCAL_MACHINE\\SOFTWARE\\Python\\PythonCore\\${_CURRENT_VERSION}\\InstallPath]/libs
       [HKEY_CURRENT_USER\\SOFTWARE\\Python\\PythonCore\\${_CURRENT_VERSION}\\InstallPath]/libs
@@ -120,12 +136,14 @@ FOREACH(_CURRENT_VERSION ${_Python_VERSIONS})
       [HKEY_LOCAL_MACHINE\\SOFTWARE\\Python\\PythonCore\\${_CURRENT_VERSION}\\InstallPath]/include
       [HKEY_CURRENT_USER\\SOFTWARE\\Python\\PythonCore\\${_CURRENT_VERSION}\\InstallPath]/include
     PATH_SUFFIXES
+      python${_CURRENT_VERSION}mu
+      python${_CURRENT_VERSION}m
+      python${_CURRENT_VERSION}u
       python${_CURRENT_VERSION}
   )
 
-  # For backward compatibility, set PYTHON_INCLUDE_PATH, but make it internal.
-  SET(PYTHON_INCLUDE_PATH "${PYTHON_INCLUDE_DIR}" CACHE INTERNAL
-    "Path to where Python.h is found (deprecated)")
+  # For backward compatibility, set PYTHON_INCLUDE_PATH.
+  SET(PYTHON_INCLUDE_PATH "${PYTHON_INCLUDE_DIR}")
 
   IF(PYTHON_INCLUDE_DIR AND EXISTS "${PYTHON_INCLUDE_DIR}/patchlevel.h")
     FILE(STRINGS "${PYTHON_INCLUDE_DIR}/patchlevel.h" python_version_str

@@ -102,15 +102,28 @@
 #        accompanying header file foo.h.
 #        If a source file has the SKIP_AUTOMOC property set it will be ignored by this macro.
 #
+#        You should have a look on the AUTOMOC property for targets to achieve the same results.
+#
 #  macro QT4_ADD_DBUS_INTERFACE(outfiles interface basename)
-#        create a the interface header and implementation files with the 
+#        Create a the interface header and implementation files with the
 #        given basename from the given interface xml file and add it to 
-#        the list of sources
+#        the list of sources.
+#
+#        You can pass additional parameters to the qdbusxml2cpp call by setting
+#        properties on the input file:
+#
+#        INCLUDE the given file will be included in the generate interface header
+#
+#        CLASSNAME the generated class is named accordingly
+#
+#        NO_NAMESPACE the generated class is not wrapped in a namespace
 #
 #  macro QT4_ADD_DBUS_INTERFACES(outfiles inputfile ... )
-#        create the interface header and implementation files 
-#        for all listed interface xml files
-#        the name will be automatically determined from the name of the xml file
+#        Create the interface header and implementation files
+#        for all listed interface xml files.
+#        The basename will be automatically determined from the name of the xml file.
+#
+#        The source file properties described for QT4_ADD_DBUS_INTERFACE also apply here.
 #
 #  macro QT4_ADD_DBUS_ADAPTOR(outfiles xmlfile parentheader parentclassname [basename] [classname])
 #        create a dbus adaptor (header and implementation file) from the xml file
@@ -217,7 +230,7 @@
 #  QT_QAXCONTAINER_INCLUDE_DIR Path to "include/ActiveQt" (Windows only)
 #  QT_QAXSERVER_INCLUDE_DIR    Path to "include/ActiveQt" (Windows only)
 #  QT_QTCORE_INCLUDE_DIR       Path to "include/QtCore"         
-#  QT_QTDBUS_INCLUDE_DIR       Path to "include/QtDBus" 
+#  QT_QTDBUS_INCLUDE_DIR       Path to "include/QtDBus"
 #  QT_QTDESIGNER_INCLUDE_DIR   Path to "include/QtDesigner" 
 #  QT_QTDESIGNERCOMPONENTS_INCLUDE_DIR   Path to "include/QtDesigner"
 #  QT_QTGUI_INCLUDE_DIR        Path to "include/QtGui" 
@@ -1059,7 +1072,11 @@ IF (QT_QMAKE_EXECUTABLE AND QTVERSION)
   SET( QT_IMAGEFORMATS_PLUGINS qgif qjpeg qmng qico qsvg qtiff  )
   SET( QT_INPUTMETHODS_PLUGINS qimsw_multi )
   SET( QT_MOUSEDRIVERS_PLUGINS qwstslibmousehandler )
-  SET( QT_PHONON_BACKEND_PLUGINS phonon_qt7 )
+  IF(APPLE)
+    SET( QT_PHONON_BACKEND_PLUGINS phonon_qt7 )
+  ELSEIF(WIN32)
+    SET( QT_PHONON_BACKEND_PLUGINS phonon_ds9 )
+  ENDIF()
   SET( QT_SCRIPT_PLUGINS qtscriptdbus )
   SET( QT_SQLDRIVERS_PLUGINS qsqldb2 qsqlibase qsqlite qsqlite2 qsqlmysql qsqloci qsqlodbc qsqlpsql qsqltds )
 
@@ -1169,10 +1186,22 @@ ELSE( Qt4_FIND_COMPONENTS )
 
 ENDIF( Qt4_FIND_COMPONENTS )
 
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Qt4
-  REQUIRED_VARS ${_QT4_FOUND_REQUIRED_VARS}
-  VERSION_VAR QTVERSION
-  )
+if (QT_VERSION_MAJOR GREATER 4)
+    SET(VERSION_MSG "Found unsuitable Qt version \"${QTVERSION}\" from ${QT_QMAKE_EXECUTABLE}")
+    SET(QT4_FOUND FALSE)
+    IF(Qt4_FIND_REQUIRED)
+       MESSAGE( FATAL_ERROR "${VERSION_MSG}, this code requires Qt 4.x")
+    ELSE(Qt4_FIND_REQUIRED)
+      IF(NOT Qt4_FIND_QUIETLY)
+         MESSAGE( STATUS    "${VERSION_MSG}")
+      ENDIF(NOT Qt4_FIND_QUIETLY)
+    ENDIF(Qt4_FIND_REQUIRED)
+else()
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Qt4
+    REQUIRED_VARS ${_QT4_FOUND_REQUIRED_VARS}
+    VERSION_VAR QTVERSION
+    )
+endif()
 
 #######################################
 #

@@ -700,9 +700,9 @@ void cmTarget::DefineProperties(cmake *cm)
      "Setting this property tells CMake what imported configurations are "
      "suitable for use when building the <CONFIG> configuration.  "
      "The first configuration in the list found to be provided by the "
-     "imported target is selected.  If no matching configurations are "
-     "available the imported target is considered to be not found.  "
-     "This property is ignored for non-imported targets.",
+     "imported target is selected.  If this property is set and no matching "
+     "configurations are available, then the imported target is considered "
+     "to be not found.  This property is ignored for non-imported targets.",
      false /* TODO: make this chained */ );
 
   cm->DefineProperty
@@ -754,6 +754,14 @@ void cmTarget::DefineProperties(cmake *cm)
      "What comes before the library name.",
      "A target property that can be set to override the prefix "
      "(such as \"lib\") on a library name.");
+
+  cm->DefineProperty
+    ("POSITION_INDEPENDENT_CODE", cmProperty::TARGET,
+     "Whether to create a position-independent target",
+     "The POSITION_INDEPENDENT_CODE property determines whether position "
+     "independent executables or shared libraries will be created.  "
+     "This property is true by default for SHARED and MODULE library "
+     "targets and false otherwise.");
 
   cm->DefineProperty
     ("POST_INSTALL_SCRIPT", cmProperty::TARGET,
@@ -823,6 +831,19 @@ void cmTarget::DefineProperties(cmake *cm)
      "CMAKE_SKIP_BUILD_RPATH if it is set when a target is created.");
 
   cm->DefineProperty
+    ("NO_SONAME", cmProperty::TARGET,
+     "Whether to set \"soname\" when linking a shared library or module.",
+     "Enable this boolean property if a generated shared library or module "
+     "should not have \"soname\" set. Default is to set \"soname\" on all "
+     "shared libraries and modules as long as the platform supports it. "
+     "Generally, use this property only for leaf private libraries or "
+     "plugins. If you use it on normal shared libraries which other targets "
+     "link against, on some platforms a linker will insert a full path to "
+     "the library (as specified at link time) into the dynamic section of "
+     "the dependent binary. Therefore, once installed, dynamic loader may "
+     "eventually fail to locate the library for the binary.");
+
+  cm->DefineProperty
     ("SOVERSION", cmProperty::TARGET,
      "What version number is this target.",
      "For shared libraries VERSION and SOVERSION can be used to specify "
@@ -831,6 +852,7 @@ void cmTarget::DefineProperties(cmake *cm)
      "supports symlinks and the linker supports so-names. "
      "If only one of both is specified the missing is assumed to have "
      "the same version number. "
+     "SOVERSION is ignored if NO_SONAME property is set. "
      "For shared libraries and executables on Windows the VERSION "
      "attribute is parsed to extract a \"major.minor\" version number. "
      "These numbers are used as the image version of the binary. ");
@@ -1290,6 +1312,13 @@ void cmTarget::SetMakefile(cmMakefile* mf)
   // of the same directory property:
   this->SetProperty("INCLUDE_DIRECTORIES",
                     this->Makefile->GetProperty("INCLUDE_DIRECTORIES"));
+
+  if(this->TargetTypeValue == cmTarget::SHARED_LIBRARY
+      || this->TargetTypeValue == cmTarget::MODULE_LIBRARY)
+    {
+    this->SetProperty("POSITION_INDEPENDENT_CODE", "True");
+    }
+  this->SetPropertyDefault("POSITION_INDEPENDENT_CODE", 0);
 
   // Record current policies for later use.
   this->PolicyStatusCMP0003 =
@@ -2454,6 +2483,16 @@ void cmTarget::MarkAsImported()
 }
 
 //----------------------------------------------------------------------------
+bool cmTarget::HaveWellDefinedOutputFiles()
+{
+  return
+    this->GetType() == cmTarget::STATIC_LIBRARY ||
+    this->GetType() == cmTarget::SHARED_LIBRARY ||
+    this->GetType() == cmTarget::MODULE_LIBRARY ||
+    this->GetType() == cmTarget::EXECUTABLE;
+}
+
+//----------------------------------------------------------------------------
 cmTarget::OutputInfo const* cmTarget::GetOutputInfo(const char* config)
 {
   // There is no output information for imported targets.
@@ -2463,10 +2502,7 @@ cmTarget::OutputInfo const* cmTarget::GetOutputInfo(const char* config)
     }
 
   // Only libraries and executables have well-defined output files.
-  if(this->GetType() != cmTarget::STATIC_LIBRARY &&
-     this->GetType() != cmTarget::SHARED_LIBRARY &&
-     this->GetType() != cmTarget::MODULE_LIBRARY &&
-     this->GetType() != cmTarget::EXECUTABLE)
+  if(!this->HaveWellDefinedOutputFiles())
     {
     std::string msg = "cmTarget::GetOutputInfo called for ";
     msg += this->GetName();
@@ -2557,18 +2593,7 @@ const char* cmTarget::NormalGetLocation(const char* config)
     this->Location += cfgid;
     this->Location += "/";
     }
-  if(this->IsAppBundleOnApple())
-    {
-    this->Location += this->GetFullName(config, false);
-    this->Location += ".app/Contents/MacOS/";
-    }
-   if(this->IsFrameworkOnApple())
-    {
-    this->Location += this->GetFullName(config, false);
-    this->Location += ".framework/Versions/";
-    this->Location += this->GetFrameworkVersion();
-    this->Location += "/";
-    }
+  this->Location = this->BuildMacContentDirectory(this->Location, config);
   this->Location += this->GetFullName(config, false);
   return this->Location.c_str();
 }
@@ -2995,6 +3020,17 @@ std::string cmTarget::GetPDBName(const char* config)
 }
 
 //----------------------------------------------------------------------------
+bool cmTarget::HasSOName(const char* config)
+{
+  // soname is supported only for shared libraries and modules,
+  // and then only when the platform supports an soname flag.
+  return ((this->GetType() == cmTarget::SHARED_LIBRARY ||
+           this->GetType() == cmTarget::MODULE_LIBRARY) &&
+          !this->GetPropertyAsBool("NO_SONAME") &&
+          this->Makefile->GetSONameFlag(this->GetLinkerLanguage(config)));
+}
+
+//----------------------------------------------------------------------------
 std::string cmTarget::GetSOName(const char* config)
 {
   if(this->IsImported())
@@ -3129,22 +3165,7 @@ std::string cmTarget::GetFullPath(const char* config, bool implib,
 std::string cmTarget::NormalGetFullPath(const char* config, bool implib,
                                         bool realname)
 {
-  // Start with the output directory for the target.
-  std::string fpath = this->GetDirectory(config, implib);
-  fpath += "/";
-
-  if(this->IsAppBundleOnApple())
-    {
-    fpath += this->GetFullName(config, false);
-    fpath += ".app/Contents/MacOS/";
-    }
-  if(this->IsFrameworkOnApple())
-    {
-    fpath += this->GetFullName(config, false);
-    fpath += ".framework/Versions/";
-    fpath += this->GetFrameworkVersion();
-    fpath += "/";
-    }
+  std::string fpath = this->GetMacContentDirectory(config, implib);
 
   // Add the full name of the target.
   if(implib)
@@ -3327,22 +3348,10 @@ void cmTarget::GetLibraryNames(std::string& name,
     return;
     }
 
-  // Construct the name of the soname flag variable for this language.
-  const char* ll = this->GetLinkerLanguage(config);
-  std::string sonameFlag = "CMAKE_SHARED_LIBRARY_SONAME";
-  if(ll)
-    {
-    sonameFlag += "_";
-    sonameFlag += ll;
-    }
-  sonameFlag += "_FLAG";
-
   // Check for library version properties.
   const char* version = this->GetProperty("VERSION");
   const char* soversion = this->GetProperty("SOVERSION");
-  if((this->GetType() != cmTarget::SHARED_LIBRARY &&
-      this->GetType() != cmTarget::MODULE_LIBRARY) ||
-     !this->Makefile->GetDefinition(sonameFlag.c_str()) ||
+  if(!this->HasSOName(config) ||
      this->IsFrameworkOnApple())
     {
     // Versioning is supported only for shared libraries and modules,
@@ -3679,10 +3688,7 @@ std::string cmTarget::GetInstallNameDirForBuildTree(const char* config,
     dir += "/";
     if(this->IsFrameworkOnApple() && !for_xcode)
       {
-      dir += this->GetFullName(config, false);
-      dir += ".framework/Versions/";
-      dir += this->GetFrameworkVersion();
-      dir += "/";
+      dir += this->GetFrameworkDirectory(config);
       }
     return dir;
     }
@@ -3713,10 +3719,7 @@ std::string cmTarget::GetInstallNameDirForInstallTree(const char* config,
 
     if(this->IsFrameworkOnApple() && !for_xcode)
       {
-      dir += this->GetFullName(config, false);
-      dir += ".framework/Versions/";
-      dir += this->GetFrameworkVersion();
-      dir += "/";
+      dir += this->GetFrameworkDirectory(config);
       }
 
     return dir;
@@ -4703,6 +4706,63 @@ std::vector<std::string> cmTarget::GetIncludeDirectories()
     }
 
   return orderedAndUniqueIncludes;
+}
+
+//----------------------------------------------------------------------------
+std::string cmTarget::GetFrameworkDirectory(const char* config)
+{
+  std::string fpath;
+  fpath += this->GetFullName(config, false);
+  fpath += ".framework/Versions/";
+  fpath += this->GetFrameworkVersion();
+  fpath += "/";
+  return fpath;
+}
+
+//----------------------------------------------------------------------------
+std::string cmTarget::BuildMacContentDirectory(const std::string& base,
+                                               const char* config,
+                                               bool includeMacOS)
+{
+  std::string fpath = base;
+  if(this->IsAppBundleOnApple())
+    {
+    fpath += this->GetFullName(config, false);
+    fpath += ".app/Contents/";
+    if(includeMacOS)
+      fpath += "MacOS/";
+    }
+  if(this->IsFrameworkOnApple())
+    {
+    fpath += this->GetFrameworkDirectory(config);
+    }
+  if(this->IsCFBundleOnApple())
+    {
+    fpath += this->GetFullName(config, false);
+    fpath += ".";
+    const char *ext = this->GetProperty("BUNDLE_EXTENSION");
+    if (!ext)
+      {
+      ext = "bundle";
+      }
+    fpath += ext;
+    fpath += "/Contents/";
+    if(includeMacOS)
+      fpath += "MacOS/";
+    }
+  return fpath;
+}
+
+//----------------------------------------------------------------------------
+std::string cmTarget::GetMacContentDirectory(const char* config,
+                                             bool implib,
+                                             bool includeMacOS)
+{
+  // Start with the output directory for the target.
+  std::string fpath = this->GetDirectory(config, implib);
+  fpath += "/";
+  fpath = this->BuildMacContentDirectory(fpath, config, includeMacOS);
+  return fpath;
 }
 
 //----------------------------------------------------------------------------

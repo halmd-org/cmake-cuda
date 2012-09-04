@@ -34,6 +34,7 @@ cmExtraEclipseCDT4Generator
   this->SupportedGlobalGenerators.push_back("MinGW Makefiles");
 //  this->SupportedGlobalGenerators.push_back("MSYS Makefiles");
 #endif
+  this->SupportedGlobalGenerators.push_back("Ninja");
   this->SupportedGlobalGenerators.push_back("Unix Makefiles");
 
   this->SupportsVirtualFolders = true;
@@ -286,6 +287,9 @@ void cmExtraEclipseCDT4Generator::CreateProjectFile()
 
   // set the make command
   std::string make = mf->GetRequiredDefinition("CMAKE_MAKE_PROGRAM");
+  const std::string makeArgs = mf->GetSafeDefinition(
+                                               "CMAKE_ECLIPSE_MAKE_ARGUMENTS");
+
   fout <<
     "\t\t\t\t<dictionary>\n"
     "\t\t\t\t\t<key>org.eclipse.cdt.make.core.enabledIncrementalBuild</key>\n"
@@ -293,7 +297,7 @@ void cmExtraEclipseCDT4Generator::CreateProjectFile()
     "\t\t\t\t</dictionary>\n"
     "\t\t\t\t<dictionary>\n"
     "\t\t\t\t\t<key>org.eclipse.cdt.make.core.build.command</key>\n"
-    "\t\t\t\t\t<value>" + this->GetEclipsePath(make) + "</value>\n"
+    "\t\t\t\t\t<value>" << this->GetEclipsePath(make) << "</value>\n"
     "\t\t\t\t</dictionary>\n"
     "\t\t\t\t<dictionary>\n"
     "\t\t\t\t\t<key>org.eclipse.cdt.make.core.contents</key>\n"
@@ -305,7 +309,7 @@ void cmExtraEclipseCDT4Generator::CreateProjectFile()
     "\t\t\t\t</dictionary>\n"
     "\t\t\t\t<dictionary>\n"
     "\t\t\t\t\t<key>org.eclipse.cdt.make.core.build.arguments</key>\n"
-    "\t\t\t\t\t<value></value>\n"
+    "\t\t\t\t\t<value>" << makeArgs << "</value>\n"
     "\t\t\t\t</dictionary>\n"
     "\t\t\t\t<dictionary>\n"
     "\t\t\t\t\t<key>org.eclipse.cdt.make.core.buildLocation</key>\n"
@@ -1067,9 +1071,8 @@ void cmExtraEclipseCDT4Generator::CreateCProjectFile() const
       }
 
     //insert rules for compiling, preprocessing and assembling individual files
-    cmLocalUnixMakefileGenerator3* lumg=(cmLocalUnixMakefileGenerator3*)*it;
     std::vector<std::string> objectFileTargets;
-    lumg->GetIndividualFileTargets(objectFileTargets);
+    (*it)->GetIndividualFileTargets(objectFileTargets);
     for(std::vector<std::string>::const_iterator fit=objectFileTargets.begin();
         fit != objectFileTargets.end();
         ++fit)

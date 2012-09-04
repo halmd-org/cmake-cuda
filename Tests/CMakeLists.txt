@@ -47,7 +47,7 @@ CONFIGURE_FILE(${CMake_SOURCE_DIR}/Tests/EnforceConfig.cmake.in
 
 # Testing
 IF(BUILD_TESTING)
-  IF("${CMAKE_TEST_GENERATOR}" MATCHES "Unix Makefiles")
+  IF("${CMAKE_TEST_GENERATOR}" MATCHES "Unix Makefiles" OR ("${CMAKE_TEST_GENERATOR}" MATCHES Ninja AND NOT WIN32))
     SET(TEST_CompileCommandOutput 1)
   ENDIF()
 
@@ -314,6 +314,24 @@ IF(BUILD_TESTING)
   ADD_TEST_MACRO(Module.CheckTypeSize CheckTypeSize)
 
   ADD_TEST_MACRO(Module.GenerateExportHeader GenerateExportHeader)
+
+  if (APPLE OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    include(CheckCXXCompilerFlag)
+    check_cxx_compiler_flag(-fPIE run_pic_test)
+  else()
+    if (CMAKE_CXX_COMPILER_ID MATCHES "PGI"
+        OR CMAKE_CXX_COMPILER_ID MATCHES "PathScale"
+        OR CMAKE_SYSTEM_NAME MATCHES "IRIX64"
+        OR CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+      set(run_pic_test 0)
+    else()
+      set(run_pic_test 1)
+    endif()
+  endif()
+
+  if (run_pic_test)
+    ADD_TEST_MACRO(PositionIndependentTargets PositionIndependentTargets)
+  endif()
 
   ADD_TEST(LinkFlags-prepare
     ${CMAKE_CTEST_COMMAND} -C \${CTEST_CONFIGURATION_TYPE}
@@ -699,6 +717,21 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   ENDIF(CTEST_RUN_CPackComponents)
 
   IF(CTEST_RUN_CPackComponentsForAll)
+    # Check whether if rpmbuild command is found
+    # before adding RPM tests
+    find_program(RPMBUILD_EXECUTABLE NAMES rpmbuild)
+    if(RPMBUILD_EXECUTABLE)
+      list(APPEND ACTIVE_CPACK_GENERATORS RPM)
+    endif(RPMBUILD_EXECUTABLE)
+    # Check whether if dpkg command is found
+    # before adding DEB tests
+    find_program(DPKG_EXECUTABLE NAMES dpkg)
+    if(DPKG_EXECUTABLE)
+      list(APPEND ACTIVE_CPACK_GENERATORS DEB)
+    endif(DPKG_EXECUTABLE)
+
+    # ACTIVE_CPACK_GENERATORS variable
+    # now contains the list of 'active generators'
     set(CPackComponentsForAll_EXTRA_OPTIONS)
     set(CPackRun_CPackCommand "-DCPackCommand=${CMAKE_CPACK_COMMAND}")
     # set up list of CPack generators
@@ -706,18 +739,17 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     if(APPLE)
       list(APPEND GENLST "DragNDrop")
     endif(APPLE)
-    if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
-        find_program(RPMBUILD NAMES rpmbuild)
-    endif(CMAKE_SYSTEM_NAME MATCHES "Linux" AND NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
-    if (RPMBUILD)
-       list(APPEND GENLST "RPM")
-    endif(RPMBUILD)
-    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-       find_program(DPKG NAMES dpkg)
-       if (DPKG)
-          list(APPEND GENLST "DEB")
-       endif(DPKG)
-    endif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    if (NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+      list(FIND ACTIVE_CPACK_GENERATORS "RPM" RPM_ACTIVE)
+      if (NOT ${RPM_ACTIVE} EQUAL -1)
+        list(APPEND GENLST "RPM")
+      endif(NOT ${RPM_ACTIVE} EQUAL -1)
+    endif(NOT CMAKE_CURRENT_BINARY_DIR MATCHES ".* .*")
+    list(FIND ACTIVE_CPACK_GENERATORS "DEB" DEB_ACTIVE)
+    if (NOT ${DEB_ACTIVE} EQUAL -1)
+      list(APPEND GENLST "DEB")
+    endif(NOT ${DEB_ACTIVE} EQUAL -1)
+
     # set up list of component packaging ways
     list(APPEND CWAYLST "default")
     list(APPEND CWAYLST "OnePackPerGroup")
@@ -1376,42 +1408,44 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/VSMidl")
   ENDIF(${CMAKE_TEST_GENERATOR} MATCHES "Visual Studio")
 
-  IF (APPLE AND CMAKE_COMPILER_IS_GNUCXX)
-    SET(BundleTestInstallDir
-      "${CMake_BINARY_DIR}/Tests/BundleTest/InstallDirectory")
-    ADD_TEST(BundleTest ${CMAKE_CTEST_COMMAND}
-      --build-and-test
-      "${CMake_SOURCE_DIR}/Tests/BundleTest"
-      "${CMake_BINARY_DIR}/Tests/BundleTest"
-      --build-two-config
-      --build-generator ${CMAKE_TEST_GENERATOR}
-      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-      --build-project BundleTest
-      --build-target install
-#     --build-target package
-      --build-options "-DCMAKE_INSTALL_PREFIX:PATH=${BundleTestInstallDir}"
-       "-DCMake_SOURCE_DIR:PATH=${CMake_SOURCE_DIR}"
-      --test-command
-      ${BundleTestInstallDir}/Applications/SecondBundleExe.app/Contents/MacOS/SecondBundleExe)
-    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleTest")
+  IF (APPLE)
+    if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+      SET(BundleTestInstallDir
+        "${CMake_BINARY_DIR}/Tests/BundleTest/InstallDirectory")
+      ADD_TEST(BundleTest ${CMAKE_CTEST_COMMAND}
+        --build-and-test
+        "${CMake_SOURCE_DIR}/Tests/BundleTest"
+        "${CMake_BINARY_DIR}/Tests/BundleTest"
+        --build-two-config
+        --build-generator ${CMAKE_TEST_GENERATOR}
+        --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+        --build-project BundleTest
+        --build-target install
+#       --build-target package
+        --build-options "-DCMAKE_INSTALL_PREFIX:PATH=${BundleTestInstallDir}"
+        "-DCMake_SOURCE_DIR:PATH=${CMake_SOURCE_DIR}"
+        --test-command
+        ${BundleTestInstallDir}/Applications/SecondBundleExe.app/Contents/MacOS/SecondBundleExe)
+      LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/BundleTest")
 
-    ADD_TEST(CFBundleTest ${CMAKE_CTEST_COMMAND}
-      --build-and-test
-      "${CMake_SOURCE_DIR}/Tests/CFBundleTest"
-      "${CMake_BINARY_DIR}/Tests/CFBundleTest"
-      --build-two-config
-      --build-generator ${CMAKE_TEST_GENERATOR}
-      --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
-      --build-project CFBundleTest
-      --test-command
-      ${CMAKE_CMAKE_COMMAND} -DCTEST_CONFIGURATION_TYPE=\${CTEST_CONFIGURATION_TYPE}
+      ADD_TEST(CFBundleTest ${CMAKE_CTEST_COMMAND}
+        --build-and-test
+        "${CMake_SOURCE_DIR}/Tests/CFBundleTest"
+        "${CMake_BINARY_DIR}/Tests/CFBundleTest"
+        --build-two-config
+        --build-generator ${CMAKE_TEST_GENERATOR}
+        --build-makeprogram ${CMAKE_TEST_MAKEPROGRAM}
+        --build-project CFBundleTest
+        --test-command
+        ${CMAKE_CMAKE_COMMAND} -DCTEST_CONFIGURATION_TYPE=\${CTEST_CONFIGURATION_TYPE}
         -Ddir=${CMake_BINARY_DIR}/Tests/CFBundleTest
         -Dgen=${CMAKE_TEST_GENERATOR}
         -P ${CMake_SOURCE_DIR}/Tests/CFBundleTest/VerifyResult.cmake)
-    LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/CFBundleTest")
+      LIST(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/CFBundleTest")
 
-    ADD_TEST_MACRO(ObjC++ ObjC++)
-  ENDIF (APPLE AND CMAKE_COMPILER_IS_GNUCXX)
+      ADD_TEST_MACRO(ObjC++ ObjC++)
+    ENDIF (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+  ENDIF (APPLE)
 
   IF(APPLE AND CTEST_TEST_CPACK)
     ADD_TEST(BundleGeneratorTest ${CMAKE_CTEST_COMMAND}
@@ -1708,6 +1742,42 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     PASS_REGULAR_EXPRESSION
       "Reading ctest configuration file: ${CTEST_TEST_ESCAPED_BINARY_DIR}.Tests.CTestTestConfigFileInBuildDir2.CTestConfig.cmake")
 
+  # test coverage for mumps
+  # create a MumpsCoverage dir in the binary tree under Testing to
+  # avoid the .NoDartCoverage files in the cmake testing tree
+  configure_file(
+     "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/DartConfiguration.tcl.in"
+     "${CMake_BINARY_DIR}/Testing/MumpsCoverage/DartConfiguration.tcl")
+  configure_file(
+     "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/gtm_coverage.mcov.in"
+     "${CMake_BINARY_DIR}/Testing/MumpsCoverage/gtm_coverage.mcov")
+  file(COPY "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/VistA-FOIA"
+    DESTINATION "${CMake_BINARY_DIR}/Testing/MumpsCoverage")
+  add_test(NAME CTestGTMCoverage
+    COMMAND cmake -E chdir
+    ${CMake_BINARY_DIR}/Testing/MumpsCoverage
+    $<TARGET_FILE:ctest> -T Coverage --debug)
+  set_tests_properties(CTestGTMCoverage PROPERTIES
+      PASS_REGULAR_EXPRESSION
+      "Process file.*XINDEX.m.*Total LOC:.*127.*Percentage Coverage: 85.83.*"
+      ENVIRONMENT COVFILE=)
+
+  configure_file(
+     "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/DartConfiguration.cache.tcl.in"
+     "${CMake_BINARY_DIR}/Testing/MumpsCacheCoverage/DartConfiguration.tcl")
+  configure_file(
+    "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/cache_coverage.cmcov.in"
+    "${CMake_BINARY_DIR}/Testing/MumpsCacheCoverage/cache_coverage.cmcov")
+  file(COPY "${CMake_SOURCE_DIR}/Tests/MumpsCoverage/VistA-FOIA"
+    DESTINATION "${CMake_BINARY_DIR}/Testing/MumpsCacheCoverage")
+  add_test(NAME CTestCacheCoverage
+    COMMAND cmake -E chdir
+    ${CMake_BINARY_DIR}/Testing/MumpsCacheCoverage
+    $<TARGET_FILE:ctest> -T Coverage --debug)
+  set_tests_properties(CTestCacheCoverage PROPERTIES
+      PASS_REGULAR_EXPRESSION
+      "Process file.*XINDEX.m.*Total LOC:.*125.*Percentage Coverage: 85.60.*"
+      ENVIRONMENT COVFILE=)
   # Use macro, not function so that build can still be driven by CMake 2.4.
   # After 2.6 is required, this could be a function without the extra 'set'
   # calls.
@@ -1743,6 +1813,19 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   add_config_tests(MinSizeRel)
   add_config_tests(Release)
   add_config_tests(RelWithDebInfo)
+
+  # Test -S script with some -D variable definition args to ctest:
+  add_test(CTestConfig.ScriptWithArgs ${CMAKE_CTEST_COMMAND}
+    -C "Release"
+    -D arg1=this
+    -D arg2=that
+    -D "arg3=the other"
+    "-Darg4=this is the fourth"
+    -Darg5=the_fifth
+    -Darg6:STRING=value-with-type
+    -S "${CMake_SOURCE_DIR}/Tests/CTestConfig/ScriptWithArgs.cmake" -VV
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestConfig/ScriptWithArgs.log"
+    )
 
   ADD_TEST_MACRO(CMakeCommands.target_link_libraries target_link_libraries)
 

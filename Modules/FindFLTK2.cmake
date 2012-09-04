@@ -59,18 +59,14 @@ SET(FLTK2_DIR_STRING "directory containing FLTK2Config.cmake.  This is either th
 # Search only if the location is not already known.
 IF(NOT FLTK2_DIR)
   # Get the system search path as a list.
-  IF(UNIX)
-    STRING(REGEX MATCHALL "[^:]+" FLTK2_DIR_SEARCH1 "$ENV{PATH}")
-  ELSE(UNIX)
-    STRING(REGEX REPLACE "\\\\" "/" FLTK2_DIR_SEARCH1 "$ENV{PATH}")
-  ENDIF(UNIX)
-  STRING(REGEX REPLACE "/;" ";" FLTK2_DIR_SEARCH2 ${FLTK2_DIR_SEARCH1})
+  FILE(TO_CMAKE_PATH "$ENV{PATH}" FLTK2_DIR_SEARCH2)
 
   # Construct a set of paths relative to the system search path.
   SET(FLTK2_DIR_SEARCH "")
   FOREACH(dir ${FLTK2_DIR_SEARCH2})
     SET(FLTK2_DIR_SEARCH ${FLTK2_DIR_SEARCH} "${dir}/../lib/fltk")
   ENDFOREACH(dir)
+  STRING(REPLACE "//" "/" FLTK2_DIR_SEARCH "${FLTK2_DIR_SEARCH}")
 
   #
   # Look for an installation or build tree.
@@ -85,8 +81,6 @@ IF(NOT FLTK2_DIR)
     # Look in standard UNIX install locations.
     /usr/local/lib/fltk2
     /usr/lib/fltk2
-    /usr/local/include
-    /usr/include
     /usr/local/fltk2
     /usr/X11R6/include
 
@@ -193,8 +187,6 @@ IF(FLTK2_DIR)
     ENDIF(FLTK2_FLUID_EXECUTABLE)
 
     SET(FLTK2_INCLUDE_SEARCH_PATH ${FLTK2_INCLUDE_SEARCH_PATH}
-      /usr/local/include
-      /usr/include
       /usr/local/fltk2
       /usr/X11R6/include
       )
@@ -202,8 +194,6 @@ IF(FLTK2_DIR)
     FIND_PATH(FLTK2_INCLUDE_DIR fltk/run.h ${FLTK2_INCLUDE_SEARCH_PATH})
 
     SET(FLTK2_LIBRARY_SEARCH_PATH ${FLTK2_LIBRARY_SEARCH_PATH}
-      /usr/lib
-      /usr/local/lib
       /usr/local/fltk2/lib
       /usr/X11R6/lib
       ${FLTK2_INCLUDE_DIR}/lib

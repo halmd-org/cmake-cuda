@@ -218,7 +218,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Full path to ctest command installed with cmake.",
      "This is the full path to the CTest executable ctest "
      "which is useful from custom commands that want "
-     " to use the cmake -E option for portable system "
+     "to use the cmake -E option for portable system "
      "commands.",false,
      "Variables that Provide Information");
 
@@ -355,7 +355,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "If this is set to TRUE, then the rpath information "
      "is not added to compiled executables.  The default "
      "is to add rpath information if the platform supports it.  "
-     "This allows for easy running from the build tree.  To omit RPATH"
+     "This allows for easy running from the build tree.  To omit RPATH "
      "in the install step, but not the build step, use "
      "CMAKE_SKIP_INSTALL_RPATH instead.",false,
      "Variables that Provide Information");
@@ -519,6 +519,16 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "In this mode it e.g. also checks whether a header file is intended to "
      "be processed by moc when a \"foo.moc\" file has been included.\n"
      "Relaxed mode has to be enabled for KDE4 compatibility.",
+     false,
+     "Variables That Change Behavior");
+
+    cm->DefineProperty
+    ("CMAKE_INSTALL_DEFAULT_COMPONENT_NAME",  cmProperty::VARIABLE,
+     "Default component used in install() commands.",
+     "If an install() command is used without the COMPONENT argument, "
+     "these files will be grouped into a default component. The name of this "
+     "default install component will be taken from this variable.  "
+     "It defaults to \"Unspecified\". ",
      false,
      "Variables That Change Behavior");
 
@@ -833,6 +843,36 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Default is ON.",false,
      "Variables That Change Behavior");
 
+  cm->DefineProperty
+    ("CMAKE_ABSOLUTE_DESTINATION_FILES", cmProperty::VARIABLE,
+      "List of files which have been installed using "
+      " an ABSOLUTE DESTINATION path.",
+      "This variable is defined by CMake-generated cmake_install.cmake "
+      "scripts."
+      " It can be used (read-only) by program or script that source those"
+      " install scripts. This is used by some CPack generators (e.g. RPM).",
+      false,
+      "Variables That Change Behavior");
+
+  cm->DefineProperty
+    ("CMAKE_WARN_ON_ABSOLUTE_INSTALL_DESTINATION", cmProperty::VARIABLE,
+      "Ask cmake_install.cmake script to warn each time a file with "
+      "absolute INSTALL DESTINATION is encountered.",
+      "This variable is used by CMake-generated cmake_install.cmake"
+      " scripts. If ones set this variable to ON while running the"
+      " script, it may get warning messages from the script.", false,
+      "Variables That Change Behavior");
+
+  cm->DefineProperty
+    ("CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION", cmProperty::VARIABLE,
+      "Ask cmake_install.cmake script to error out as soon as "
+      "a file with absolute INSTALL DESTINATION is encountered.",
+      "The fatal error is emitted before the installation of "
+      "the offending file takes place."
+      " This variable is used by CMake-generated cmake_install.cmake"
+      " scripts. If ones set this variable to ON while running the"
+      " script, it may get fatal error messages from the script.",false,
+      "Variables That Change Behavior");
 
   // Variables defined by CMake that describe the system
 
@@ -1307,6 +1347,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Default value for MACOSX_BUNDLE of targets.",
      "This variable is used to initialize the "
      "MACOSX_BUNDLE property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+  cm->DefineProperty
+    ("CMAKE_POSITION_INDEPENDENT_FLAGS", cmProperty::VARIABLE,
+     "Default value for POSITION_INDEPENDENT_CODE of targets.",
+     "This variable is used to initialize the "
+     "POSITION_INDEPENDENT_CODE property on all the targets. "
      "See that target property for additional information.",
      false,
      "Variables that Control the Build");

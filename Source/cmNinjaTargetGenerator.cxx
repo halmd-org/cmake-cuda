@@ -56,7 +56,11 @@ cmNinjaTargetGenerator::New(cmTarget* target)
 }
 
 cmNinjaTargetGenerator::cmNinjaTargetGenerator(cmTarget* target)
-  : Target(target),
+  :
+    MacOSXContentGenerator(0),
+    OSXBundleGenerator(0),
+    MacContentFolders(),
+    Target(target),
     Makefile(target->GetMakefile()),
     LocalGenerator(
       static_cast<cmLocalNinjaGenerator*>(Makefile->GetLocalGenerator())),
@@ -64,10 +68,12 @@ cmNinjaTargetGenerator::cmNinjaTargetGenerator(cmTarget* target)
 {
   this->GeneratorTarget =
     this->GetGlobalGenerator()->GetGeneratorTarget(target);
+  MacOSXContentGenerator = new MacOSXContentGeneratorType(this);
 }
 
 cmNinjaTargetGenerator::~cmNinjaTargetGenerator()
 {
+  delete this->MacOSXContentGenerator;
 }
 
 cmGeneratedFileStream& cmNinjaTargetGenerator::GetBuildFileStream() const
@@ -87,7 +93,7 @@ cmGlobalNinjaGenerator* cmNinjaTargetGenerator::GetGlobalGenerator() const
 
 const char* cmNinjaTargetGenerator::GetConfigName() const
 {
-  return this->LocalGenerator->ConfigName.c_str();
+  return this->LocalGenerator->GetConfigName();
 }
 
 // TODO: Picked up from cmMakefileTargetGenerator.  Refactor it.
@@ -140,20 +146,21 @@ cmNinjaTargetGenerator::ComputeFlagsForObject(cmSourceFile *source,
   //   }
 
   // Add shared-library flags if needed.
-  {
-  bool shared = ((this->Target->GetType() == cmTarget::SHARED_LIBRARY) ||
-                 (this->Target->GetType() == cmTarget::MODULE_LIBRARY));
-  this->GetLocalGenerator()->AddSharedFlags(flags, language.c_str(), shared);
-  }
+  this->LocalGenerator->AddCMP0018Flags(flags, this->Target,
+                                        language.c_str());
 
-  // TODO: Handle response file.
   // Add include directory flags.
   {
   std::vector<std::string> includes;
   this->LocalGenerator->GetIncludeDirectories(includes, this->Target,
                                               language.c_str());
   std::string includeFlags =
-    this->LocalGenerator->GetIncludeFlags(includes, language.c_str(), false);
+    this->LocalGenerator->GetIncludeFlags(includes, language.c_str(),
+    language == "RC" ? true : false); // full include paths for RC
+                                      // needed by cmcldeps
+  if(cmGlobalNinjaGenerator::IsMinGW())
+    cmSystemTools::ReplaceString(includeFlags, "\\", "/");
+
   this->LocalGenerator->AppendFlags(flags, includeFlags.c_str());
   }
 
@@ -301,7 +308,7 @@ std::string cmNinjaTargetGenerator::GetTargetPDB() const
     targetFullPathPDB += this->Target->GetPDBName(this->GetConfigName());
     }
 
-  return ConvertToNinjaPath(targetFullPathPDB.c_str());
+  return targetFullPathPDB.c_str();
 }
 
 
@@ -309,10 +316,11 @@ void
 cmNinjaTargetGenerator
 ::WriteLanguageRules(const std::string& language)
 {
+#ifdef NINJA_GEN_VERBOSE_FILES
   this->GetRulesFileStream()
     << "# Rules for language " << language << "\n\n";
+#endif
   this->WriteCompileRule(language);
-  this->GetRulesFileStream() << "\n";
 }
 
 void
@@ -330,20 +338,45 @@ cmNinjaTargetGenerator
   vars.Defines = "$DEFINES";
   vars.TargetPDB = "$TARGET_PDB";
 
+
+  cmMakefile* mf = this->GetMakefile();
+
+  bool useClDeps = false;
+  std::string clDepsBinary;
+  std::string clShowPrefix;
+  if (lang == "C" || lang == "CXX" || lang == "RC")
+    {
+    const char* depsPtr = mf->GetDefinition("CMAKE_CMCLDEPS_EXECUTABLE");
+    const char* showPtr = mf->GetDefinition("CMAKE_CL_SHOWINCLUDE_PREFIX");
+    if (depsPtr && showPtr)
+      {
+      // don't wrap for try_compile,
+      // TODO but why doesn't it work with cmcldeps?
+      const std::string projectName  = mf->GetProjectName() ?
+                                       mf->GetProjectName() : "";
+      if (projectName != "CMAKE_TRY_COMPILE")
+        {
+        useClDeps = true;
+        std::string qu = "\"";
+        clDepsBinary = qu + depsPtr + qu;
+        clShowPrefix = qu + showPtr + qu;
+        vars.DependencyFile = "$DEP_FILE";
+        }
+      }
+    }
+
+
   std::string depfile;
   std::string depfileFlagsName = "CMAKE_DEPFILE_FLAGS_" + language;
-  const char *depfileFlags =
-    this->GetMakefile()->GetDefinition(depfileFlagsName.c_str());
-  if (depfileFlags) {
-    std::string depfileFlagsStr = depfileFlags;
-    depfile = "$out.d";
-    cmSystemTools::ReplaceString(depfileFlagsStr, "<DEPFILE>",
-                                 depfile.c_str());
-    cmSystemTools::ReplaceString(depfileFlagsStr, "<OBJECT>",
-                                 "$out");
-    cmSystemTools::ReplaceString(depfileFlagsStr, "<CMAKE_C_COMPILER>",
-                       this->GetMakefile()->GetDefinition("CMAKE_C_COMPILER"));
-    flags += " " + depfileFlagsStr;
+  const char *depfileFlags = mf->GetDefinition(depfileFlagsName.c_str());
+  if (depfileFlags || useClDeps) {
+    std::string depFlagsStr = depfileFlags ? depfileFlags : "";
+    depfile = "$DEP_FILE";
+    cmSystemTools::ReplaceString(depFlagsStr, "<DEPFILE>", "\"$DEP_FILE\"");
+    cmSystemTools::ReplaceString(depFlagsStr, "<OBJECT>",  "$out");
+    cmSystemTools::ReplaceString(depFlagsStr, "<CMAKE_C_COMPILER>",
+                       mf->GetDefinition("CMAKE_C_COMPILER"));
+    flags += " " + depFlagsStr;
   }
   vars.Flags = flags.c_str();
 
@@ -352,8 +385,7 @@ cmNinjaTargetGenerator
   std::string compileCmdVar = "CMAKE_";
   compileCmdVar += language;
   compileCmdVar += "_COMPILE_OBJECT";
-  std::string compileCmd =
-    this->GetMakefile()->GetRequiredDefinition(compileCmdVar.c_str());
+  std::string compileCmd = mf->GetRequiredDefinition(compileCmdVar.c_str());
   std::vector<std::string> compileCmds;
   cmSystemTools::ExpandListArgument(compileCmd, compileCmds);
 
@@ -364,10 +396,18 @@ cmNinjaTargetGenerator
   std::string cmdLine =
     this->GetLocalGenerator()->BuildCommandLine(compileCmds);
 
+  if(useClDeps)
+    {
+    std::string cl = mf->GetDefinition("CMAKE_C_COMPILER");
+    cl = "\"" + cl + "\" ";
+    cmdLine =   clDepsBinary + " " + lang + " $in \"$DEP_FILE\" $out "
+              + clShowPrefix + " " + cl   + cmdLine;
+    }
+
   // Write the rule for compiling file of the given language.
-  std::ostringstream comment;
+  cmOStringStream comment;
   comment << "Rule for compiling " << language << " files.";
-  std::ostringstream description;
+  cmOStringStream description;
   description << "Building " << language << " object $out";
   this->GetGlobalGenerator()->AddRule(this->LanguageCompilerRule(language),
                                       cmdLine,
@@ -396,7 +436,12 @@ cmNinjaTargetGenerator
      cmCustomCommand const* cc = (*si)->GetCustomCommand();
      this->GetLocalGenerator()->AddCustomCommandTarget(cc, this->GetTarget());
      }
-  // TODO: this->GeneratorTarget->OSXContent
+  this->OSXBundleGenerator->GenerateMacOSXContentStatements(
+    this->GeneratorTarget->HeaderSources,
+    this->MacOSXContentGenerator);
+  this->OSXBundleGenerator->GenerateMacOSXContentStatements(
+    this->GeneratorTarget->ExtraSources,
+    this->MacOSXContentGenerator);
   for(std::vector<cmSourceFile*>::const_iterator
         si = this->GeneratorTarget->ExternalObjects.begin();
       si != this->GeneratorTarget->ExternalObjects.end(); ++si)
@@ -436,7 +481,7 @@ cmNinjaTargetGenerator
   cmNinjaDeps emptyDeps;
 
   std::string comment;
-  const char* language = source->GetLanguage();
+  const std::string language = source->GetLanguage();
   std::string rule = this->LanguageCompilerRule(language);
 
   cmNinjaDeps outputs;
@@ -446,7 +491,11 @@ cmNinjaTargetGenerator
   this->Objects.push_back(objectFileName);
 
   cmNinjaDeps explicitDeps;
-  std::string sourceFileName = this->GetSourceFilePath(source);
+  std::string sourceFileName;
+  if (language == "RC")
+    sourceFileName = source->GetFullPath();
+  else
+    sourceFileName = this->GetSourceFilePath(source);
   explicitDeps.push_back(sourceFileName);
 
   // Ensure that the target dependencies are built before any source file in
@@ -485,8 +534,63 @@ cmNinjaTargetGenerator
   cmNinjaVars vars;
   vars["FLAGS"] = this->ComputeFlagsForObject(source, language);
   vars["DEFINES"] = this->ComputeDefines(source, language);
-  vars["TARGET_PDB"] = this->GetLocalGenerator()->ConvertToOutputFormat(
-    this->GetTargetPDB().c_str(), cmLocalGenerator::SHELL);
+  vars["DEP_FILE"] = objectFileName + ".d";;
+  EnsureParentDirectoryExists(objectFileName);
+
+  // TODO move to GetTargetPDB
+  cmMakefile* mf = this->GetMakefile();
+  if (mf->GetDefinition("MSVC_C_ARCHITECTURE_ID") ||
+      mf->GetDefinition("MSVC_CXX_ARCHITECTURE_ID"))
+    {
+    vars["TARGET_PDB"] = this->GetLocalGenerator()->ConvertToOutputFormat(
+                        ConvertToNinjaPath(GetTargetPDB().c_str()).c_str(),
+                        cmLocalGenerator::SHELL);
+    }
+
+  if(this->Makefile->IsOn("CMAKE_EXPORT_COMPILE_COMMANDS"))
+    {
+    cmLocalGenerator::RuleVariables compileObjectVars;
+    std::string lang = language;
+    compileObjectVars.Language = lang.c_str();
+
+    std::string escapedSourceFileName = sourceFileName;
+
+    if (!cmSystemTools::FileIsFullPath(sourceFileName.c_str()))
+      {
+      escapedSourceFileName = cmSystemTools::CollapseFullPath(
+        escapedSourceFileName.c_str(),
+        this->GetGlobalGenerator()->GetCMakeInstance()->
+          GetHomeOutputDirectory());
+      }
+
+    escapedSourceFileName =
+      this->LocalGenerator->ConvertToOutputFormat(
+        escapedSourceFileName.c_str(), cmLocalGenerator::SHELL);
+
+    compileObjectVars.Source = escapedSourceFileName.c_str();
+    compileObjectVars.Object = objectFileName.c_str();
+    compileObjectVars.Flags = vars["FLAGS"].c_str();
+    compileObjectVars.Defines = vars["DEFINES"].c_str();
+
+    // Rule for compiling object file.
+    std::string compileCmdVar = "CMAKE_";
+    compileCmdVar += language;
+    compileCmdVar += "_COMPILE_OBJECT";
+    std::string compileCmd =
+      this->GetMakefile()->GetRequiredDefinition(compileCmdVar.c_str());
+    std::vector<std::string> compileCmds;
+    cmSystemTools::ExpandListArgument(compileCmd, compileCmds);
+
+    for (std::vector<std::string>::iterator i = compileCmds.begin();
+        i != compileCmds.end(); ++i)
+      this->GetLocalGenerator()->ExpandRuleVariables(*i, compileObjectVars);
+
+    std::string cmdLine =
+      this->GetLocalGenerator()->BuildCommandLine(compileCmds);
+
+    this->GetGlobalGenerator()->AddCXXCompileCommand(cmdLine,
+                                                     sourceFileName);
+    }
 
   cmGlobalNinjaGenerator::WriteBuild(this->GetBuildFileStream(),
                                      comment,
@@ -533,4 +637,53 @@ cmNinjaTargetGenerator
   flag += (this->LocalGenerator->ConvertToLinkReference(
              this->ModuleDefinitionFile.c_str()));
   this->LocalGenerator->AppendFlags(flags, flag.c_str());
+}
+
+void
+cmNinjaTargetGenerator
+::EnsureDirectoryExists(const std::string& dir)
+{
+  cmSystemTools::MakeDirectory(dir.c_str());
+}
+
+void
+cmNinjaTargetGenerator
+::EnsureParentDirectoryExists(const std::string& path)
+{
+  EnsureDirectoryExists(cmSystemTools::GetParentDirectory(path.c_str()));
+}
+
+
+//----------------------------------------------------------------------------
+void
+cmNinjaTargetGenerator::MacOSXContentGeneratorType::operator()(
+  cmSourceFile& source, const char* pkgloc)
+{
+  // Skip OS X content when not building a Framework or Bundle.
+  if(this->Generator->OSXBundleGenerator->GetMacContentDirectory().empty())
+    {
+    return;
+    }
+
+  std::string macdir =
+    this->Generator->OSXBundleGenerator->InitMacOSXContentDirectory(pkgloc);
+
+  // Get the input file location.
+  std::string input = source.GetFullPath();
+  input =
+    this->Generator->GetLocalGenerator()->ConvertToNinjaPath(input.c_str());
+
+  // Get the output file location.
+  std::string output = macdir;
+  output += "/";
+  output += cmSystemTools::GetFilenameName(input);
+  output =
+    this->Generator->GetLocalGenerator()->ConvertToNinjaPath(output.c_str());
+
+  // Write a build statement to copy the content into the bundle.
+  this->Generator->GetGlobalGenerator()->WriteMacOSXContentBuild(input,
+                                                                 output);
+
+  // Add as a dependency of all target so that it gets called.
+  this->Generator->GetGlobalGenerator()->AddDependencyToAll(output);
 }

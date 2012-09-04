@@ -214,13 +214,11 @@ void cmGlobalVisualStudio8Generator::AddCheckTarget()
   // (this could be avoided with per-target source files)
   const char* no_main_dependency = 0;
   const char* no_working_directory = 0;
-  mf->AddCustomCommandToOutput(
-    stamps, listFiles,
-    no_main_dependency, commandLines, "Checking Build System",
-    no_working_directory, true);
-  std::string ruleName = stamps[0];
-  ruleName += ".rule";
-  if(cmSourceFile* file = mf->GetSource(ruleName.c_str()))
+  if(cmSourceFile* file =
+     mf->AddCustomCommandToOutput(
+       stamps, listFiles,
+       no_main_dependency, commandLines, "Checking Build System",
+       no_working_directory, true))
     {
     tgt->AddSourceFile(file);
     }
@@ -270,20 +268,23 @@ cmGlobalVisualStudio8Generator
 void
 cmGlobalVisualStudio8Generator
 ::WriteProjectConfigurations(std::ostream& fout, const char* name,
-                             bool partOfDefaultBuild)
+                             bool partOfDefaultBuild,
+                             const char* platformMapping)
 {
   std::string guid = this->GetGUID(name);
   for(std::vector<std::string>::iterator i = this->Configurations.begin();
       i != this->Configurations.end(); ++i)
     {
     fout << "\t\t{" << guid << "}." << *i
-         << "|" << this->GetPlatformName() << ".ActiveCfg = "
-         << *i << "|" << this->GetPlatformName() << "\n";
+         << "|" << this->GetPlatformName() << ".ActiveCfg = " << *i << "|"
+         << (platformMapping ? platformMapping : this->GetPlatformName())
+         << "\n";
     if(partOfDefaultBuild)
       {
       fout << "\t\t{" << guid << "}." << *i
-           << "|" << this->GetPlatformName() << ".Build.0 = "
-           << *i << "|" << this->GetPlatformName() << "\n";
+           << "|" << this->GetPlatformName() << ".Build.0 = " << *i << "|"
+           << (platformMapping ? platformMapping : this->GetPlatformName())
+           << "\n";
       }
     }
 }

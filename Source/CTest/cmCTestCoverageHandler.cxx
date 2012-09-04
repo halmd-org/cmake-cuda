@@ -11,6 +11,8 @@
 ============================================================================*/
 #include "cmCTestCoverageHandler.h"
 #include "cmParsePHPCoverage.h"
+#include "cmParseGTMCoverage.h"
+#include "cmParseCacheCoverage.h"
 #include "cmCTest.h"
 #include "cmake.h"
 #include "cmMakefile.h"
@@ -373,21 +375,29 @@ int cmCTestCoverageHandler::ProcessHandler()
     }
   int file_count = 0;
   file_count += this->HandleGCovCoverage(&cont);
+  error = cont.Error;
   if ( file_count < 0 )
     {
     return error;
     }
   file_count += this->HandleTracePyCoverage(&cont);
+  error = cont.Error;
   if ( file_count < 0 )
     {
     return error;
     }
   file_count += this->HandlePHPCoverage(&cont);
+  error = cont.Error;
   if ( file_count < 0 )
     {
     return error;
     }
+  file_count += this->HandleMumpsCoverage(&cont);
   error = cont.Error;
+  if ( file_count < 0 )
+    {
+    return error;
+    }
 
   std::set<std::string> uncovered = this->FindUncoveredFiles(&cont);
 
@@ -751,6 +761,73 @@ int cmCTestCoverageHandler::HandlePHPCoverage(
     }
   return static_cast<int>(cont->TotalCoverage.size());
 }
+//----------------------------------------------------------------------
+int cmCTestCoverageHandler::HandleMumpsCoverage(
+  cmCTestCoverageHandlerContainer* cont)
+{
+  // try gtm coverage
+  cmParseGTMCoverage cov(*cont, this->CTest);
+  std::string coverageFile = this->CTest->GetBinaryDir() +
+    "/gtm_coverage.mcov";
+  if(cmSystemTools::FileExists(coverageFile.c_str()))
+    {
+    cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+               "Parsing Cache Coverage: " << coverageFile
+               << std::endl);
+    cov.ReadCoverageFile(coverageFile.c_str());
+    return static_cast<int>(cont->TotalCoverage.size());
+    }
+  else
+    {
+    cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+               " Cannot find foobar GTM coverage file: " << coverageFile
+               << std::endl);
+    }
+  cmParseCacheCoverage ccov(*cont, this->CTest);
+  coverageFile = this->CTest->GetBinaryDir() +
+    "/cache_coverage.cmcov";
+  if(cmSystemTools::FileExists(coverageFile.c_str()))
+    {
+    cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+               "Parsing Cache Coverage: " << coverageFile
+               << std::endl);
+    ccov.ReadCoverageFile(coverageFile.c_str());
+    }
+  else
+    {
+    cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT,
+               " Cannot find Cache coverage file: " << coverageFile
+               << std::endl);
+    }
+  return static_cast<int>(cont->TotalCoverage.size());
+}
+
+struct cmCTestCoverageHandlerLocale
+{
+  cmCTestCoverageHandlerLocale()
+    {
+    if(const char* l = cmSystemTools::GetEnv("LC_ALL"))
+      {
+      lc_all = l;
+      }
+    if(lc_all != "C")
+      {
+      cmSystemTools::PutEnv("LC_ALL=C");
+      }
+    }
+  ~cmCTestCoverageHandlerLocale()
+    {
+    if(!lc_all.empty())
+      {
+      cmSystemTools::PutEnv(("LC_ALL=" + lc_all).c_str());
+      }
+    else
+      {
+      cmSystemTools::UnsetEnv("LC_ALL");
+      }
+    }
+  std::string lc_all;
+};
 
 //----------------------------------------------------------------------
 int cmCTestCoverageHandler::HandleGCovCoverage(
@@ -773,7 +850,7 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
   std::string st2gcovOutputRex1 = "^File *[`'](.*)'$";
   std::string st2gcovOutputRex2
     = "Lines executed: *[0-9]+\\.[0-9]+% of [0-9]+$";
-  std::string st2gcovOutputRex3 = "^(.*):creating [`'](.*\\.gcov)'";
+  std::string st2gcovOutputRex3 = "^(.*)reating [`'](.*\\.gcov)'";
   std::string st2gcovOutputRex4 = "^(.*):unexpected EOF *$";
   std::string st2gcovOutputRex5 = "^(.*):cannot open source file*$";
   std::string st2gcovOutputRex6
@@ -815,7 +892,8 @@ int cmCTestCoverageHandler::HandleGCovCoverage(
   int file_count = 0;
 
   // make sure output from gcov is in English!
-  cmSystemTools::PutEnv("LC_ALL=POSIX");
+  cmCTestCoverageHandlerLocale locale_C;
+  static_cast<void>(locale_C);
 
   // files is a list of *.da and *.gcda files with coverage data in them.
   // These are binary files that you give as input to gcov so that it will
@@ -1778,7 +1856,7 @@ int cmCTestCoverageHandler::HandleBullseyeCoverage(
   cmCTestCoverageHandlerContainer* cont)
 {
   const char* covfile = cmSystemTools::GetEnv("COVFILE");
-  if(!covfile)
+  if(!covfile || strlen(covfile) == 0)
     {
     cmCTestLog(this->CTest, HANDLER_VERBOSE_OUTPUT, 
                " COVFILE environment variable not found, not running " 

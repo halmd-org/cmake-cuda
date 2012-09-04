@@ -347,6 +347,9 @@ public:
   /** Get the name of the pdb file for the target.  */
   std::string GetPDBName(const char* config=0);
 
+  /** Whether this library has soname enabled and platform supports it.  */
+  bool HasSOName(const char* config);
+
   /** Get the soname of the target.  Allowed only for a shared library.  */
   std::string GetSOName(const char* config);
 
@@ -461,6 +464,22 @@ public:
 
   /** Get the include directories for this target.  */
   std::vector<std::string> GetIncludeDirectories();
+
+  /** Append to @a base the mac content directory and return it. */
+  std::string BuildMacContentDirectory(const std::string& base,
+                                       const char* config = 0,
+                                       bool includeMacOS = true);
+
+  /** @return the mac content directory for this target. */
+  std::string GetMacContentDirectory(const char* config = 0,
+                                     bool implib = false,
+                                     bool includeMacOS = true);
+
+  /** @return whether this target have a well defined output file name. */
+  bool HaveWellDefinedOutputFiles();
+
+  /** @return the Mac framework directory without the base. */
+  std::string GetFrameworkDirectory(const char* config = 0);
 
 private:
   /**
