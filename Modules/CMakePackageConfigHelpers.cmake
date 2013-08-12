@@ -6,7 +6,7 @@
 #                                                   [NO_CHECK_REQUIRED_COMPONENTS_MACRO])
 #
 # CONFIGURE_PACKAGE_CONFIG_FILE() should be used instead of the plain
-# CONFIGURE_FILE() command when creating the <Name>Config.cmake or <Name>-config.cmake
+# configure_file() command when creating the <Name>Config.cmake or <Name>-config.cmake
 # file for installing a project or library. It helps making the resulting package
 # relocatable by avoiding hardcoded paths in the installed Config.cmake file.
 #
@@ -31,12 +31,12 @@
 # Usage:
 #   1. write a FooConfig.cmake.in file as you are used to
 #   2. insert a line containing only the string "@PACKAGE_INIT@"
-#   3. instead of SET(FOO_DIR "@SOME_INSTALL_DIR@"), use SET(FOO_DIR "@PACKAGE_SOME_INSTALL_DIR@")
+#   3. instead of set(FOO_DIR "@SOME_INSTALL_DIR@"), use set(FOO_DIR "@PACKAGE_SOME_INSTALL_DIR@")
 #      (this must be after the @PACKAGE_INIT@ line)
-#   4. instead of using the normal CONFIGURE_FILE(), use CONFIGURE_PACKAGE_CONFIG_FILE()
+#   4. instead of using the normal configure_file(), use CONFIGURE_PACKAGE_CONFIG_FILE()
 #
 # The <input> and <output> arguments are the input and output file, the same way
-# as in CONFIGURE_FILE().
+# as in configure_file().
 #
 # The <path> given to INSTALL_DESTINATION must be the destination where the FooConfig.cmake
 # file will be installed to. This can either be a relative or absolute path, both work.
@@ -77,7 +77,7 @@
 #  WRITE_BASIC_PACKAGE_VERSION_FILE( filename VERSION major.minor.patch COMPATIBILITY (AnyNewerVersion|SameMajorVersion|ExactVersion) )
 #
 # Writes a file for use as <package>ConfigVersion.cmake file to <filename>.
-# See the documentation of FIND_PACKAGE() for details on this.
+# See the documentation of find_package() for details on this.
 #    filename is the output filename, it should be in the build tree.
 #    major.minor.patch is the version number of the project to be installed
 # The COMPATIBILITY mode AnyNewerVersion means that the installed package version
@@ -173,6 +173,7 @@ function(CONFIGURE_PACKAGE_CONFIG_FILE _inputFile _outputFile)
   else()
     set(absInstallDir "${CMAKE_INSTALL_PREFIX}/${CCF_INSTALL_DESTINATION}")
   endif()
+
   file(RELATIVE_PATH PACKAGE_RELATIVE_PATH "${absInstallDir}" "${CMAKE_INSTALL_PREFIX}" )
 
   foreach(var ${CCF_PATH_VARS})
@@ -188,10 +189,30 @@ function(CONFIGURE_PACKAGE_CONFIG_FILE _inputFile _outputFile)
     endif()
   endforeach()
 
+  get_filename_component(inputFileName "${_inputFile}" NAME)
+
   set(PACKAGE_INIT "
 ####### Expanded from @PACKAGE_INIT@ by configure_package_config_file() #######
+####### Any changes to this file will be overwritten by the next CMake run ####
+####### The input file was ${inputFileName}                            ########
+
 get_filename_component(PACKAGE_PREFIX_DIR \"\${CMAKE_CURRENT_LIST_DIR}/${PACKAGE_RELATIVE_PATH}\" ABSOLUTE)
 ")
+
+  if("${absInstallDir}" MATCHES "^(/usr)?/lib(64)?/.+")
+    # Handle "/usr move" symlinks created by some Linux distros.
+    set(PACKAGE_INIT "${PACKAGE_INIT}
+# Use original install prefix when loaded through a \"/usr move\"
+# cross-prefix symbolic link such as /lib -> /usr/lib.
+get_filename_component(_realCurr \"\${CMAKE_CURRENT_LIST_DIR}\" REALPATH)
+get_filename_component(_realOrig \"${absInstallDir}\" REALPATH)
+if(_realCurr STREQUAL _realOrig)
+  set(PACKAGE_PREFIX_DIR \"${CMAKE_INSTALL_PREFIX}\")
+endif()
+unset(_realOrig)
+unset(_realCurr)
+")
+  endif()
 
   if(NOT CCF_NO_SET_AND_CHECK_MACRO)
     set(PACKAGE_INIT "${PACKAGE_INIT}
@@ -214,7 +235,7 @@ macro(check_required_components _NAME)
         set(\${_NAME}_FOUND FALSE)
       endif()
     endif()
-  endforeach(comp)
+  endforeach()
 endmacro()
 ")
   endif()

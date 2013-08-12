@@ -11,6 +11,8 @@
 ============================================================================*/
 #include "cmTargetLinkLibrariesCommand.h"
 
+#include "cmGeneratorExpression.h"
+
 const char* cmTargetLinkLibrariesCommand::LinkLibraryTypeNames[3] =
 {
   "general",
@@ -108,8 +110,8 @@ bool cmTargetLinkLibrariesCommand
   // specification if the keyword is encountered as the first argument.
   this->CurrentProcessingState = ProcessingLinkLibraries;
 
-  // add libraries, nothe that there is an optional prefix
-  // of debug and optimized than can be used
+  // add libraries, note that there is an optional prefix
+  // of debug and optimized that can be used
   for(unsigned int i=1; i < args.size(); ++i)
     {
     if(args[i] == "LINK_INTERFACE_LIBRARIES")

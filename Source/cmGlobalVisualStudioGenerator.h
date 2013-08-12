@@ -58,16 +58,22 @@ public:
    */
   virtual void CallVisualStudioMacro(MacroName m,
                                      const char* vsSolutionFile = 0);
-  
+
   // return true if target is fortran only
   bool TargetIsFortranOnly(cmTarget& t);
 
   /** Get the top-level registry key for this VS version.  */
   std::string GetRegistryBase();
 
+  /** Get the top-level registry key for the given VS version.  */
+  static std::string GetRegistryBase(const char* version);
+
   /** Return true if the generated build tree may contain multiple builds.
       i.e. "Can I build Debug and Release in the same tree?" */
   virtual bool IsMultiConfig() { return true; }
+
+  /** Return true if building for Windows CE */
+  virtual bool TargetsWindowsCE() const { return false; }
 
   class TargetSet: public std::set<cmTarget*> {};
   struct TargetCompare
@@ -84,6 +90,8 @@ protected:
 
   virtual const char* GetIDEVersion() = 0;
 
+  virtual void AddPlatformDefinitions(cmMakefile* mf);
+
   virtual bool ComputeTargetDepends();
   class VSDependSet: public std::set<cmStdString> {};
   class VSDependMap: public std::map<cmTarget*, VSDependSet> {};
@@ -96,6 +104,9 @@ protected:
   std::string GetUtilityDepend(cmTarget* target);
   typedef std::map<cmTarget*, cmStdString> UtilityDependsMap;
   UtilityDependsMap UtilityDepends;
+  std::string ArchitectureId;
+  const char* AdditionalPlatformDefinition;
+
 private:
   void ComputeTargetObjects(cmGeneratorTarget* gt) const;
 

@@ -1,12 +1,19 @@
 
 #include "depB.h"
 #include "depC.h"
+#include "depIfaceOnly.h"
 
-int main(int argc, char **argv)
+#include "subdirlib.h"
+
+int main(int, char **)
 {
   DepA a;
   DepB b;
   DepC c;
 
-  return a.foo() + b.foo() + c.foo();
+  DepIfaceOnly iface_only;
+
+  SubDirLibObject sd;
+
+  return a.foo() + b.foo() + c.foo() + iface_only.foo() + sd.foo();
 }

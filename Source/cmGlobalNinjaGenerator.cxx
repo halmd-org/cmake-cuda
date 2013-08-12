@@ -17,6 +17,8 @@
 #include "cmGeneratorTarget.h"
 #include "cmVersion.h"
 
+#include <algorithm>
+
 const char* cmGlobalNinjaGenerator::NINJA_BUILD_FILE = "build.ninja";
 const char* cmGlobalNinjaGenerator::NINJA_RULES_FILE = "rules.ninja";
 const char* cmGlobalNinjaGenerator::INDENT = "  ";
@@ -83,6 +85,7 @@ std::string cmGlobalNinjaGenerator::EncodeLiteral(const std::string &lit)
 {
   std::string result = lit;
   cmSystemTools::ReplaceString(result, "$", "$$");
+  cmSystemTools::ReplaceString(result, "\n", "$\n");
   return result;
 }
 
@@ -106,6 +109,7 @@ void cmGlobalNinjaGenerator::WriteBuild(std::ostream& os,
                                         const cmNinjaDeps& implicitDeps,
                                         const cmNinjaDeps& orderOnlyDeps,
                                         const cmNinjaVars& variables,
+                                        const std::string& rspfile,
                                         int cmdLineLimit)
 {
   // Make sure there is a rule.
@@ -181,12 +185,17 @@ void cmGlobalNinjaGenerator::WriteBuild(std::ostream& os,
 
   // check if a response file rule should be used
   std::string buildstr = build.str();
-  const std::string assignments = variable_assignments.str();
+  std::string assignments = variable_assignments.str();
   const std::string args = arguments.str();
   if (cmdLineLimit > 0
       && args.size() + buildstr.size() + assignments.size()
-         > (size_t) cmdLineLimit)
-    buildstr += "_RSPFILE";
+                                                    > (size_t) cmdLineLimit) {
+    buildstr += "_RSP_FILE";
+    variable_assignments.clear();
+    cmGlobalNinjaGenerator::WriteVariable(variable_assignments,
+                                          "RSP_FILE", rspfile, "", 1);
+    assignments += variable_assignments.str();
+  }
 
   os << buildstr << args << assignments;
 }
@@ -446,9 +455,9 @@ cmLocalGenerator* cmGlobalNinjaGenerator::CreateLocalGenerator()
 }
 
 void cmGlobalNinjaGenerator
-::GetDocumentation(cmDocumentationEntry& entry) const
+::GetDocumentation(cmDocumentationEntry& entry)
 {
-  entry.Name = this->GetName();
+  entry.Name = cmGlobalNinjaGenerator::GetActualName();
   entry.Brief = "Generates build.ninja files (experimental).";
   entry.Full =
     "A build.ninja file is generated into the build tree. Recent "
@@ -485,69 +494,20 @@ void cmGlobalNinjaGenerator::Generate()
 // Used in:
 //   Source/cmMakefile.cxx:
 void cmGlobalNinjaGenerator
-::EnableLanguage(std::vector<std::string>const& languages,
-                 cmMakefile *mf,
+::EnableLanguage(std::vector<std::string>const& langs,
+                 cmMakefile* makefile,
                  bool optional)
 {
-  std::string path;
-  for(std::vector<std::string>::const_iterator l = languages.begin();
-      l != languages.end(); ++l)
+  if (makefile->IsOn("CMAKE_COMPILER_IS_MINGW"))
     {
-    std::vector<std::string> language;
-    language.push_back(*l);
-
-    if(*l == "NONE")
-      {
-      this->cmGlobalGenerator::EnableLanguage(language, mf, optional);
-      continue;
-      }
-    else if(*l == "Fortran")
-      {
-      std::string message = "The \"";
-      message += this->GetName();
-      message += "\" generator does not support the language \"";
-      message += *l;
-      message += "\" yet.";
-      cmSystemTools::Error(message.c_str());
-      }
-    else if(*l == "RC")
-      {
-      // check if mingw is used
-      if(mf->IsOn("CMAKE_COMPILER_IS_MINGW"))
-        {
-        UsingMinGW = true;
-        if(!mf->GetDefinition("CMAKE_RC_COMPILER"))
-          {
-          std::string windres = cmSystemTools::FindProgram("windres");
-          if(windres.empty())
-            {
-            std::string compiler_path;
-            std::string::size_type prefix = std::string::npos;
-            if (mf->GetDefinition("CMAKE_C_COMPILER"))
-              {
-              compiler_path = mf->GetDefinition("CMAKE_C_COMPILER");
-              prefix = compiler_path.rfind("gcc");
-              }
-            else if (mf->GetDefinition("CMAKE_CXX_COMPILER"))
-              {
-              compiler_path = mf->GetDefinition("CMAKE_CXX_COMPILER");
-              prefix = compiler_path.rfind("++");
-              prefix--;
-              }
-            if (prefix != std::string::npos)
-              {
-              windres = compiler_path.substr(0, prefix) + "windres";
-              windres = cmSystemTools::FindProgram(windres.c_str());
-              }
-            }
-          if(!windres.empty())
-            mf->AddDefinition("CMAKE_RC_COMPILER", windres.c_str());
-          }
-        }
-      }
-    this->cmGlobalGenerator::EnableLanguage(language, mf, optional);
-    this->ResolveLanguageCompiler(*l, mf, optional);
+    UsingMinGW = true;
+    this->EnableMinGWLanguage(makefile);
     }
+  if (std::find(langs.begin(), langs.end(), "Fortran") != langs.end())
+    {
+    cmSystemTools::Error("The Ninja generator does not support Fortran yet.");
+    }
+  this->cmGlobalGenerator::EnableLanguage(langs, makefile, optional);
 }
 
 bool cmGlobalNinjaGenerator::UsingMinGW = false;

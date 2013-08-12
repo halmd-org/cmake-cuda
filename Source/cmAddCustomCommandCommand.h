@@ -16,7 +16,7 @@
 #include "cmDocumentGeneratorExpressions.h"
 
 /** \class cmAddCustomCommandCommand
- * \brief 
+ * \brief
  *
  *  cmAddCustomCommandCommand defines a new command (rule) that can
  *  be executed within the build process
@@ -29,7 +29,7 @@ public:
   /**
    * This is a virtual constructor for the command.
    */
-  virtual cmCommand* Clone() 
+  virtual cmCommand* Clone()
     {
     return new cmAddCustomCommandCommand;
     }
@@ -45,7 +45,7 @@ public:
    * The name of the command as specified in CMakeList.txt.
    */
   virtual const char* GetName() const {return "add_custom_command";}
-  
+
   /**
    * Succinct documentation.
    */
@@ -53,7 +53,7 @@ public:
     {
     return "Add a custom build rule to the generated build system.";
     }
-  
+
   /**
    * More documentation.
    */
@@ -68,7 +68,8 @@ public:
       "                     [COMMAND command2 [ARGS] [args2...] ...]\n"
       "                     [MAIN_DEPENDENCY depend]\n"
       "                     [DEPENDS [depends...]]\n"
-      "                     [IMPLICIT_DEPENDS <lang1> depend1 ...]\n"
+      "                     [IMPLICIT_DEPENDS <lang1> depend1\n"
+      "                                      [<lang2> depend2] ...]\n"
       "                     [WORKING_DIRECTORY dir]\n"
       "                     [COMMENT comment] [VERBATIM] [APPEND])\n"
       "This defines a command to generate specified OUTPUT file(s).  "
@@ -142,6 +143,8 @@ public:
       "dependencies of an input file.  The language given specifies the "
       "programming language whose corresponding dependency scanner should "
       "be used.  Currently only C and CXX language scanners are supported. "
+      "The language has to be specified for every file in the "
+      "IMPLICIT_DEPENDS list. "
       "Dependencies discovered from the scanning are added to those of "
       "the custom command at build time.  Note that the IMPLICIT_DEPENDS "
       "option is currently supported only for Makefile generators and "
@@ -177,7 +180,7 @@ public:
       "is recompiled.\n"
       ;
     }
-  
+
   cmTypeMacro(cmAddCustomCommandCommand, cmCommand);
 protected:
   bool CheckOutputs(const std::vector<std::string>& outputs);

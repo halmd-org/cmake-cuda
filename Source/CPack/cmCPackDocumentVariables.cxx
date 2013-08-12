@@ -31,13 +31,23 @@ void cmCPackDocumentVariables::DefineVariables(cmake* cm)
          "Each CPack generator as a built-in default value for this"
          " variable. E.g. Archive generators (ZIP, TGZ, ...) includes"
          " the top level whereas RPM or DEB don't. The user may override"
-         " the default value byt setting this variable.\n"
+         " the default value by setting this variable.\n"
          "There is a similar variable "
-         "CPACK_COMPONENT_INCLUDE_TOPLEVEL_DIRECTORY"
+         "CPACK_COMPONENT_INCLUDE_TOPLEVEL_DIRECTORY "
          "which may be used to override the behavior for the component"
-         "packaging case which may have different default value for"
-         "historical (now backward compatibility) reason.", false,
+         " packaging case which may have different default value for"
+         " historical (now backward compatibility) reason.", false,
          "Variables common to all CPack generators");
+
+  cm->DefineProperty
+          ("CPACK_COMPONENT_INCLUDE_TOPLEVEL_DIRECTORY", cmProperty::VARIABLE,
+            "Boolean toggle to include/exclude top level directory "
+             "(component case).",
+            "Similar usage as CPACK_INCLUDE_TOPLEVEL_DIRECTORY"
+            " but for the component case. "
+            "See CPACK_INCLUDE_TOPLEVEL_DIRECTORY documentation for"
+            " the detail.", false,
+            "Variables common to all CPack generators");
 
   cm->DefineProperty
           ("CPACK_SET_DESTDIR", cmProperty::VARIABLE,
@@ -45,17 +55,18 @@ void cmCPackDocumentVariables::DefineVariables(cmake* cm)
            " packaging.", "DESTDIR means DESTination DIRectory."
            " It is commonly used by makefile "
            "users in order to install software at non-default location. It "
-           "is a basic relocation mechanism. "
+           "is a basic relocation mechanism that should not be used on"
+           " Windows (see CMAKE_INSTALL_PREFIX documentation). "
            "It is usually invoked like this:\n"
            " make DESTDIR=/home/john install\n"
            "which will install the concerned software using the"
-           " installation prefix, e.g. \"/usr/local\" prepended with "
+           " installation prefix, e.g. \"/usr/local\" pre-pended with "
            "the DESTDIR value which finally gives \"/home/john/usr/local\"."
            " When preparing a package, CPack first installs the items to be "
            "packaged in a local (to the build tree) directory by using the "
            "same DESTDIR mechanism. Nevertheless, if "
            "CPACK_SET_DESTDIR is set then CPack will set DESTDIR before"
-           " doing the local install. The most  noticeable difference is"
+           " doing the local install. The most noticeable difference is"
            " that without CPACK_SET_DESTDIR, CPack uses "
            "CPACK_PACKAGING_INSTALL_PREFIX as a prefix whereas with "
            "CPACK_SET_DESTDIR set, CPack will use CMAKE_INSTALL_PREFIX as"

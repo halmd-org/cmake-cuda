@@ -1,5 +1,6 @@
-PROJECT(LIB1)
+set(CMAKE_SUPPRESS_REGENERATION 1)
+project(LIB1)
 
-SET(SOURCES lib1.cpp)
+set(SOURCES lib1.cpp)
 
-ADD_LIBRARY(lib1 ${SOURCES})
+add_library(lib1 ${SOURCES})

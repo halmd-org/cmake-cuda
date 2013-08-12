@@ -22,14 +22,14 @@ cmGlobalNMakeMakefileGenerator::cmGlobalNMakeMakefileGenerator()
 }
 
 void cmGlobalNMakeMakefileGenerator
-::EnableLanguage(std::vector<std::string>const& l, 
-                 cmMakefile *mf, 
+::EnableLanguage(std::vector<std::string>const& l,
+                 cmMakefile *mf,
                  bool optional)
 {
-  // pick a default 
+  // pick a default
   mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
   mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
-  if(!(cmSystemTools::GetEnv("INCLUDE") && 
+  if(!(cmSystemTools::GetEnv("INCLUDE") &&
        cmSystemTools::GetEnv("LIB"))
     )
     {
@@ -40,7 +40,7 @@ void cmGlobalNMakeMakefileGenerator
     mf->IssueMessage(cmake::WARNING,
                      message);
     }
-  
+
   this->cmGlobalUnixMakefileGenerator3::EnableLanguage(l, mf, optional);
 }
 
@@ -61,9 +61,9 @@ cmLocalGenerator *cmGlobalNMakeMakefileGenerator::CreateLocalGenerator()
 
 //----------------------------------------------------------------------------
 void cmGlobalNMakeMakefileGenerator
-::GetDocumentation(cmDocumentationEntry& entry) const
+::GetDocumentation(cmDocumentationEntry& entry)
 {
-  entry.Name = this->GetName();
+  entry.Name = cmGlobalNMakeMakefileGenerator::GetActualName();
   entry.Brief = "Generates NMake makefiles.";
   entry.Full = "";
 }

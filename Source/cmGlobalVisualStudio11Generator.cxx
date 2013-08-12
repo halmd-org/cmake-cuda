@@ -13,27 +13,82 @@
 #include "cmLocalVisualStudio10Generator.h"
 #include "cmMakefile.h"
 
-//----------------------------------------------------------------------------
-cmGlobalVisualStudio11Generator::cmGlobalVisualStudio11Generator()
+static const char vs11Win32generatorName[] = "Visual Studio 11";
+static const char vs11Win64generatorName[] = "Visual Studio 11 Win64";
+static const char vs11ARMgeneratorName[] = "Visual Studio 11 ARM";
+
+class cmGlobalVisualStudio11Generator::Factory
+  : public cmGlobalGeneratorFactory
 {
-  this->FindMakeProgramFile = "CMakeVS11FindMake.cmake";
-  this->ExpressEdition = false; // TODO: VS 11 Express support
-  this->PlatformToolset = "v110";
+public:
+  virtual cmGlobalGenerator* CreateGlobalGenerator(const char* name) const {
+    if(!strcmp(name, vs11Win32generatorName))
+      {
+      return new cmGlobalVisualStudio11Generator(
+        vs11Win32generatorName, NULL, NULL);
+      }
+    if(!strcmp(name, vs11Win64generatorName))
+      {
+      return new cmGlobalVisualStudio11Generator(
+        vs11Win64generatorName, "x64", "CMAKE_FORCE_WIN64");
+      }
+    if(!strcmp(name, vs11ARMgeneratorName))
+      {
+      return new cmGlobalVisualStudio11Generator(
+        vs11ARMgeneratorName, "ARM", NULL);
+      }
+    return 0;
+  }
+
+  virtual void GetDocumentation(cmDocumentationEntry& entry) const {
+    entry.Name = "Visual Studio 11";
+    entry.Brief = "Generates Visual Studio 11 (2012) project files.";
+    entry.Full =
+      "It is possible to append a space followed by the platform name "
+      "to create project files for a specific target platform. E.g. "
+      "\"Visual Studio 11 Win64\" will create project files for "
+      "the x64 processor; \"Visual Studio 11 ARM\" for ARM.";
+  }
+
+  virtual void GetGenerators(std::vector<std::string>& names) const {
+    names.push_back(vs11Win32generatorName);
+    names.push_back(vs11Win64generatorName);
+    names.push_back(vs11ARMgeneratorName); }
+};
+
+//----------------------------------------------------------------------------
+cmGlobalGeneratorFactory* cmGlobalVisualStudio11Generator::NewFactory()
+{
+  return new Factory;
 }
 
 //----------------------------------------------------------------------------
-void cmGlobalVisualStudio11Generator::AddPlatformDefinitions(cmMakefile* mf)
+cmGlobalVisualStudio11Generator::cmGlobalVisualStudio11Generator(
+  const char* name, const char* architectureId,
+  const char* additionalPlatformDefinition)
+  : cmGlobalVisualStudio10Generator(name, architectureId,
+                                   additionalPlatformDefinition)
 {
-  mf->AddDefinition("MSVC11", "1");
-  mf->AddDefinition("MSVC_C_ARCHITECTURE_ID", "X86");
-  mf->AddDefinition("MSVC_CXX_ARCHITECTURE_ID", "X86");
+  this->FindMakeProgramFile = "CMakeVS11FindMake.cmake";
+  std::string vc11Express;
+  this->ExpressEdition = cmSystemTools::ReadRegistryValue(
+    "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VCExpress\\11.0\\Setup\\VC;"
+    "ProductDir", vc11Express, cmSystemTools::KeyWOW64_32);
+  this->PlatformToolset = "v110";
 }
 
 //----------------------------------------------------------------------------
 void cmGlobalVisualStudio11Generator::WriteSLNHeader(std::ostream& fout)
 {
   fout << "Microsoft Visual Studio Solution File, Format Version 12.00\n";
-  fout << "# Visual Studio 11\n";
+  if (this->ExpressEdition)
+    {
+    fout << "# Visual Studio Express 2012 for Windows Desktop\n";
+    }
+  else
+    {
+    fout << "# Visual Studio 2012\n";
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -47,10 +102,10 @@ cmLocalGenerator *cmGlobalVisualStudio11Generator::CreateLocalGenerator()
 }
 
 //----------------------------------------------------------------------------
-void cmGlobalVisualStudio11Generator
-::GetDocumentation(cmDocumentationEntry& entry) const
+bool cmGlobalVisualStudio11Generator::UseFolderProperty()
 {
-  entry.Name = this->GetName();
-  entry.Brief = "Generates Visual Studio 11 project files.";
-  entry.Full = "";
+  // Intentionally skip over the parent class implementation and call the
+  // grand-parent class's implementation. Folders are not supported by the
+  // Express editions in VS10 and earlier, but they are in VS11 Express.
+  return cmGlobalVisualStudio8Generator::UseFolderProperty();
 }

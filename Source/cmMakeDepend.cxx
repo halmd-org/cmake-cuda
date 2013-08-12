@@ -11,6 +11,7 @@
 ============================================================================*/
 #include "cmMakeDepend.h"
 #include "cmSystemTools.h"
+#include "cmGeneratorExpression.h"
 
 #include <cmsys/RegularExpression.hxx>
 
@@ -31,8 +32,8 @@ cmMakeDepend::cmMakeDepend()
 
 
 cmMakeDepend::~cmMakeDepend()
-{ 
-  for(DependInformationMapType::iterator i = 
+{
+  for(DependInformationMapType::iterator i =
         this->DependInformationMap.begin();
       i != this->DependInformationMap.end(); ++i)
     {
@@ -58,11 +59,22 @@ void cmMakeDepend::SetMakefile(cmMakefile* makefile)
   // Now extract any include paths from the targets
   std::set<std::string> uniqueIncludes;
   std::vector<std::string> orderedAndUniqueIncludes;
-  cmTargets & targets = this->Makefile->GetTargets();
-  for (cmTargets::iterator l = targets.begin(); l != targets.end(); ++l)
+  cmTargets &targets = this->Makefile->GetTargets();
+  for (cmTargets::iterator l = targets.begin();
+       l != targets.end(); ++l)
     {
-    const std::vector<std::string>& includes =
-      l->second.GetIncludeDirectories();
+    const char *incDirProp = l->second.GetProperty("INCLUDE_DIRECTORIES");
+    if (!incDirProp)
+      {
+      continue;
+      }
+
+    std::string incDirs = cmGeneratorExpression::Preprocess(incDirProp,
+                      cmGeneratorExpression::StripAllGeneratorExpressions);
+
+    std::vector<std::string> includes;
+    cmSystemTools::ExpandListArgument(incDirs.c_str(), includes);
+
     for(std::vector<std::string>::const_iterator j = includes.begin();
         j != includes.end(); ++j)
       {
@@ -162,7 +174,7 @@ void cmMakeDepend::GenerateDependInformation(cmDependInformation* info)
       else
         {
         //try to guess which include path to use
-        for(std::vector<std::string>::iterator t = 
+        for(std::vector<std::string>::iterator t =
               this->IncludeDirectories.begin();
             t != this->IncludeDirectories.end(); ++t)
           {
@@ -175,7 +187,7 @@ void cmMakeDepend::GenerateDependInformation(cmDependInformation* info)
           if (srcFile->GetFullPath() == incpath)
             {
             // set the path to the guessed path
-            info->FullPath = incpath; 
+            info->FullPath = incpath;
             found=true;
             }
           }
@@ -243,7 +255,7 @@ void cmMakeDepend::DependWalk(cmDependInformation* info)
 
 void cmMakeDepend::AddDependency(cmDependInformation* info, const char* file)
 {
-  cmDependInformation* dependInfo = 
+  cmDependInformation* dependInfo =
     this->GetDependInformation(file, info->PathOnly.c_str());
   this->GenerateDependInformation(dependInfo);
   info->AddDependencies(dependInfo);
@@ -288,7 +300,7 @@ std::string cmMakeDepend::FullPath(const char* fname, const char *extraPath)
     {
     m = this->DirectoryToFileToPathMap.find("");
     }
-  
+
   if(m != this->DirectoryToFileToPathMap.end())
     {
     FileToPathMapType& map = m->second;
@@ -305,7 +317,7 @@ std::string cmMakeDepend::FullPath(const char* fname, const char *extraPath)
     this->DirectoryToFileToPathMap[extraPath? extraPath: ""][fname] = fp;
     return fp;
     }
-  
+
   for(std::vector<std::string>::iterator i = this->IncludeDirectories.begin();
       i != this->IncludeDirectories.end(); ++i)
     {

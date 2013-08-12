@@ -45,8 +45,10 @@ void cmFindPathCommand::GenerateDocumentation()
                                "SEARCH_XXX", "file in a directory");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "XXX_SUBDIR", "include");
-  cmSystemTools::ReplaceString(this->GenericDocumentation,
-                               "XXX_EXTRA_PREFIX_ENTRY", "");
+  cmSystemTools::ReplaceString(
+    this->GenericDocumentation,
+    "XXX_EXTRA_PREFIX_ENTRY",
+    "   <prefix>/include/<arch> if CMAKE_LIBRARY_ARCHITECTURE is set, and\n");
   cmSystemTools::ReplaceString(this->GenericDocumentation,
                                "CMAKE_FIND_ROOT_PATH_MODE_XXX",
                                "CMAKE_FIND_ROOT_PATH_MODE_INCLUDE");
@@ -104,7 +106,7 @@ bool cmFindPathCommand
     (this->VariableName.c_str(),
      (this->VariableName + "-NOTFOUND").c_str(),
      this->VariableDocumentation.c_str(),
-     (this->IncludeFileInPath) ? 
+     (this->IncludeFileInPath) ?
      cmCacheManager::FILEPATH :cmCacheManager::PATH);
   return true;
 }
@@ -143,14 +145,14 @@ cmFindPathCommand::FindHeaderInFramework(std::string const& file,
     // remove the name from the slash;
     fileName = fileName.substr(pos+1);
     frameWorkName = file;
-    frameWorkName = 
+    frameWorkName =
       frameWorkName.substr(0, frameWorkName.size()-fileName.size()-1);
     // if the framework has a path in it then just use the filename
     if(frameWorkName.find("/") != frameWorkName.npos)
       {
       fileName = file;
       frameWorkName = "";
-      } 
+      }
     if(frameWorkName.size())
       {
       std::string fpath = dir;
@@ -160,7 +162,7 @@ cmFindPathCommand::FindHeaderInFramework(std::string const& file,
       intPath += "/Headers/";
       intPath += fileName;
       if(cmSystemTools::FileExists(intPath.c_str()))
-        { 
+        {
         if(this->IncludeFileInPath)
           {
           return intPath;

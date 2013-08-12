@@ -23,11 +23,11 @@ cmGlobalWatcomWMakeGenerator::cmGlobalWatcomWMakeGenerator()
 }
 
 void cmGlobalWatcomWMakeGenerator
-::EnableLanguage(std::vector<std::string>const& l, 
-                 cmMakefile *mf, 
+::EnableLanguage(std::vector<std::string>const& l,
+                 cmMakefile *mf,
                  bool optional)
 {
-  // pick a default 
+  // pick a default
   mf->AddDefinition("WATCOM", "1");
   mf->AddDefinition("CMAKE_QUOTE_INCLUDE_PATHS", "1");
   mf->AddDefinition("CMAKE_MANGLE_OBJECT_FILE_NAMES", "1");
@@ -58,9 +58,9 @@ cmLocalGenerator *cmGlobalWatcomWMakeGenerator::CreateLocalGenerator()
 
 //----------------------------------------------------------------------------
 void cmGlobalWatcomWMakeGenerator
-::GetDocumentation(cmDocumentationEntry& entry) const
+::GetDocumentation(cmDocumentationEntry& entry)
 {
-  entry.Name = this->GetName();
+  entry.Name = cmGlobalWatcomWMakeGenerator::GetActualName();
   entry.Brief = "Generates Watcom WMake makefiles.";
   entry.Full = "";
 }

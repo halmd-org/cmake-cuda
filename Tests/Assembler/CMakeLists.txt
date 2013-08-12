@@ -7,10 +7,14 @@ set(SRCS)
 
 # (at least) the following toolchains can process assembler files directly
 # and also generate assembler files from C:
-if("${CMAKE_GENERATOR}" MATCHES "Makefile")
-  if(("${CMAKE_C_COMPILER_ID}" MATCHES "^(GNU|HP|SunPro|XL)$") OR ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel"  AND  UNIX))
+if("${CMAKE_GENERATOR}" MATCHES "Makefile|Xcode" AND
+    NOT CMAKE_OSX_ARCHITECTURES)
+  if(("${CMAKE_C_COMPILER_ID}" MATCHES "^(GNU|Clang|HP|SunPro|XL)$") OR ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel"  AND  UNIX))
     set(C_FLAGS "${CMAKE_C_FLAGS}")
     separate_arguments(C_FLAGS)
+    if(CMAKE_OSX_SYSROOT AND CMAKE_C_SYSROOT_FLAG AND NOT ";${C_FLAGS};" MATCHES ";${CMAKE_C_SYSROOT_FLAG};")
+      list(APPEND C_FLAGS ${CMAKE_C_SYSROOT_FLAG} ${CMAKE_OSX_SYSROOT})
+    endif()
     set(SRCS main.s)
     add_custom_command(
       OUTPUT main.s
@@ -18,16 +22,16 @@ if("${CMAKE_GENERATOR}" MATCHES "Makefile")
       DEPENDS main.c
       VERBATIM
       )
-  endif(("${CMAKE_C_COMPILER_ID}" MATCHES "^(GNU|HP|SunPro|XL)$") OR ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel"  AND  UNIX))
-endif("${CMAKE_GENERATOR}" MATCHES "Makefile")
+  endif()
+endif()
 
 
 if(SRCS)
   set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}")
   enable_language(ASM OPTIONAL)
-else(SRCS)
+else()
   message(STATUS "No assembler enabled, using C")
   set(SRCS main.c)
-endif(SRCS)
+endif()
 
 add_executable(HelloAsm ${SRCS})

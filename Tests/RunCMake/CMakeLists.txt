@@ -39,20 +39,50 @@ macro(add_RunCMake_test test)
   add_test(RunCMake.${test} ${CMAKE_CMAKE_COMMAND}
     -DCMAKE_MODULE_PATH=${CMAKE_CURRENT_SOURCE_DIR}
     -DRunCMake_GENERATOR=${CMAKE_TEST_GENERATOR}
+    -DRunCMake_GENERATOR_TOOLSET=${CMAKE_TEST_GENERATOR_TOOLSET}
     -DRunCMake_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/${test}
     -DRunCMake_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/${test}
+    ${${test}_ARGS}
     -P "${CMAKE_CURRENT_SOURCE_DIR}/${test}/RunCMakeTest.cmake"
     )
 endmacro()
 
+if(XCODE_VERSION AND "${XCODE_VERSION}" VERSION_LESS 3)
+  set(GeneratorToolset_ARGS -DXCODE_BELOW_3=1)
+endif()
+
+add_RunCMake_test(CMP0019)
+add_RunCMake_test(CTest)
+if(UNIX AND "${CMAKE_TEST_GENERATOR}" MATCHES "Unix Makefiles")
+  add_RunCMake_test(CompilerChange)
+endif()
+add_RunCMake_test(ExternalData)
+add_RunCMake_test(FPHSA)
+add_RunCMake_test(GeneratorExpression)
+add_RunCMake_test(GeneratorToolset)
+add_RunCMake_test(TargetPropertyGeneratorExpressions)
 add_RunCMake_test(Languages)
 add_RunCMake_test(ObjectLibrary)
+if(NOT WIN32)
+  add_RunCMake_test(PositionIndependentCode)
+endif()
+add_RunCMake_test(CompatibleInterface)
 
+add_RunCMake_test(add_dependencies)
 add_RunCMake_test(build_command)
 add_RunCMake_test(find_package)
 add_RunCMake_test(include)
+add_RunCMake_test(include_directories)
 add_RunCMake_test(list)
+add_RunCMake_test(CMP0004)
+
+find_package(Qt4 QUIET)
+find_package(Qt5Core QUIET)
+if (QT4_FOUND AND Qt5Core_FOUND AND NOT Qt5Core_VERSION VERSION_LESS 5.1.0)
+  add_RunCMake_test(IncompatibleQt)
+endif()
 
 if("${CMAKE_TEST_GENERATOR}" MATCHES "Visual Studio [^6]")
   add_RunCMake_test(include_external_msproject)
+  add_RunCMake_test(SolutionGlobalSections)
 endif()

@@ -23,6 +23,7 @@ public:
   cmQtAutomoc();
   bool Run(const char* targetDirectory);
 
+  bool InitializeMocSourceFile(cmTarget* target);
   void SetupAutomocTarget(cmTarget* target);
 
 private:
@@ -35,18 +36,20 @@ private:
                                  const char* targetDirectory);
   void WriteOldMocDefinitionsFile(const char* targetDirectory);
 
-  bool RunAutomoc();
+  std::string MakeCompileSettingsString(cmMakefile* makefile);
+
+  bool RunAutomoc(cmMakefile* makefile);
   bool GenerateMoc(const std::string& sourceFile,
                    const std::string& mocFileName);
   void ParseCppFile(const std::string& absFilename,
-                    const std::list<std::string>& headerExtensions,
+                    const std::vector<std::string>& headerExtensions,
                     std::map<std::string, std::string>& includedMocs);
   void StrictParseCppFile(const std::string& absFilename,
-                          const std::list<std::string>& headerExtensions,
+                          const std::vector<std::string>& headerExtensions,
                           std::map<std::string, std::string>& includedMocs);
   void SearchHeadersForCppFile(const std::string& absFilename,
-                               const std::list<std::string>& headerExtensions,
-                               std::set<std::string>& absHeaders);
+                              const std::vector<std::string>& headerExtensions,
+                              std::set<std::string>& absHeaders);
 
   void ParseHeaders(const std::set<std::string>& absHeaders,
                     const std::map<std::string, std::string>& includedMocs,
@@ -54,7 +57,7 @@ private:
 
   void Init();
 
-  std::string Join(const std::list<std::string>& lst, char separator);
+  std::string Join(const std::vector<std::string>& lst, char separator);
   bool EndsWith(const std::string& str, const std::string& with);
   bool StartsWith(const std::string& str, const std::string& with);
   std::string ReadAll(const std::string& filename);
@@ -67,14 +70,14 @@ private:
   std::string Builddir;
   std::string MocExecutable;
   std::string MocCompileDefinitionsStr;
-  std::string MocDefinitionsStr;
   std::string MocIncludesStr;
   std::string MocOptionsStr;
   std::string ProjectBinaryDir;
   std::string ProjectSourceDir;
   std::string TargetName;
 
-  std::string OldMocDefinitionsStr;
+  std::string CurrentCompileSettingsStr;
+  std::string OldCompileSettingsStr;
 
   std::string OutMocCppFilename;
   std::list<std::string> MocIncludes;

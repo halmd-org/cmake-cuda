@@ -44,9 +44,16 @@ protected:
   virtual bool GenerateMainFile(std::ostream& os);
   virtual void GenerateImportTargetsConfig(std::ostream& os,
                                            const char* config,
-                                           std::string const& suffix);
-  virtual void ComplainAboutMissingTarget(cmTarget* depender,
-                                          cmTarget* dependee);
+                                           std::string const& suffix,
+                            std::vector<std::string> &missingTargets);
+  virtual void HandleMissingTarget(std::string& link_libs,
+                                   std::vector<std::string>& missingTargets,
+                                   cmMakefile* mf,
+                                   cmTarget* depender,
+                                   cmTarget* dependee);
+
+  void ComplainAboutMissingTarget(cmTarget* depender,
+                                  cmTarget* dependee);
 
   /** Fill in properties indicating built file locations.  */
   void SetImportLocationProperty(const char* config,

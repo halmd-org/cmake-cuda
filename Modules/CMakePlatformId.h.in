@@ -35,11 +35,8 @@
 #elif defined(__hpux) || defined(__hpux__)
 # define PLATFORM_ID "HP-UX"
 
-#elif defined(__HAIKU) || defined(__HAIKU__) || defined(_HAIKU)
+#elif defined(__HAIKU__)
 # define PLATFORM_ID "Haiku"
-/* Haiku also defines __BEOS__ so we must 
-   put it prior to the check for __BEOS__
-*/
 
 #elif defined(__BeOS) || defined(__BEOS__) || defined(_BEOS)
 # define PLATFORM_ID "BeOS"
@@ -92,13 +89,19 @@
 #  define ARCHITECTURE_ID "IA64"
 
 # elif defined(_M_X64) || defined(_M_AMD64)
-#  define ARCHITECTURE_ID "x64" 
+#  define ARCHITECTURE_ID "x64"
 
 # elif defined(_M_IX86)
 #  define ARCHITECTURE_ID "X86"
 
 # elif defined(_M_ARM)
 #  define ARCHITECTURE_ID "ARM"
+
+# elif defined(_M_MIPS)
+#  define ARCHITECTURE_ID "MIPS"
+
+# elif defined(_M_SH)
+#  define ARCHITECTURE_ID "SHx"
 
 # else /* unknown architecture */
 #  define ARCHITECTURE_ID ""

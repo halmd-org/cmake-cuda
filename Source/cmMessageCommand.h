@@ -24,7 +24,7 @@ public:
   /**
    * This is a virtual constructor for the command.
    */
-  virtual cmCommand* Clone() 
+  virtual cmCommand* Clone()
     {
     return new cmMessageCommand;
     }
@@ -53,7 +53,7 @@ public:
     {
     return "Display a message to the user.";
     }
-  
+
   /**
    * More documentation.
    */
@@ -67,8 +67,9 @@ public:
       "  STATUS         = Incidental information\n"
       "  WARNING        = CMake Warning, continue processing\n"
       "  AUTHOR_WARNING = CMake Warning (dev), continue processing\n"
-      "  SEND_ERROR     = CMake Error, continue but skip generation\n"
-      "  FATAL_ERROR    = CMake Error, stop all processing\n"
+      "  SEND_ERROR     = CMake Error, continue processing,\n"
+      "                                but skip generation\n"
+      "  FATAL_ERROR    = CMake Error, stop processing and generation\n"
       "The CMake command-line tool displays STATUS messages on stdout "
       "and all other message types on stderr.  "
       "The CMake GUI displays all messages in its log area.  "
@@ -83,7 +84,7 @@ public:
       "Indented text is considered pre-formatted."
       ;
     }
-  
+
   cmTypeMacro(cmMessageCommand, cmCommand);
 };
 

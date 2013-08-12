@@ -1,3 +1,4 @@
+project(ObjectLibraryA C)
 # Add -fPIC so objects can be used in shared libraries.
 # TODO: Need property for this.
 if(CMAKE_SHARED_LIBRARY_C_FLAGS AND NOT WATCOM)
@@ -12,6 +13,6 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/a1.c.in
                                    ${CMAKE_CURRENT_BINARY_DIR}/a1.c
   )
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(A OBJECT a1.c a2.c)
+target_include_directories(A PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

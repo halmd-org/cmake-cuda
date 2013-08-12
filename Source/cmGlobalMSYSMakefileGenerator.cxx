@@ -22,7 +22,7 @@ cmGlobalMSYSMakefileGenerator::cmGlobalMSYSMakefileGenerator()
   this->UseLinkScript = false;
 }
 
-std::string 
+std::string
 cmGlobalMSYSMakefileGenerator::FindMinGW(std::string const& makeloc)
 {
   std::string fstab = makeloc;
@@ -45,8 +45,8 @@ cmGlobalMSYSMakefileGenerator::FindMinGW(std::string const& makeloc)
 }
 
 void cmGlobalMSYSMakefileGenerator
-::EnableLanguage(std::vector<std::string>const& l, 
-                 cmMakefile *mf, 
+::EnableLanguage(std::vector<std::string>const& l,
+                 cmMakefile *mf,
                  bool optional)
 {
   this->FindMakeProgram(mf);
@@ -106,9 +106,9 @@ cmLocalGenerator *cmGlobalMSYSMakefileGenerator::CreateLocalGenerator()
 
 //----------------------------------------------------------------------------
 void cmGlobalMSYSMakefileGenerator
-::GetDocumentation(cmDocumentationEntry& entry) const
+::GetDocumentation(cmDocumentationEntry& entry)
 {
-  entry.Name = this->GetName();
+  entry.Name = cmGlobalMSYSMakefileGenerator::GetActualName();
   entry.Brief = "Generates MSYS makefiles.";
   entry.Full = "The makefiles use /bin/sh as the shell.  "
     "They require msys to be installed on the machine.";

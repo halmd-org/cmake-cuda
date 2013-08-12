@@ -28,7 +28,7 @@ public:
   /**
    * This is a virtual constructor for the command.
    */
-  virtual cmCommand* Clone() 
+  virtual cmCommand* Clone()
     {
     return new cmEnableLanguageCommand;
     }
@@ -39,7 +39,7 @@ public:
    */
   virtual bool InitialPass(std::vector<std::string> const& args,
                            cmExecutionStatus &status);
-  
+
   /**
    * The name of the command as specified in CMakeList.txt.
    */
@@ -52,7 +52,7 @@ public:
     {
     return "Enable a language (CXX/C/Fortran/etc)";
     }
-  
+
   /**
    * More documentation.
    */
@@ -65,9 +65,14 @@ public:
       "any of the extra variables that are created by the project command. "
       "Example languages are CXX, C, Fortran. "
       "If OPTIONAL is used, use the CMAKE_<languageName>_COMPILER_WORKS "
-      "variable to check whether the language has been enabled successfully.";
+      "variable to check whether the language has been enabled successfully."
+      "\n"
+      "This command must be called on file scope (not inside a function) and "
+      "the language enabled can only be used in the calling project or its "
+      "subdirectories added by add_subdirectory(). Also note that at present, "
+      "the OPTIONAL argument does not work.";
     }
-  
+
   cmTypeMacro(cmEnableLanguageCommand, cmCommand);
 };
 

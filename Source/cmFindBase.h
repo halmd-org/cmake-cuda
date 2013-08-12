@@ -30,7 +30,7 @@ public:
    */
   virtual bool ParseArguments(std::vector<std::string> const& args);
   cmTypeMacro(cmFindBase, cmFindCommon);
-  
+
   virtual const char* GetFullDocumentation() const;
 
 protected:
@@ -43,12 +43,14 @@ protected:
   // also copy the documentation from the cache to VariableDocumentation
   // if it has documentation in the cache
   bool CheckForVariableInCache();
-  
+
   cmStdString GenericDocumentation;
   // use by command during find
   cmStdString VariableDocumentation;
   cmStdString VariableName;
   std::vector<std::string> Names;
+  bool NamesPerDir;
+  bool NamesPerDirAllowed;
 
   // CMAKE_*_PATH CMAKE_SYSTEM_*_PATH FRAMEWORK|LIBRARY|INCLUDE|PROGRAM
   cmStdString EnvironmentPath; // LIB,INCLUDE

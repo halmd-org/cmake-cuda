@@ -1,6 +1,8 @@
 #include "cmDocumentVariables.h"
 #include "cmake.h"
 
+#include <cmsys/ios/sstream>
+
 void cmDocumentVariables::DefineVariables(cmake* cm)
 {
   // Subsection: variables defined by cmake, that give
@@ -253,6 +255,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "CMAKE_EXTRA_GENERATOR (e.g. \"Eclipse CDT4\").",false,
      "Variables that Provide Information");
   cm->DefineProperty
+    ("CMAKE_GENERATOR_TOOLSET", cmProperty::VARIABLE,
+     "Native build system toolset name specified by user.",
+     "Some CMake generators support a toolset name to be given to the "
+     "native build system to choose a compiler.  "
+     "If the user specifies a toolset name (e.g. via the cmake -T option) "
+     "the value will be available in this variable.",false,
+     "Variables that Provide Information");
+  cm->DefineProperty
     ("CMAKE_HOME_DIRECTORY", cmProperty::VARIABLE,
      "Path to top of source tree.",
      "This is the path to the top level of the source tree.",false,
@@ -281,6 +291,25 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "See CMAKE_BUILD_TOOL.",
      "This variable is around for backwards compatibility, "
      "see CMAKE_BUILD_TOOL.",false,
+     "Variables that Provide Information");
+  cm->DefineProperty
+    ("CMAKE_VS_PLATFORM_TOOLSET", cmProperty::VARIABLE,
+     "Visual Studio Platform Toolset name.",
+     "VS 10 and above use MSBuild under the hood and support multiple "
+     "compiler toolchains.  "
+     "CMake may specify a toolset explicitly, such as \"v110\" for "
+     "VS 11 or \"Windows7.1SDK\" for 64-bit support in VS 10 Express.  "
+     "CMake provides the name of the chosen toolset in this variable."
+     ,false,
+     "Variables that Provide Information");
+  cm->DefineProperty
+    ("CMAKE_XCODE_PLATFORM_TOOLSET", cmProperty::VARIABLE,
+     "Xcode compiler selection.",
+     "Xcode supports selection of a compiler from one of the installed "
+     "toolsets.  "
+     "CMake provides the name of the chosen toolset in this variable, "
+     "if any is explicitly selected (e.g. via the cmake -T option)."
+     ,false,
      "Variables that Provide Information");
   cm->DefineProperty
     ("CMAKE_MINOR_VERSION", cmProperty::VARIABLE,
@@ -371,12 +400,6 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Libraries linked into every executable and shared library.",
      "This is the list of libraries that are linked "
      "into all executables and libraries.",false,
-     "Variables that Provide Information");
-  cm->DefineProperty
-    ("CMAKE_USING_VC_FREE_TOOLS", cmProperty::VARIABLE,
-     "True if free visual studio tools being used.",
-     "This is set to true if the compiler is Visual "
-     "Studio free tools.",false,
      "Variables that Provide Information");
   cm->DefineProperty
     ("CMAKE_VERBOSE_MAKEFILE", cmProperty::VARIABLE,
@@ -595,7 +618,21 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "If \"make install\" is invoked or INSTALL is built"
      ", this directory is pre-pended onto all install "
      "directories. This variable defaults to /usr/local"
-     " on UNIX and c:/Program Files on Windows.",false,
+     " on UNIX and c:/Program Files on Windows.\n"
+     "On UNIX one can use the DESTDIR mechanism in order"
+     " to relocate the whole installation. "
+     "DESTDIR means DESTination DIRectory. It is "
+     "commonly used by makefile users "
+     "in order to install software at non-default location. "
+     "It is usually invoked like this:\n"
+     " make DESTDIR=/home/john install\n"
+     "which will install the concerned software using the"
+     " installation prefix, e.g. \"/usr/local\" pre-pended with "
+     "the DESTDIR value which finally gives \"/home/john/usr/local\".\n"
+     "WARNING: DESTDIR may not be used on Windows because installation"
+     " prefix usually contains a drive letter like in \"C:/Program Files\""
+     " which cannot be pre-pended with some other prefix."
+     ,false,
      "Variables That Change Behavior");
 
   cm->DefineProperty
@@ -681,7 +718,8 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
   cm->DefineProperty
     ("CMAKE_SYSTEM_IGNORE_PATH", cmProperty::VARIABLE,
      "Path to be ignored by FIND_XXX() commands.",
-     "Specifies directories to be ignored by searches in FIND_XXX() commands "
+     "Specifies directories to be ignored by searches in FIND_XXX() "
+     "commands.  "
      "This is useful in cross-compiled environments where some system "
      "directories contain incompatible but possibly linkable libraries. For "
      "example, on cross-compiled cluster environments, this allows a user to "
@@ -696,7 +734,8 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
   cm->DefineProperty
     ("CMAKE_IGNORE_PATH", cmProperty::VARIABLE,
      "Path to be ignored by FIND_XXX() commands.",
-     "Specifies directories to be ignored by searches in FIND_XXX() commands "
+     "Specifies directories to be ignored by searches in FIND_XXX() "
+     "commands.  "
      "This is useful in cross-compiled environments where some system "
      "directories contain incompatible but possibly linkable libraries. For "
      "example, on cross-compiled cluster environments, this allows a user to "
@@ -827,13 +866,13 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Tell cmake to use MFC for an executable or dll.",
      "This can be set in a CMakeLists.txt file and will "
      "enable MFC in the application.  It should be set "
-     "to 1 for static the static MFC library, and 2 for "
-     "the shared MFC library.  This is used in visual "
-     "studio 6 and 7 project files.   The CMakeSetup "
+     "to 1 for the static MFC library, and 2 for "
+     "the shared MFC library.  This is used in Visual "
+     "Studio 6 and 7 project files.   The CMakeSetup "
      "dialog used MFC and the CMakeLists.txt looks like this:\n"
-     "add_definitions(-D_AFXDLL)\n"
-     "set(CMAKE_MFC_FLAG 2)\n"
-     "add_executable(CMakeSetup WIN32 ${SRCS})\n",false,
+     "  add_definitions(-D_AFXDLL)\n"
+     "  set(CMAKE_MFC_FLAG 2)\n"
+     "  add_executable(CMakeSetup WIN32 ${SRCS})\n",false,
      "Variables That Change Behavior");
 
   cm->DefineProperty
@@ -873,6 +912,15 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
       " scripts. If ones set this variable to ON while running the"
       " script, it may get fatal error messages from the script.",false,
       "Variables That Change Behavior");
+
+  cm->DefineProperty
+    ("CMAKE_DEBUG_TARGET_PROPERTIES", cmProperty::VARIABLE,
+     "Enables tracing output for target properties.",
+     "This variable can be populated with a list of properties to generate "
+     "debug output for when evaluating target properties.  Currently it can "
+     "only be used when evaluating the INCLUDE_DIRECTORIES target property.  "
+     "In that case, it outputs a backtrace for each include directory in "
+     "the build.  Default is unset.",false,"Variables That Change Behavior");
 
   // Variables defined by CMake that describe the system
 
@@ -974,12 +1022,33 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      false,
      "Variables That Describe the System");
 
-  cm->DefineProperty
-    ("MSVC80", cmProperty::VARIABLE,
-     "True when using Microsoft Visual C 8.0",
-     "Set to true when the compiler is version 8.0 of Microsoft Visual C.",
-     false,
-     "Variables That Describe the System");
+  int msvc_versions[] = { 60, 70, 71, 80, 90, 100, 110, 120, 0 };
+  for (int i = 0; msvc_versions[i] != 0; i ++)
+    {
+    const char minor = (char)('0' + (msvc_versions[i] % 10));
+    cmStdString varName = "MSVC";
+    cmsys_ios::ostringstream majorStr;
+
+    majorStr << (msvc_versions[i] / 10);
+    varName += majorStr.str();
+    if (msvc_versions[i] < 100)
+      {
+      varName += minor;
+      }
+
+    cmStdString verString = majorStr.str() + "." + minor;
+
+    cmStdString shortStr = "True when using Microsoft Visual C " + verString;
+    cmStdString fullStr = "Set to true when the compiler is version " +
+                          verString +
+                          " of Microsoft Visual C.";
+    cm->DefineProperty
+      (varName.c_str(), cmProperty::VARIABLE,
+       shortStr.c_str(),
+       fullStr.c_str(),
+       false,
+       "Variables That Describe the System");
+    }
 
   cm->DefineProperty
     ("MSVC_IDE", cmProperty::VARIABLE,
@@ -999,6 +1068,8 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "  1400 = VS  8.0\n"
      "  1500 = VS  9.0\n"
      "  1600 = VS 10.0\n"
+     "  1700 = VS 11.0\n"
+     "  1800 = VS 12.0\n"
      "",
      false,
      "Variables That Describe the System");
@@ -1094,6 +1165,18 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Variables that Control the Build");
 
   cm->DefineProperty
+    ("CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE", cmProperty::VARIABLE,
+     "Automatically add the current source- and build directories "
+     "to the INTERFACE_INCLUDE_DIRECTORIES.",
+     "If this variable is enabled, CMake automatically adds for each shared "
+     "library target, static library target, module target and executable "
+     "target, ${CMAKE_CURRENT_SOURCE_DIR} and ${CMAKE_CURRENT_BINARY_DIR} to "
+     "the INTERFACE_INCLUDE_DIRECTORIES."
+     "By default CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE is OFF.",
+     false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
     ("CMAKE_INSTALL_RPATH", cmProperty::VARIABLE,
      "The rpath to use for installed targets.",
      "A semicolon-separated list specifying the rpath "
@@ -1164,6 +1247,24 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "Where to put all the RUNTIME targets when built.",
      "This variable is used to initialize the "
      "RUNTIME_OUTPUT_DIRECTORY property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
+    ("CMAKE_PDB_OUTPUT_DIRECTORY", cmProperty::VARIABLE,
+     "Where to put all the MS debug symbol files.",
+     "This variable is used to initialize the "
+     "PDB_OUTPUT_DIRECTORY property on all the targets. "
+     "See that target property for additional information.",
+     false,
+     "Variables that Control the Build");
+
+  cm->DefineProperty
+    ("CMAKE_LINK_DEPENDS_NO_SHARED", cmProperty::VARIABLE,
+     "Whether to skip link dependencies on shared library files.",
+     "This variable initializes the LINK_DEPENDS_NO_SHARED "
+     "property on targets when they are created.  "
      "See that target property for additional information.",
      false,
      "Variables that Control the Build");
@@ -1351,7 +1452,7 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      false,
      "Variables that Control the Build");
   cm->DefineProperty
-    ("CMAKE_POSITION_INDEPENDENT_FLAGS", cmProperty::VARIABLE,
+    ("CMAKE_POSITION_INDEPENDENT_CODE", cmProperty::VARIABLE,
      "Default value for POSITION_INDEPENDENT_CODE of targets.",
      "This variable is used to initialize the "
      "POSITION_INDEPENDENT_CODE property on all the targets. "
@@ -1381,8 +1482,30 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   cm->DefineProperty
     ("CMAKE_<LANG>_COMPILER_ID", cmProperty::VARIABLE,
-     "An internal variable subject to change.",
-     "This is used in determining the compiler and is subject to change.",
+     "Compiler identification string.",
+     "A short string unique to the compiler vendor.  "
+     "Possible values include:\n"
+     "  Absoft = Absoft Fortran (absoft.com)\n"
+     "  ADSP = Analog VisualDSP++ (analog.com)\n"
+     "  Clang = LLVM Clang (clang.llvm.org)\n"
+     "  Cray = Cray Compiler (cray.com)\n"
+     "  Embarcadero, Borland = Embarcadero (embarcadero.com)\n"
+     "  G95 = G95 Fortran (g95.org)\n"
+     "  GNU = GNU Compiler Collection (gcc.gnu.org)\n"
+     "  HP = Hewlett-Packard Compiler (hp.com)\n"
+     "  Intel = Intel Compiler (intel.com)\n"
+     "  MIPSpro = SGI MIPSpro (sgi.com)\n"
+     "  MSVC = Microsoft Visual Studio (microsoft.com)\n"
+     "  PGI = The Portland Group (pgroup.com)\n"
+     "  PathScale = PathScale (pathscale.com)\n"
+     "  SDCC = Small Device C Compiler (sdcc.sourceforge.net)\n"
+     "  SunPro = Oracle Solaris Studio (oracle.com)\n"
+     "  TI = Texas Instruments (ti.com)\n"
+     "  TinyCC = Tiny C Compiler (tinycc.org)\n"
+     "  Watcom = Open Watcom (openwatcom.org)\n"
+     "  XL, VisualAge, zOS = IBM XL (ibm.com)\n"
+     "This variable is not guaranteed to be defined for all "
+     "compilers or languages.",
      false,
      "Variables for Languages");
 
@@ -1402,10 +1525,10 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
 
   cm->DefineProperty
     ("CMAKE_<LANG>_COMPILER_VERSION", cmProperty::VARIABLE,
-     "An internal variable subject to change.",
+     "Compiler version string.",
      "Compiler version in major[.minor[.patch[.tweak]]] format.  "
-     "This variable is reserved for internal use by CMake and is not "
-     "guaranteed to be set.",
+     "This variable is not guaranteed to be defined for all "
+     "compilers or languages.",
      false,
      "Variables for Languages");
 
@@ -1429,7 +1552,14 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
     ("CMAKE_COMPILER_IS_GNU<LANG>", cmProperty::VARIABLE,
      "True if the compiler is GNU.",
      "If the selected <LANG> compiler is the GNU "
-     "compiler then this is TRUE, if not it is FALSE.",false,
+     "compiler then this is TRUE, if not it is FALSE. "
+     "Unlike the other per-language variables, this uses the GNU syntax for "
+     "identifying languages instead of the CMake syntax. Recognized values of "
+     "the <LANG> suffix are:\n"
+     "  CC = C compiler\n"
+     "  CXX = C++ compiler\n"
+     "  G77 = Fortran compiler",
+     false,
      "Variables for Languages");
 
   cm->DefineProperty
@@ -1536,6 +1666,23 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
      "libraries and default library search paths when they invoke a linker.  "
      "These paths are implicit linker search directories for the compiler's "
      "language.  "
+     "CMake automatically detects these directories for each language and "
+     "reports the results in this variable."
+     "\n"
+     "When a library in one of these directories is given by full path to "
+     "target_link_libraries() CMake will generate the -l<name> form on "
+     "link lines to ensure the linker searches its implicit directories "
+     "for the library.  "
+     "Note that some toolchains read implicit directories from an "
+     "environment variable such as LIBRARY_PATH so keep its value "
+     "consistent when operating in a given build tree.",false,
+     "Variables for Languages");
+
+  cm->DefineProperty
+    ("CMAKE_<LANG>_IMPLICIT_LINK_FRAMEWORK_DIRECTORIES", cmProperty::VARIABLE,
+     "Implicit linker framework search path detected for language <LANG>.",
+     "These paths are implicit linker framework search directories for "
+     "the compiler's language.  "
      "CMake automatically detects these directories for each language and "
      "reports the results in this variable.", false,
      "Variables for Languages");
@@ -1728,6 +1875,9 @@ void cmDocumentVariables::DefineVariables(cmake* cm)
                      cmProperty::VARIABLE,0,0);
   cm->DefineProperty("CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH",
                      cmProperty::VARIABLE,0,0);
+  cm->DefineProperty(
+    "CMAKE_<LANG>_USE_IMPLICIT_LINK_DIRECTORIES_IN_RUNTIME_PATH",
+    cmProperty::VARIABLE,0,0);
   cm->DefineProperty("CMAKE_SHARED_MODULE_CREATE_<LANG>_FLAGS",
                      cmProperty::VARIABLE,0,0);
   cm->DefineProperty("CMAKE_SHARED_MODULE_<LANG>_FLAGS",
