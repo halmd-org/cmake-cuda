@@ -3,6 +3,11 @@ CMake is distributed under the BSD License, see Copyright.txt.
 For documentation see the Docs/ directory once you have built CMake
 or visit http://www.cmake.org.
 
+This version includes a patch which adds native CUDA source file compilation
+and linking support to CMake. It is not to be confused nor compatible with the
+CUDA module in CMake 2.8. See http://public.kitware.com/Bug/view.php?id=11887
+for a discussion.
+
 
 Building CMake
 ==============
