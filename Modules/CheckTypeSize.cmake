@@ -24,6 +24,11 @@
 # size check automatically includes the available headers, thus
 # supporting checks of types defined in the headers.
 #
+# Despite the name of the macro you may use it to check the size of
+# more complex expressions, too. To check e.g. for the size of a struct
+# member you can do something like this:
+#  check_type_size("((struct something*)0)->member" SIZEOF_MEMBER)
+#
 # The following variables may be set before calling this macro to
 # modify the way the check is run:
 #
@@ -47,7 +52,6 @@
 #  License text for the above reference.)
 
 include(CheckIncludeFile)
-include("${CMAKE_CURRENT_LIST_DIR}/CMakeExpandImportedTargets.cmake")
 
 cmake_policy(PUSH)
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
@@ -78,18 +82,16 @@ function(__check_type_size_impl type var map builtin)
 
   # Perform the check.
 
-  # this one translates potentially used imported library targets to their files on disk
-  cmake_expand_imported_targets(_ADJUSTED_CMAKE_REQUIRED_LIBRARIES  LIBRARIES  ${CMAKE_REQUIRED_LIBRARIES} CONFIGURATION "${CMAKE_TRY_COMPILE_CONFIGURATION}")
 
   set(src ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CheckTypeSize/${var}.c)
   set(bin ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CheckTypeSize/${var}.bin)
   configure_file(${__check_type_size_dir}/CheckTypeSize.c.in ${src} @ONLY)
   try_compile(HAVE_${var} ${CMAKE_BINARY_DIR} ${src}
     COMPILE_DEFINITIONS ${CMAKE_REQUIRED_DEFINITIONS}
+    LINK_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES}
     CMAKE_FLAGS
       "-DCOMPILE_DEFINITIONS:STRING=${CMAKE_REQUIRED_FLAGS}"
       "-DINCLUDE_DIRECTORIES:STRING=${CMAKE_REQUIRED_INCLUDES}"
-      "-DLINK_LIBRARIES:STRING=${_ADJUSTED_CMAKE_REQUIRED_LIBRARIES}"
     OUTPUT_VARIABLE output
     COPY_FILE ${bin}
     )
@@ -142,7 +144,7 @@ function(__check_type_size_impl type var map builtin)
     file(APPEND ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeOutput.log
       "Determining size of ${type} passed with the following output:\n${output}\n\n")
     set(${var} "${${var}}" CACHE INTERNAL "CHECK_TYPE_SIZE: sizeof(${type})")
-  else(HAVE_${var})
+  else()
     # The check failed to compile.
     message(STATUS "Check size of ${type} - failed")
     file(READ ${src} content)
@@ -150,7 +152,7 @@ function(__check_type_size_impl type var map builtin)
       "Determining size of ${type} failed with the following output:\n${output}\n${src}:\n${content}\n\n")
     set(${var} "" CACHE INTERNAL "CHECK_TYPE_SIZE: ${type} unknown")
     file(REMOVE ${map})
-  endif(HAVE_${var})
+  endif()
 endfunction()
 
 #-----------------------------------------------------------------------------

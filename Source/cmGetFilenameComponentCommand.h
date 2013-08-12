@@ -18,7 +18,7 @@
  * \brief Get a specific component of a filename.
  *
  * cmGetFilenameComponentCommand is a utility command used to get the path,
- * name, extension or name without extension of a full filename. 
+ * name, extension or name without extension of a full filename.
  */
 class cmGetFilenameComponentCommand : public cmCommand
 {
@@ -26,7 +26,7 @@ public:
   /**
    * This is a virtual constructor for the command.
    */
-  virtual cmCommand* Clone() 
+  virtual cmCommand* Clone()
     {
     return new cmGetFilenameComponentCommand;
     }
@@ -55,22 +55,23 @@ public:
     {
     return "Get a specific component of a full filename.";
     }
-  
+
   /**
    * More documentation.
    */
   virtual const char* GetFullDocumentation() const
     {
     return
-      "  get_filename_component(<VAR> FileName\n"
-      "                         PATH|ABSOLUTE|NAME|EXT|NAME_WE|REALPATH\n"
-      "                         [CACHE])\n"
-      "Set <VAR> to be the path (PATH), file name (NAME), file "
-      "extension (EXT), file name without extension (NAME_WE) of FileName, "
-      "the full path (ABSOLUTE), or the full path with all symlinks "
-      "resolved (REALPATH).  "
-      "Note that the path is converted to Unix slashes format and has no "
-      "trailing slashes. The longest file extension is always considered. "
+      "  get_filename_component(<VAR> <FileName> <COMP> [CACHE])\n"
+      "Set <VAR> to a component of <FileName>, where <COMP> is one of:\n"
+      " PATH      = Directory without file name\n"
+      " NAME      = File name without directory\n"
+      " EXT       = File name longest extension (.b.c from d/a.b.c)\n"
+      " NAME_WE   = File name without directory or longest extension\n"
+      " ABSOLUTE  = Full path to file\n"
+      " REALPATH  = Full path to existing file with symlinks resolved\n"
+      "Paths are returned with forward slashes and have no trailing slahes. "
+      "The longest file extension is always considered. "
       "If the optional CACHE argument is specified, the result variable is "
       "added to the cache.\n"
       "  get_filename_component(<VAR> FileName\n"
@@ -82,7 +83,7 @@ public:
       "from the program name and stored in <ARG_VAR>.  This is used to "
       "separate a program name from its arguments in a command line string.";
     }
-  
+
   cmTypeMacro(cmGetFilenameComponentCommand, cmCommand);
 };
 

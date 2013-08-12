@@ -66,6 +66,7 @@ void cmVisualStudioGeneratorOptions::FixExceptionHandlingDefault()
       break;
     case cmLocalVisualStudioGenerator::VS10:
     case cmLocalVisualStudioGenerator::VS11:
+    case cmLocalVisualStudioGenerator::VS12:
       // by default VS puts <ExceptionHandling></ExceptionHandling> empty
       // for a project, to make our projects look the same put a new line
       // and space over for the closing </ExceptionHandling> as the default
@@ -342,10 +343,10 @@ cmVisualStudioGeneratorOptions
   if(!this->FlagString.empty())
     {
     if(this->Version >= cmLocalVisualStudioGenerator::VS10)
-      { 
+      {
       fout << prefix;
       if(this->Configuration.size())
-        { 
+        {
         this->TargetGenerator->WritePlatformConfigTag(
           "AdditionalOptions",
           this->Configuration.c_str(),

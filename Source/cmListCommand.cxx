@@ -15,13 +15,14 @@
 
 #include <stdlib.h> // required for atoi
 #include <ctype.h>
+#include <assert.h>
 //----------------------------------------------------------------------------
 bool cmListCommand
 ::InitialPass(std::vector<std::string> const& args, cmExecutionStatus &)
 {
-  if(args.size() < 1)
+  if(args.size() < 2)
     {
-    this->SetError("must be called with at least one argument.");
+    this->SetError("must be called with at least two arguments.");
     return false;
     }
 
@@ -98,7 +99,7 @@ bool cmListCommand::GetList(std::vector<std::string>& list, const char* var)
     {
     return false;
     }
-  // if the size of the list 
+  // if the size of the list
   if(listString.size() == 0)
     {
     return true;
@@ -107,7 +108,7 @@ bool cmListCommand::GetList(std::vector<std::string>& list, const char* var)
   cmSystemTools::ExpandListArgument(listString, list, true);
   // check the list for empty values
   bool hasEmpty = false;
-  for(std::vector<std::string>::iterator i = list.begin(); 
+  for(std::vector<std::string>::iterator i = list.begin();
       i != list.end(); ++i)
     {
     if(i->size() == 0)
@@ -116,7 +117,7 @@ bool cmListCommand::GetList(std::vector<std::string>& list, const char* var)
       break;
       }
     }
-  // if no empty elements then just return 
+  // if no empty elements then just return
   if(!hasEmpty)
     {
     return true;
@@ -124,7 +125,7 @@ bool cmListCommand::GetList(std::vector<std::string>& list, const char* var)
   // if we have empty elements we need to check policy CMP0007
   switch(this->Makefile->GetPolicyStatus(cmPolicies::CMP0007))
     {
-    case cmPolicies::WARN: 
+    case cmPolicies::WARN:
       {
       // Default is to warn and use old behavior
       // OLD behavior is to allow compatibility, so recall
@@ -243,11 +244,7 @@ bool cmListCommand::HandleGetCommand(std::vector<std::string> const& args)
 //----------------------------------------------------------------------------
 bool cmListCommand::HandleAppendCommand(std::vector<std::string> const& args)
 {
-  if(args.size() < 2)
-    {
-    this->SetError("sub-command APPEND requires at least one argument.");
-    return false;
-    }
+  assert(args.size() >= 2);
 
   // Skip if nothing to append.
   if(args.size() < 3)
@@ -424,9 +421,11 @@ bool cmListCommand
 bool cmListCommand
 ::HandleReverseCommand(std::vector<std::string> const& args)
 {
-  if(args.size() < 2)
+  assert(args.size() >= 2);
+  if(args.size() > 2)
     {
-    this->SetError("sub-command REVERSE requires a list as an argument.");
+    this->SetError(
+      "sub-command REVERSE only takes one argument.");
     return false;
     }
 
@@ -457,10 +456,11 @@ bool cmListCommand
 bool cmListCommand
 ::HandleRemoveDuplicatesCommand(std::vector<std::string> const& args)
 {
-  if(args.size() < 2)
+  assert(args.size() >= 2);
+  if(args.size() > 2)
     {
     this->SetError(
-      "sub-command REMOVE_DUPLICATES requires a list as an argument.");
+      "sub-command REMOVE_DUPLICATES only takes one argument.");
     return false;
     }
 
@@ -501,9 +501,11 @@ bool cmListCommand
 bool cmListCommand
 ::HandleSortCommand(std::vector<std::string> const& args)
 {
-  if(args.size() < 2)
+  assert(args.size() >= 2);
+  if(args.size() > 2)
     {
-    this->SetError("sub-command SORT requires a list as an argument.");
+    this->SetError(
+      "sub-command SORT only takes one argument.");
     return false;
     }
 

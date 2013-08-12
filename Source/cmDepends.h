@@ -30,7 +30,7 @@ public:
   /** Instances need to know the build directory name and the relative
       path from the build directory to the target file.  */
   cmDepends(cmLocalGenerator* lg=0, const char* targetDir="");
-  
+
   /** at what level will the compile be done from */
   void SetCompileDirectory(const char *dir) {this->CompileDirectory = dir;};
 
@@ -48,7 +48,7 @@ public:
 
   /** should this be verbose in its output */
   void SetVerbose(bool verb) { this->Verbose = verb; }
-    
+
   /** Virtual destructor to cleanup subclasses properly.  */
   virtual ~cmDepends();
 
@@ -69,20 +69,23 @@ public:
   void Clear(const char *file);
 
   /** Set the file comparison object */
-  void SetFileComparison(cmFileTimeComparison* fc) { 
+  void SetFileComparison(cmFileTimeComparison* fc) {
     this->FileComparison = fc; }
 
 protected:
 
   // Write dependencies for the target file to the given stream.
   // Return true for success and false for failure.
-  virtual bool WriteDependencies(const char *src, const char* obj,
-    std::ostream& makeDepends, std::ostream& internalDepends);
+  virtual bool WriteDependencies(const std::set<std::string>& sources,
+                                 const std::string& obj,
+                                 std::ostream& makeDepends,
+                                 std::ostream& internalDepends);
 
   // Check dependencies for the target file in the given stream.
   // Return false if dependencies must be regenerated and true
   // otherwise.
   virtual bool CheckDependencies(std::istream& internalDepends,
+                                 const char* internalDependsFileName,
                            std::map<std::string, DependencyVector>& validDeps);
 
   // Finalize the dependency information for the target.

@@ -27,7 +27,7 @@ if(APPLE)
       set(CMAKE_OSX_ARCHITECTURES i386 x86_64)
     endif()
   endif()
-endif(APPLE)
+endif()
 
 add_library(foo STATIC ${testRebuild_BINARY_DIR}/foo.cxx)
 set_target_properties(foo PROPERTIES OUTPUT_NAME "foolib")
@@ -60,16 +60,17 @@ add_executable(bar bar.cxx
   )
 
 #-----------------------------------------------------------------------------
-IF("${CMAKE_GENERATOR}" MATCHES "Make")
+if("${CMAKE_GENERATOR}" MATCHES "Make")
   # Test the IMPLICIT_DEPENDS feature.
-  SET(ZOT_DEPENDS IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/dep.cxx)
-  SET(ZOT_CUSTOM_DEP
-    IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/dep_custom.cxx)
-ELSE("${CMAKE_GENERATOR}" MATCHES "Make")
+  set(ZOT_DEPENDS IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/dep.cxx)
+  set(ZOT_CUSTOM_DEP
+    IMPLICIT_DEPENDS CXX ${CMAKE_CURRENT_SOURCE_DIR}/dep_custom.cxx
+                     CXX ${CMAKE_CURRENT_SOURCE_DIR}/dep_custom2.cxx )
+else()
   # No IMPLICIT_DEPENDS...just depend directly.
-  SET(ZOT_DEPENDS DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/zot.hxx.in)
-  SET(ZOT_CUSTOM_DEP DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/zot_custom.hxx.in)
-ENDIF("${CMAKE_GENERATOR}" MATCHES "Make")
+  set(ZOT_DEPENDS DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/zot.hxx.in)
+  set(ZOT_CUSTOM_DEP DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/zot_custom.hxx.in)
+endif()
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/zot.hxx
   COMMAND ${CMAKE_COMMAND} -E copy
@@ -107,3 +108,18 @@ if(TEST_LINK_DEPENDS)
   add_executable(linkdep linkdep.cxx)
   set_property(TARGET linkdep PROPERTY LINK_DEPENDS ${TEST_LINK_DEPENDS})
 endif()
+
+add_library(link_depends_no_shared_lib SHARED link_depends_no_shared_lib.c
+  ${CMAKE_CURRENT_BINARY_DIR}/link_depends_no_shared_lib.h)
+add_executable(link_depends_no_shared_exe link_depends_no_shared_exe.c
+  ${CMAKE_CURRENT_BINARY_DIR}/link_depends_no_shared_exe.h)
+target_link_libraries(link_depends_no_shared_exe link_depends_no_shared_lib)
+set_property(TARGET link_depends_no_shared_exe PROPERTY LINK_DEPENDS_NO_SHARED 1)
+add_custom_target(link_depends_no_shared_check ALL
+  COMMAND ${CMAKE_COMMAND}
+   -Dlib=$<TARGET_FILE:link_depends_no_shared_lib>
+   -Dexe=$<TARGET_FILE:link_depends_no_shared_exe>
+   -Dout=${CMAKE_CURRENT_BINARY_DIR}/link_depends_no_shared_check.txt
+   -P ${CMAKE_CURRENT_SOURCE_DIR}/link_depends_no_shared_check.cmake
+  )
+add_dependencies(link_depends_no_shared_check link_depends_no_shared_exe)

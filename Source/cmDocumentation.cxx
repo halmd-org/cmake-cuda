@@ -148,13 +148,6 @@ static const char *cmDocumentationStandardSeeAlso[][3] =
    "The list is member-post-only but one may sign up on the CMake web page. "
    "Please first read the full documentation at "
    "http://www.cmake.org before posting questions to the list."},
-  {0,
-   "Summary of helpful links:\n"
-   "  Home: http://www.cmake.org\n"
-   "  Docs: http://www.cmake.org/HTML/Documentation.html\n"
-   "  Mail: http://www.cmake.org/HTML/MailingLists.html\n"
-   "  FAQ:  http://www.cmake.org/Wiki/CMake_FAQ\n"
-   , 0},
   {0,0,0}
 };
 
@@ -162,7 +155,7 @@ static const char *cmDocumentationStandardSeeAlso[][3] =
 static const char *cmDocumentationCopyright[][3] =
 {
   {0,
-   "Copyright 2000-2009 Kitware, Inc., Insight Software Consortium.  "
+   "Copyright 2000-2012 Kitware, Inc., Insight Software Consortium.  "
    "All rights reserved.", 0},
   {0,
    "Redistribution and use in source and binary forms, with or without "

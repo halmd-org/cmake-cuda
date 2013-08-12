@@ -28,20 +28,20 @@ class cmVisualStudioGeneratorOptions;
 class cmVisualStudio10TargetGenerator
 {
 public:
-  cmVisualStudio10TargetGenerator(cmTarget* target, 
+  cmVisualStudio10TargetGenerator(cmTarget* target,
                                   cmGlobalVisualStudio10Generator* gg);
   ~cmVisualStudio10TargetGenerator();
   void Generate();
-  // used by cmVisualStudioGeneratorOptions 
-  void WritePlatformConfigTag( 
+  // used by cmVisualStudioGeneratorOptions
+  void WritePlatformConfigTag(
     const char* tag,
-    const char* config, 
+    const char* config,
     int indentLevel,
     const char* attribute = 0,
     const char* end = 0,
     std::ostream* strm = 0
     );
-  
+
 private:
   struct ToolSource
   {
@@ -68,6 +68,8 @@ private:
                       std::vector<std::string> const & includes);
   void WriteRCOptions(std::string const& config,
                       std::vector<std::string> const & includes);
+  bool ComputeLinkOptions();
+  bool ComputeLinkOptions(std::string const& config);
   void WriteLinkOptions(std::string const& config);
   void WriteMidlOptions(std::string const& config,
                         std::vector<std::string> const & includes);
@@ -95,6 +97,7 @@ private:
   typedef cmVisualStudioGeneratorOptions Options;
   typedef std::map<cmStdString, Options*> OptionsMap;
   OptionsMap ClOptions;
+  OptionsMap LinkOptions;
   std::string PathToVcxproj;
   cmTarget* Target;
   cmGeneratorTarget* GeneratorTarget;

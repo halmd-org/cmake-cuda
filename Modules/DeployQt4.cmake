@@ -80,7 +80,7 @@
 # The functions defined in this file depend on the fixup_bundle function
 # (and others) found in BundleUtilities.cmake
 
-include(BundleUtilities)
+include("${CMAKE_CURRENT_LIST_DIR}/BundleUtilities.cmake")
 set(DeployQt4_cmake_dir "${CMAKE_CURRENT_LIST_DIR}")
 set(DeployQt4_apple_plugins_dir "PlugIns")
 
@@ -101,7 +101,7 @@ function(resolve_qt4_paths paths_var)
                         if(${executable_path})
                                 list(APPEND paths_resolved "${executable_path}/${path}")
                         else()
-                                list(APPEND paths_resolved "\${CMAKE_INSTALL_PREFIX}/${path}")
+                                list(APPEND paths_resolved "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${path}")
                         endif()
                 endif()
         endforeach()
@@ -293,9 +293,9 @@ function(install_qt4_executable executable)
         resolve_qt4_paths(libs "")
 
         install(CODE
-  "INCLUDE(\"${DeployQt4_cmake_dir}/DeployQt4.cmake\")
-  SET(BU_CHMOD_BUNDLE_ITEMS TRUE)
-  FIXUP_QT4_EXECUTABLE(\"\${CMAKE_INSTALL_PREFIX}/${executable}\" \"\" \"${libs}\" \"${dirs}\" \"${plugins_dir}\" \"${request_qt_conf}\")"
+  "include(\"${DeployQt4_cmake_dir}/DeployQt4.cmake\")
+  set(BU_CHMOD_BUNDLE_ITEMS TRUE)
+  FIXUP_QT4_EXECUTABLE(\"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${executable}\" \"\" \"${libs}\" \"${dirs}\" \"${plugins_dir}\" \"${request_qt_conf}\")"
                 ${component}
         )
 endfunction()

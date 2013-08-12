@@ -20,11 +20,11 @@ class cmMacroFunctionBlocker : public cmFunctionBlocker
 public:
   cmMacroFunctionBlocker() {this->Depth=0;}
   virtual ~cmMacroFunctionBlocker() {}
-  virtual bool IsFunctionBlocked(const cmListFileFunction&, 
+  virtual bool IsFunctionBlocked(const cmListFileFunction&,
                                  cmMakefile &mf,
                                  cmExecutionStatus &);
   virtual bool ShouldRemove(const cmListFileFunction&, cmMakefile &mf);
-  
+
   std::vector<std::string> Args;
   std::vector<cmListFileFunction> Functions;
   int Depth;
@@ -92,12 +92,12 @@ public:
       "facilitates creating macros with optional arguments. Additionally "
       "${ARGV} holds the list of all arguments given to the macro and "
       "${ARGN} "
-      "holds the list of argument past the last expected argument. "
+      "holds the list of arguments past the last expected argument. "
       "Note that the parameters to a macro and values such as ARGN "
       "are not variables in the usual CMake sense. They are string "
-      "replacements much like the c preprocessor would do with a "
-      "macro. If you want true CMake variables you should look at "
-      "the function command."
+      "replacements much like the C preprocessor would do with a macro. "
+      "If you want true CMake variables and/or better CMake scope control "
+      "you should look at the function command."
       "\n"
       "See the cmake_policy() command documentation for the behavior of "
       "policies inside macros."

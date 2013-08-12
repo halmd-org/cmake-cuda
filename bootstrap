@@ -19,7 +19,7 @@ die() {
 cmake_version_component()
 {
   cat "${cmake_source_dir}/Source/CMakeVersion.cmake" | sed -n "
-/^SET(CMake_VERSION_${1}/ {s/SET(CMake_VERSION_${1} *\([0-9]*\))/\1/;p;}
+/^set(CMake_VERSION_${1}/ {s/set(CMake_VERSION_${1} *\([0-9]*\))/\1/;p;}
 "
 }
 
@@ -93,6 +93,19 @@ else
   cmake_system_openvms=false
 fi
 
+# Determine whether this is Linux
+if echo "${cmake_system}" | grep Linux >/dev/null 2>&1; then
+  cmake_system_linux=true
+  # find out if it is a HP PA-RISC machine
+  if uname -m | grep parisc >/dev/null 2>&1; then
+    cmake_machine_parisc=true
+  else
+    cmake_machine_parisc=false
+  fi
+else
+  cmake_system_linux=false
+fi
+
 # Choose the generator to use for bootstrapping.
 if ${cmake_system_mingw}; then
   # Bootstrapping from an MSYS prompt.
@@ -146,7 +159,9 @@ if ${cmake_system_mingw}; then
     cmake_default_prefix="c:/Program Files/CMake"
   fi
 elif ${cmake_system_haiku}; then
-  cmake_default_prefix=`/bin/finddir B_COMMON_DIRECTORY`
+  cmake_default_prefix=`finddir B_COMMON_DIRECTORY`
+  cmake_man_dir="/documentation/man"
+  cmake_doc_dir="/documentation/doc/cmake-${cmake_version}"
 else
   cmake_default_prefix="/usr/local"
 fi
@@ -160,6 +175,9 @@ CMAKE_PROBLEMATIC_FILES="\
   CMakeSystem.cmake \
   CMakeCCompiler.cmake \
   CMakeCXXCompiler.cmake \
+  */CMakeSystem.cmake \
+  */CMakeCCompiler.cmake \
+  */CMakeCXXCompiler.cmake \
   Source/cmConfigure.h \
   Source/CTest/Curl/config.h \
   Utilities/cmexpat/expatConfig.h \
@@ -196,9 +214,16 @@ CMAKE_CXX_SOURCES="\
   cmMakefile \
   cmExportFileGenerator \
   cmExportInstallFileGenerator \
+  cmExportTryCompileFileGenerator \
+  cmExportSet \
+  cmExportSetMap \
   cmInstallDirectoryGenerator \
   cmGeneratedFileStream \
   cmGeneratorTarget \
+  cmGeneratorExpressionDAGChecker \
+  cmGeneratorExpressionEvaluator \
+  cmGeneratorExpressionLexer \
+  cmGeneratorExpressionParser \
   cmGeneratorExpression \
   cmGlobalGenerator \
   cmLocalGenerator \
@@ -262,18 +287,11 @@ if ${cmake_system_mingw}; then
     ProcessWin32 \
     String \
     System"
-  KWSYS_C_MINGW_SOURCES="\
-    ProcessFwd9x \
-    EncodeExecutable"
-  KWSYS_C_GENERATED_SOURCES="\
-    cmsysProcessFwd9xEnc"
 else
   KWSYS_C_SOURCES="\
     ProcessUNIX \
     String \
     System"
-  KWSYS_C_MINGW_SOURCES=""
-  KWSYS_C_GENERATED_SOURCES=""
 fi
 
 KWSYS_CXX_SOURCES="\
@@ -348,7 +366,7 @@ Directory and file names:
 # Display CMake bootstrap usage
 cmake_version_display()
 {
-  echo "CMake ${cmake_version}, Copyright 2000-2011 Kitware, Inc."
+  echo "CMake ${cmake_version}, Copyright 2000-2012 Kitware, Inc."
 }
 
 # Display CMake bootstrap error, display the log file and exit
@@ -667,6 +685,14 @@ fi
 # Add Haiku toolkits...
 if ${cmake_system_haiku}; then
   cmake_ld_flags="${LDFLAGS} -lroot -lbe"
+fi
+
+if ${cmake_system_linux}; then
+  # avoid binutils problem with large binaries, e.g. when building CMake in debug mode
+  # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=50230
+  if ${cmake_machine_parisc}; then
+    cmake_ld_flags="${LDFLAGS} -Wl,--unique=.text.*"
+  fi
 fi
 
 #-----------------------------------------------------------------------------
@@ -1321,7 +1347,7 @@ cmake_compiler_settings_comment="/*
  * Sources:
  * ${CMAKE_CXX_SOURCES} ${CMAKE_C_SOURCES}
  * kwSys Sources:
- * ${KWSYS_CXX_SOURCES} ${KWSYS_C_SOURCES} ${KWSYS_C_MINGW_SOURCES}
+ * ${KWSYS_CXX_SOURCES} ${KWSYS_C_SOURCES}
  */
 "
 
@@ -1417,7 +1443,7 @@ done
 # Generate Makefile
 dep="cmConfigure.h cmsys/*.hxx cmsys/*.h `cmake_escape \"${cmake_source_dir}\"`/Source/*.h"
 objs=""
-for a in ${CMAKE_CXX_SOURCES} ${CMAKE_C_SOURCES} ${KWSYS_CXX_SOURCES} ${KWSYS_C_SOURCES} ${KWSYS_C_GENERATED_SOURCES}; do
+for a in ${CMAKE_CXX_SOURCES} ${CMAKE_C_SOURCES} ${KWSYS_CXX_SOURCES} ${KWSYS_C_SOURCES}; do
   objs="${objs} ${a}.o"
 done
 
@@ -1458,7 +1484,7 @@ for a in ${CMAKE_C_SOURCES}; do
   echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
   echo "	${cmake_c_compiler} ${cmake_c_flags} -c ${src} -o ${a}.o" >> "${cmake_bootstrap_dir}/Makefile"
 done
-for a in ${KWSYS_C_SOURCES} ${KWSYS_C_MINGW_SOURCES}; do
+for a in ${KWSYS_C_SOURCES}; do
   src=`cmake_escape "${cmake_source_dir}/Source/kwsys/${a}.c"`
   src_flags=`eval echo \\${cmake_c_flags_\${a}}`
   echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
@@ -1470,20 +1496,6 @@ for a in ${KWSYS_CXX_SOURCES}; do
   echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
   echo "	${cmake_cxx_compiler} ${cmake_cxx_flags} -DKWSYS_NAMESPACE=cmsys ${src_flags} -c ${src} -o ${a}.o" >> "${cmake_bootstrap_dir}/Makefile"
 done
-if ${cmake_system_mingw}; then
-  src=`cmake_escape "${cmake_bootstrap_dir}/cmsysProcessFwd9xEnc.c"`
-  in=`cmake_escape "${cmake_bootstrap_dir}/cmsysProcessFwd9x.exe"`
-  cmd=`cmake_escape "${cmake_bootstrap_dir}/cmsysEncodeExecutable.exe"`
-  a="cmsysProcessFwd9xEnc"
-  echo "${cmd} : EncodeExecutable.o" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "	${cmake_c_compiler} ${cmake_ld_flags} ${cmake_c_flags} EncodeExecutable.o -o ${cmd}" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "${in} : ProcessFwd9x.o" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "	${cmake_c_compiler} ${cmake_ld_flags} ${cmake_c_flags} ProcessFwd9x.o -o ${in}" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "${src} : ${cmd} ${in}" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "	${cmd} ${in} ${src} cmsys ProcessFwd9x" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
-  echo "	${cmake_c_compiler} ${cmake_c_flags} -I`cmake_escape \"${cmake_source_dir}/Source/kwsys\"` -DKWSYS_NAMESPACE=cmsys -c ${src} -o ${a}.o" >> "${cmake_bootstrap_dir}/Makefile"
-fi
 echo '
 rebuild_cache:
 	cd "${cmake_binary_dir}" && "${cmake_source_dir}/bootstrap"
@@ -1493,21 +1505,29 @@ rebuild_cache:
 echo '
 # Generated by '"${cmake_source_dir}"'/bootstrap
 # Default cmake settings.  These may be overridden any settings below.
-SET (CMAKE_INSTALL_PREFIX "'"${cmake_prefix_dir}"'" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
-SET (CMAKE_DOC_DIR "'"${cmake_doc_dir}"'" CACHE PATH "Install location for documentation (relative to prefix)." FORCE)
-SET (CMAKE_MAN_DIR "'"${cmake_man_dir}"'" CACHE PATH "Install location for man pages (relative to prefix)." FORCE)
-SET (CMAKE_DATA_DIR "'"${cmake_data_dir}"'" CACHE PATH "Install location for data (relative to prefix)." FORCE)
+set (CMAKE_INSTALL_PREFIX "'"${cmake_prefix_dir}"'" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+set (CMAKE_DOC_DIR "'"${cmake_doc_dir}"'" CACHE PATH "Install location for documentation (relative to prefix)." FORCE)
+set (CMAKE_MAN_DIR "'"${cmake_man_dir}"'" CACHE PATH "Install location for man pages (relative to prefix)." FORCE)
+set (CMAKE_DATA_DIR "'"${cmake_data_dir}"'" CACHE PATH "Install location for data (relative to prefix)." FORCE)
 ' > "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
+
+# Suppress -isysroot if user-provided flags already have it.
+if echo "${cmake_c_flags}"   | grep isysroot >/dev/null 2>&1 &&
+   echo "${cmake_cxx_flags}" | grep isysroot >/dev/null 2>&1; then
+  echo '
+set(CMAKE_OSX_SYSROOT "" CACHE PATH "" FORCE)
+' >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
+fi
 
 # Add configuration settings given as command-line options.
 if [ "x${cmake_bootstrap_qt_gui}" != "x" ]; then
   echo '
-SET (BUILD_QtDialog '"${cmake_bootstrap_qt_gui}"' CACHE BOOL "Build Qt dialog for CMake" FORCE)
+set (BUILD_QtDialog '"${cmake_bootstrap_qt_gui}"' CACHE BOOL "Build Qt dialog for CMake" FORCE)
 ' >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
 fi
 if [ "x${cmake_bootstrap_qt_qmake}" != "x" ]; then
   echo '
-SET (QT_QMAKE_EXECUTABLE "'"${cmake_bootstrap_qt_qmake}"'" CACHE FILEPATH "Location of Qt qmake" FORCE)
+set (QT_QMAKE_EXECUTABLE "'"${cmake_bootstrap_qt_qmake}"'" CACHE FILEPATH "Location of Qt qmake" FORCE)
 ' >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
 fi
 

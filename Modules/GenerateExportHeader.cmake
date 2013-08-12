@@ -47,7 +47,7 @@
 #     ...
 #   };
 #
-# The CMake fragment will generate a file in the ${CMAKE_CURRENT_BUILD_DIR}
+# The CMake fragment will generate a file in the ${CMAKE_CURRENT_BINARY_DIR}
 # called somelib_export.h containing the macros SOMELIB_EXPORT, SOMELIB_NO_EXPORT,
 # SOMELIB_DEPRECATED, SOMELIB_DEPRECATED_EXPORT and SOMELIB_DEPRECATED_NO_EXPORT.
 # The resulting file should be installed with other headers in the library.
@@ -156,15 +156,11 @@ macro(_test_compiler_hidden_visibility)
 
   if(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.2")
     set(GCC_TOO_OLD TRUE)
-    message(WARNING "GCC version older than 4.2")
   elseif(CMAKE_COMPILER_IS_GNUC AND CMAKE_C_COMPILER_VERSION VERSION_LESS "4.2")
     set(GCC_TOO_OLD TRUE)
-    message(WARNING "GCC version older than 4.2")
   elseif(CMAKE_CXX_COMPILER_ID MATCHES Intel AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.0")
     set(_INTEL_TOO_OLD TRUE)
-    message(WARNING "Intel compiler older than 12.0")
   endif()
-
 
   # Exclude XL here because it misinterprets -fvisibility=hidden even though
   # the check_cxx_compiler_flag passes

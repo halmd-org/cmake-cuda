@@ -57,6 +57,10 @@ if("${_help}" MATCHES "GNU ld .* 2\\.1[1-6]")
   set(__WINDOWS_GNU_LD_RESPONSE 0)
 endif()
 
+if(NOT CMAKE_GENERATOR_RC AND CMAKE_GENERATOR MATCHES "Unix Makefiles")
+  set(CMAKE_GENERATOR_RC windres)
+endif()
+
 enable_language(RC)
 
 macro(__windows_compiler_gnu lang)
@@ -74,7 +78,7 @@ macro(__windows_compiler_gnu lang)
     foreach(type SHARED_LIBRARY SHARED_MODULE EXE)
       set(CMAKE_${type}_LINK_STATIC_${lang}_FLAGS "-Wl,-Bstatic")
       set(CMAKE_${type}_LINK_DYNAMIC_${lang}_FLAGS "-Wl,-Bdynamic")
-    endforeach(type)
+    endforeach()
   endif()
 
   # No -fPIC on Windows

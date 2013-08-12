@@ -36,18 +36,13 @@ cmGlobalVisualStudio6Generator::cmGlobalVisualStudio6Generator()
 }
 
 void cmGlobalVisualStudio6Generator
-::EnableLanguage(std::vector<std::string>const& lang, 
-                 cmMakefile *mf, 
+::EnableLanguage(std::vector<std::string>const& lang,
+                 cmMakefile *mf,
                  bool optional)
 {
-  mf->AddDefinition("CMAKE_GENERATOR_CC", "cl");
-  mf->AddDefinition("CMAKE_GENERATOR_CXX", "cl");
-  mf->AddDefinition("CMAKE_GENERATOR_RC", "rc"); 
+  cmGlobalVisualStudioGenerator::AddPlatformDefinitions(mf);
+  mf->AddDefinition("CMAKE_GENERATOR_RC", "rc");
   mf->AddDefinition("CMAKE_GENERATOR_NO_COMPILER_ENV", "1");
-  mf->AddDefinition("CMAKE_GENERATOR_Fortran", "ifort");
-  mf->AddDefinition("MSVC_C_ARCHITECTURE_ID", "X86");
-  mf->AddDefinition("MSVC_CXX_ARCHITECTURE_ID", "X86");
-  mf->AddDefinition("MSVC60", "1");
   this->GenerateConfigurations(mf);
   this->cmGlobalGenerator::EnableLanguage(lang, mf, optional);
 }
@@ -84,10 +79,10 @@ void cmGlobalVisualStudio6Generator::GenerateConfigurations(cmMakefile* mf)
 
 std::string cmGlobalVisualStudio6Generator
 ::GenerateBuildCommand(const char* makeProgram,
-                       const char *projectName, 
-                       const char* additionalOptions, 
+                       const char *projectName,
+                       const char* additionalOptions,
                        const char *targetName,
-                       const char* config, 
+                       const char* config,
                        bool ignoreErrors,
                        bool)
 {
@@ -100,7 +95,7 @@ std::string cmGlobalVisualStudio6Generator
                "\\6.0\\Setup;VsCommonDir]/MSDev98/Bin");
   cmSystemTools::ExpandRegistryValues(mp[0]);
   std::string originalCommand = makeProgram;
-  std::string makeCommand = 
+  std::string makeCommand =
     cmSystemTools::FindProgram(makeProgram, mp);
   if(makeCommand.size() == 0)
     {
@@ -116,7 +111,7 @@ std::string cmGlobalVisualStudio6Generator
   // if there are spaces in the makeCommand, assume a full path
   // and convert it to a path with no spaces in it as the
   // RunSingleCommand does not like spaces
-#if defined(_WIN32) && !defined(__CYGWIN__)      
+#if defined(_WIN32) && !defined(__CYGWIN__)
   if(makeCommand.find(' ') != std::string::npos)
     {
     cmSystemTools::GetShortPath(makeCommand.c_str(), makeCommand);
@@ -202,7 +197,6 @@ void cmGlobalVisualStudio6Generator
       tt != orderedProjectTargets.end(); ++tt)
     {
     cmTarget* target = *tt;
-    cmMakefile* mf = target->GetMakefile();
     // Write the project into the DSW file
     const char* expath = target->GetProperty("EXTERNAL_MSPROJECT");
     if(expath)
@@ -226,7 +220,7 @@ void cmGlobalVisualStudio6Generator
 }
 
 void cmGlobalVisualStudio6Generator
-::OutputDSWFile(cmLocalGenerator* root, 
+::OutputDSWFile(cmLocalGenerator* root,
                 std::vector<cmLocalGenerator*>& generators)
 {
   if(generators.size() == 0)
@@ -250,7 +244,7 @@ void cmGlobalVisualStudio6Generator
 
 // output the DSW file
 void cmGlobalVisualStudio6Generator::OutputDSWFile()
-{ 
+{
   std::map<cmStdString, std::vector<cmLocalGenerator*> >::iterator it;
   for(it = this->ProjectMap.begin(); it!= this->ProjectMap.end(); ++it)
     {
@@ -259,16 +253,16 @@ void cmGlobalVisualStudio6Generator::OutputDSWFile()
 }
 
 // Write a dsp file into the DSW file,
-// Note, that dependencies from executables to 
+// Note, that dependencies from executables to
 // the libraries it uses are also done here
-void cmGlobalVisualStudio6Generator::WriteProject(std::ostream& fout, 
+void cmGlobalVisualStudio6Generator::WriteProject(std::ostream& fout,
                                                   const char* dspname,
                                                   const char* dir,
                                                   cmTarget& target)
 {
   fout << "#########################################################"
     "######################\n\n";
-  fout << "Project: \"" << dspname << "\"=" 
+  fout << "Project: \"" << dspname << "\"="
        << dir << "\\" << dspname << ".dsp - Package Owner=<4>\n\n";
   fout << "Package=<5>\n{{{\n}}}\n\n";
   fout << "Package=<4>\n";
@@ -304,22 +298,22 @@ void cmGlobalVisualStudio6Generator::WriteProject(std::ostream& fout,
 
 
 // Write a dsp file into the DSW file,
-// Note, that dependencies from executables to 
+// Note, that dependencies from executables to
 // the libraries it uses are also done here
-void cmGlobalVisualStudio6Generator::WriteExternalProject(std::ostream& fout, 
+void cmGlobalVisualStudio6Generator::WriteExternalProject(std::ostream& fout,
                                const char* name,
                                const char* location,
                                const std::set<cmStdString>& dependencies)
 {
  fout << "#########################################################"
     "######################\n\n";
-  fout << "Project: \"" << name << "\"=" 
+  fout << "Project: \"" << name << "\"="
        << location << " - Package Owner=<4>\n\n";
   fout << "Package=<5>\n{{{\n}}}\n\n";
   fout << "Package=<4>\n";
   fout << "{{{\n";
 
-  
+
   std::set<cmStdString>::const_iterator i, end;
   // write dependencies.
   i = dependencies.begin();
@@ -347,7 +341,7 @@ void cmGlobalVisualStudio6Generator::WriteDSWFooter(std::ostream& fout)
     "##########################\n\n";
 }
 
-  
+
 // ouput standard header for dsw file
 void cmGlobalVisualStudio6Generator::WriteDSWHeader(std::ostream& fout)
 {
@@ -400,9 +394,9 @@ cmGlobalVisualStudio6Generator::WriteUtilityDepend(cmTarget* target)
 
 //----------------------------------------------------------------------------
 void cmGlobalVisualStudio6Generator
-::GetDocumentation(cmDocumentationEntry& entry) const
+::GetDocumentation(cmDocumentationEntry& entry)
 {
-  entry.Name = this->GetName();
+  entry.Name = cmGlobalVisualStudio6Generator::GetActualName();
   entry.Brief = "Generates Visual Studio 6 project files.";
   entry.Full = "";
 }

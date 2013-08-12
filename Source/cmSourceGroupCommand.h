@@ -26,7 +26,7 @@ public:
   /**
    * This is a virtual constructor for the command.
    */
-  virtual cmCommand* Clone() 
+  virtual cmCommand* Clone()
     {
     return new cmSourceGroupCommand;
     }
@@ -37,7 +37,7 @@ public:
    */
   virtual bool InitialPass(std::vector<std::string> const& args,
                            cmExecutionStatus &status);
-  
+
   /**
    * The name of the command as specified in CMakeList.txt.
    */
@@ -50,7 +50,7 @@ public:
     {
     return "Define a grouping for sources in the makefile.";
     }
-  
+
   /**
    * More documentation.
    */
@@ -68,11 +68,11 @@ public:
       "expression matches the file will be favored.\n"
       "The name of the group may contain backslashes to specify subgroups:\n"
       "  source_group(outer\\\\inner ...)\n"
-      "For backwards compatibility, this command is also supports the "
+      "For backwards compatibility, this command also supports the "
       "format:\n"
       "  source_group(name regex)";
     }
-  
+
   cmTypeMacro(cmSourceGroupCommand, cmCommand);
 };
 

@@ -47,12 +47,14 @@ macro(ENABLE_LANGUAGE)
   # But in --find-package mode, we don't want (and can't) enable any language.
 endmacro()
 
+set(CMAKE_PLATFORM_INFO_DIR ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
+
 include(CMakeDetermineSystem)
 
 # short-cut some tests on Darwin, see Darwin-GNU.cmake:
 if("${CMAKE_SYSTEM_NAME}" MATCHES Darwin  AND  "${COMPILER_ID}" MATCHES GNU)
-  set(${CMAKE_${LANGUAGE}_HAS_ISYSROOT} 0 )
-  set(CMAKE_${lang}_OSX_DEPLOYMENT_TARGET_FLAG "")
+  set(CMAKE_${LANGUAGE}_SYSROOT_FLAG "")
+  set(CMAKE_${LANGUAGE}_OSX_DEPLOYMENT_TARGET_FLAG "")
 endif()
 
 # Also load the system specific file, which sets up e.g. the search paths.
@@ -179,7 +181,7 @@ if(${NAME}_FOUND  OR  ${UPPERCASE_NAME}_FOUND)
     set_compile_flags_var(${NAME})
   elseif("${MODE}" STREQUAL "LINK")
     set_link_flags_var(${NAME})
-  else("${MODE}" STREQUAL "LINK")
+  else()
     message(FATAL_ERROR "Invalid mode argument ${MODE} given.")
   endif()
 

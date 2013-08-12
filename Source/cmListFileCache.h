@@ -22,7 +22,7 @@
  */
 
 class cmMakefile;
- 
+
 struct cmListFileArgument
 {
   cmListFileArgument(): Value(), Quoted(false), FilePath(0), Line(0) {}
@@ -64,16 +64,25 @@ class cmListFileBacktrace: public std::vector<cmListFileContext> {};
 
 struct cmListFile
 {
-  cmListFile() 
-    :ModifiedTime(0) 
+  cmListFile()
+    :ModifiedTime(0)
     {
     }
-  bool ParseFile(const char* path, 
+  bool ParseFile(const char* path,
                  bool topLevel,
                  cmMakefile *mf);
 
   long int ModifiedTime;
   std::vector<cmListFileFunction> Functions;
+};
+
+struct cmValueWithOrigin {
+  cmValueWithOrigin(const std::string &value,
+                          const cmListFileBacktrace &bt)
+    : Value(value), Backtrace(bt)
+  {}
+  std::string Value;
+  cmListFileBacktrace Backtrace;
 };
 
 #endif

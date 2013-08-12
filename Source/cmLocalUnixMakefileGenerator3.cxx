@@ -32,7 +32,6 @@
 
 #include <cmsys/auto_ptr.hxx>
 
-#include <memory> // auto_ptr
 #include <queue>
 
 //----------------------------------------------------------------------------
@@ -1944,8 +1943,12 @@ void cmLocalUnixMakefileGenerator3
     for(ImplicitDependFileMap::const_iterator pi = implicitPairs.begin();
         pi != implicitPairs.end(); ++pi)
       {
-      cmakefileStream << "  \"" << pi->second << "\" ";
-      cmakefileStream << "\"" << pi->first << "\"\n";
+      for(cmDepends::DependencyVector::const_iterator di = pi->second.begin();
+          di != pi->second.end(); ++ di)
+        {
+        cmakefileStream << "  \"" << *di << "\" ";
+        cmakefileStream << "\"" << pi->first << "\"\n";
+        }
       }
     cmakefileStream << "  )\n";
 
@@ -1963,34 +1966,16 @@ void cmLocalUnixMakefileGenerator3
     }
 
   // Build a list of preprocessor definitions for the target.
-  std::vector<std::string> defines;
-  {
-  std::string defPropName = "COMPILE_DEFINITIONS_";
-  defPropName += cmSystemTools::UpperCase(this->ConfigurationName);
-  if(const char* ddefs = this->Makefile->GetProperty("COMPILE_DEFINITIONS"))
-    {
-    cmSystemTools::ExpandListArgument(ddefs, defines);
-    }
-  if(const char* cdefs = target.GetProperty("COMPILE_DEFINITIONS"))
-    {
-    cmSystemTools::ExpandListArgument(cdefs, defines);
-    }
-  if(const char* dcdefs = this->Makefile->GetProperty(defPropName.c_str()))
-    {
-    cmSystemTools::ExpandListArgument(dcdefs, defines);
-    }
-  if(const char* ccdefs = target.GetProperty(defPropName.c_str()))
-    {
-    cmSystemTools::ExpandListArgument(ccdefs, defines);
-    }
-  }
+  std::set<std::string> defines;
+  this->AppendDefines(defines, target.GetCompileDefinitions(
+                                            this->ConfigurationName.c_str()));
   if(!defines.empty())
     {
     cmakefileStream
       << "\n"
       << "# Preprocessor definitions for this target.\n"
       << "SET(CMAKE_TARGET_DEFINITIONS\n";
-    for(std::vector<std::string>::const_iterator di = defines.begin();
+    for(std::set<std::string>::const_iterator di = defines.begin();
         di != defines.end(); ++di)
       {
       cmakefileStream
@@ -2209,7 +2194,7 @@ cmLocalUnixMakefileGenerator3::AddImplicitDepends(cmTarget const& tgt,
                                                   const char* obj,
                                                   const char* src)
 {
-  this->ImplicitDepends[tgt.GetName()][lang][obj] = src;
+  this->ImplicitDepends[tgt.GetName()][lang][obj].push_back(src);
 }
 
 //----------------------------------------------------------------------------

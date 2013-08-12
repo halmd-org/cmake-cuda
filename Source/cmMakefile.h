@@ -20,6 +20,7 @@
 #include "cmSystemTools.h"
 #include "cmTarget.h"
 #include "cmNewLineStyle.h"
+#include "cmGeneratorTarget.h"
 #include "cmake.h"
 
 #if defined(CMAKE_BUILD_WITH_CMAKE)
@@ -127,6 +128,8 @@ public:
                  bool fast,
                  const std::vector<std::string> *cmakeArgs,
                  std::string *output);
+
+  bool GetIsSourceFileTryCompile() const;
 
   /**
    * Specify the makefile generator. This is platform/compiler
@@ -283,7 +286,8 @@ public:
   /**
    * Add an include directory to the build.
    */
-  void AddIncludeDirectory(const char*, bool before = false);
+  void AddIncludeDirectories(const std::vector<std::string> &incs,
+                             bool before = false);
 
   /**
    * Add a variable definition to the build. This variable
@@ -516,18 +520,33 @@ public:
    * Get the list of targets, const version
    */
   const cmTargets &GetTargets() const { return this->Targets; }
+  const std::vector<cmTarget*> &GetOwnedImportedTargets() const
+    {
+      return this->ImportedTargetsOwned;
+    }
+
+  const cmGeneratorTargetsType &GetGeneratorTargets() const
+    {
+      return this->GeneratorTargets;
+    }
+
+  void SetGeneratorTargets(const cmGeneratorTargetsType &targets)
+    {
+      this->GeneratorTargets = targets;
+    }
 
   cmTarget* FindTarget(const char* name);
 
   /** Find a target to use in place of the given name.  The target
       returned may be imported or built within the project.  */
   cmTarget* FindTargetToUse(const char* name);
+  cmGeneratorTarget* FindGeneratorTargetToUse(const char* name);
 
   /**
    * Mark include directories as system directories.
    */
-  void AddSystemIncludeDirectory(const char* dir);
-  bool IsSystemIncludeDirectory(const char* dir);
+  void AddSystemIncludeDirectories(const std::set<cmStdString> &incs);
+  bool IsSystemIncludeDirectory(const char* dir, const char *config);
 
   /** Expand out any arguements in the vector that have ; separated
    *  strings into multiple arguements.  A new vector is created
@@ -675,7 +694,7 @@ public:
   /**
    * Expand variables in the makefiles ivars such as link directories etc
    */
-  void ExpandVariables();
+  void ExpandVariablesCMP0019();
 
   /**
    * Replace variables and #cmakedefine lines in the given string.
@@ -843,6 +862,14 @@ public:
   /** Set whether or not to report a CMP0000 violation.  */
   void SetCheckCMP0000(bool b) { this->CheckCMP0000 = b; }
 
+  std::vector<cmValueWithOrigin> GetIncludeDirectoriesEntries() const
+  {
+    return this->IncludeDirectoriesEntries;
+  }
+
+  bool IsGeneratingBuildSystem(){ return this->GeneratingBuildSystem; }
+  void SetGeneratingBuildSystem(){ this->GeneratingBuildSystem = true; }
+
 protected:
   // add link libraries and directories to the target
   void AddGlobalLinkInformation(const char* name, cmTarget& target);
@@ -863,6 +890,7 @@ protected:
 
   // libraries, classes, and executables
   cmTargets Targets;
+  cmGeneratorTargetsType GeneratorTargets;
   std::vector<cmSourceFile*> SourceFiles;
 
   // Tests
@@ -889,6 +917,8 @@ protected:
   std::vector<std::string> SourceFileExtensions;
   std::vector<std::string> HeaderFileExtensions;
   std::string DefineFlags;
+
+  std::vector<cmValueWithOrigin> IncludeDirectoriesEntries;
 
   // Track the value of the computed DEFINITIONS property.
   void AddDefineFlag(const char*, std::string&);
@@ -989,6 +1019,9 @@ private:
 
   // Enforce rules about CMakeLists.txt files.
   void EnforceDirectoryLevelRules();
+
+  bool GeneratingBuildSystem;
+
 };
 
 //----------------------------------------------------------------------------
