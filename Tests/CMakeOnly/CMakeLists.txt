@@ -24,6 +24,9 @@ add_CMakeOnly_test(CompilerIdCXX)
 if(CMAKE_Fortran_COMPILER)
   add_CMakeOnly_test(CompilerIdFortran)
 endif()
+if(CMAKE_CUDA_COMPILER)
+  add_CMakeOnly_test(CompilerIdCUDA)
+endif()
 
 add_CMakeOnly_test(AllFindModules)
 

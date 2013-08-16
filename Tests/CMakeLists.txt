@@ -19,6 +19,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/RegexEscapeString.cmake)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/CheckFortran.cmake)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/CheckCUDA.cmake)
+
 # Fake a user home directory to avoid polluting the real one.
 if(DEFINED ENV{HOME} AND NOT CTEST_NO_TEST_HOME)
   set(TEST_HOME "${CMake_BINARY_DIR}/Tests/CMakeFiles/TestHome")
