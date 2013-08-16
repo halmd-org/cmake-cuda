@@ -17,16 +17,16 @@
 # executables that use dlopen but do not set ENABLE_EXPORTS.
 set(CMAKE_SHARED_LIBRARY_LINK_CUDA_FLAGS "-Xcompiler -rdynamic")
 
-SET(CMAKE_SHARED_LIBRARY_RUNTIME_CUDA_FLAG "-Xlinker -rpath,")
-SET(CMAKE_SHARED_LIBRARY_RPATH_LINK_CUDA_FLAG "-Xlinker -rpath-link,")
-SET(CMAKE_SHARED_LIBRARY_SONAME_CUDA_FLAG "-Xlinker -soname,")
-SET(CMAKE_EXE_EXPORTS_CUDA_FLAG "-Xlinker --export-dynamic")
+set(CMAKE_SHARED_LIBRARY_RUNTIME_CUDA_FLAG "-Xlinker -rpath,")
+set(CMAKE_SHARED_LIBRARY_RPATH_LINK_CUDA_FLAG "-Xlinker -rpath-link,")
+set(CMAKE_SHARED_LIBRARY_SONAME_CUDA_FLAG "-Xlinker -soname,")
+set(CMAKE_EXE_EXPORTS_CUDA_FLAG "-Xlinker --export-dynamic")
 
 # Initialize CUDA link type selection flags.  These flags are used when
 # building a shared library, shared module, or executable that links
 # to other libraries to select whether to use the static or shared
 # versions of the libraries.
-FOREACH(type SHARED_LIBRARY SHARED_MODULE EXE)
-  SET(CMAKE_${type}_LINK_STATIC_CUDA_FLAGS "-Xlinker -Wl,-Bstatic")
-  SET(CMAKE_${type}_LINK_DYNAMIC_CUDA_FLAGS "-Xlinker -Wl,-Bdynamic")
-ENDFOREACH(type)
+foreach(type SHARED_LIBRARY SHARED_MODULE EXE)
+  set(CMAKE_${type}_LINK_STATIC_CUDA_FLAGS "-Xlinker -Wl,-Bstatic")
+  set(CMAKE_${type}_LINK_DYNAMIC_CUDA_FLAGS "-Xlinker -Wl,-Bdynamic")
+endforeach()
