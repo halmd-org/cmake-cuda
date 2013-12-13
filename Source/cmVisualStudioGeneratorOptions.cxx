@@ -6,6 +6,7 @@
 inline std::string cmVisualStudio10GeneratorOptionsEscapeForXML(const char* s)
 {
   std::string ret = s;
+  cmSystemTools::ReplaceString(ret, ";", "%3B");
   cmSystemTools::ReplaceString(ret, "&", "&amp;");
   cmSystemTools::ReplaceString(ret, "<", "&lt;");
   cmSystemTools::ReplaceString(ret, ">", "&gt;");
@@ -99,13 +100,13 @@ void cmVisualStudioGeneratorOptions::SetVerboseMakefile(bool verbose)
     }
 }
 
-bool cmVisualStudioGeneratorOptions::IsDebug()
+bool cmVisualStudioGeneratorOptions::IsDebug() const
 {
   return this->FlagMap.find("DebugInformationFormat") != this->FlagMap.end();
 }
 
 //----------------------------------------------------------------------------
-bool cmVisualStudioGeneratorOptions::UsingUnicode()
+bool cmVisualStudioGeneratorOptions::UsingUnicode() const
 {
   // Look for the a _UNICODE definition.
   for(std::vector<std::string>::const_iterator di = this->Defines.begin();
@@ -119,7 +120,7 @@ bool cmVisualStudioGeneratorOptions::UsingUnicode()
   return false;
 }
 //----------------------------------------------------------------------------
-bool cmVisualStudioGeneratorOptions::UsingSBCS()
+bool cmVisualStudioGeneratorOptions::UsingSBCS() const
 {
   // Look for the a _SBCS definition.
   for(std::vector<std::string>::const_iterator di = this->Defines.begin();
@@ -229,7 +230,7 @@ cmVisualStudioGeneratorOptions
     }
   if(this->Version >= cmLocalVisualStudioGenerator::VS10)
     {
-    // if there are configuration specifc flags, then
+    // if there are configuration specific flags, then
     // use the configuration specific tag for PreprocessorDefinitions
     if(this->Configuration.size())
       {

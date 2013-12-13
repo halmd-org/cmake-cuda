@@ -143,12 +143,16 @@ public:
                         const char* config);
   void AddCMP0018Flags(std::string &flags, cmTarget* target,
                        std::string const& lang, const char *config);
+  void AddVisibilityPresetFlags(std::string &flags, cmTarget* target,
+                                const char *lang);
   void AddConfigVariableFlags(std::string& flags, const char* var,
                               const char* config);
   ///! Append flags to a string.
   virtual void AppendFlags(std::string& flags, const char* newFlags);
+  virtual void AppendFlagEscape(std::string& flags, const char* rawFlag);
   ///! Get the include flags for the current makefile and language
   std::string GetIncludeFlags(const std::vector<std::string> &includes,
+                              cmGeneratorTarget* target,
                               const char* lang, bool forResponseFile = false,
                               const char *config = 0);
 
@@ -163,6 +167,9 @@ public:
   {
     this->AppendDefines(defines, defines_list.c_str());
   }
+  void AppendDefines(std::set<std::string>& defines,
+                     const std::vector<std::string> &defines_vec);
+
   /**
    * Join a set of defines into a definesString with a space separator.
    */
@@ -215,6 +222,10 @@ public:
                              cmGeneratorTarget* target,
                              const char* lang = "C", const char *config = 0,
                              bool stripImplicitInclDirs = true);
+  void AddCompileOptions(std::string& flags, cmTarget* target,
+                         const char* lang, const char* config);
+  void AddCompileDefinitions(std::set<std::string>& defines, cmTarget* target,
+                         const char* config);
 
   /** Compute the language used to compile the given source file.  */
   const char* GetSourceFileLanguage(const cmSourceFile& source);
@@ -337,6 +348,11 @@ public:
                                              std::string const& dir_max,
                                              bool* hasSourceExtension = 0);
 
+  /** Fill out the static linker flags for the given target.  */
+  void GetStaticLibraryFlags(std::string& flags,
+                             std::string const& config,
+                             cmTarget* target);
+
   /** Fill out these strings for the given target.  Libraries to link,
    *  flags, and linkflags. */
   void GetTargetFlags(std::string& linkLibs,
@@ -430,8 +446,6 @@ protected:
   bool IgnoreLibPrefix;
   bool Configured;
   bool EmitUniversalBinaryFlags;
-  // A type flag is not nice. It's used only in TraceDependencies().
-  bool IsMakefileGenerator;
   // Hack for ExpandRuleVariable until object-oriented version is
   // committed.
   std::string TargetImplib;

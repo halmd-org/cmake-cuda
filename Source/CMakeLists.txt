@@ -11,7 +11,11 @@
 #=============================================================================
 include(CheckIncludeFile)
 # Check if we can build support for ELF parsing.
-CHECK_INCLUDE_FILE("elf.h" HAVE_ELF_H)
+if(CMAKE_CXX_PLATFORM_ID MATCHES "OpenBSD")
+  CHECK_INCLUDE_FILES("stdint.h;elf_abi.h" HAVE_ELF_H)
+else()
+  CHECK_INCLUDE_FILE("elf.h" HAVE_ELF_H)
+endif()
 if(HAVE_ELF_H)
   set(CMAKE_USE_ELF_PARSER 1)
 else()
@@ -113,7 +117,8 @@ endif()
 set(SRCS
   cmStandardIncludes.cxx
   cmArchiveWrite.cxx
-  cmBootstrapCommands.cxx
+  cmBootstrapCommands1.cxx
+  cmBootstrapCommands2.cxx
   cmCacheManager.cxx
   cmCacheManager.h
   cmCommands.cxx
@@ -359,6 +364,10 @@ if (WIN32)
       cmLocalVisualStudio7Generator.h
       cmLocalVisualStudioGenerator.cxx
       cmLocalVisualStudioGenerator.h
+      cmVisualStudioSlnData.h
+      cmVisualStudioSlnData.cxx
+      cmVisualStudioSlnParser.h
+      cmVisualStudioSlnParser.cxx
       cmVisualStudioWCEPlatformParser.h
       cmVisualStudioWCEPlatformParser.cxx
       cmWin32ProcessExecution.cxx
@@ -385,7 +394,7 @@ if(WIN32 AND NOT CYGWIN AND NOT BORLAND)
   set_source_files_properties(cmcldeps.cxx PROPERTIES COMPILE_DEFINITIONS _WIN32_WINNT=0x0501)
   add_executable(cmcldeps cmcldeps.cxx)
   target_link_libraries(cmcldeps CMakeLib)
-  install_targets(/bin cmcldeps)
+  install(TARGETS cmcldeps DESTINATION bin)
 endif()
 
 # create a library used by the command line and the GUI
@@ -539,12 +548,13 @@ endif()
 add_executable(cmake cmakemain.cxx)
 target_link_libraries(cmake CMakeLib)
 
-# Build special executable for running programs on Windows 98
+# Build special executable for running programs on Windows 98.
+# Included on any Windows (unconditional packaging required!).
 if(WIN32)
   if(NOT UNIX)
     add_executable(cmw9xcom cmw9xcom.cxx)
     target_link_libraries(cmw9xcom CMakeLib)
-    install_targets(/bin cmw9xcom)
+    install(TARGETS cmw9xcom DESTINATION bin)
   endif()
 endif()
 
@@ -570,11 +580,9 @@ endif()
 include (${CMake_BINARY_DIR}/Source/LocalUserOptions.cmake OPTIONAL)
 include (${CMake_SOURCE_DIR}/Source/LocalUserOptions.cmake OPTIONAL)
 
-install_targets(/bin cmake)
-install_targets(/bin ctest)
-install_targets(/bin cpack)
+install(TARGETS cmake ctest cpack DESTINATION bin)
 if(APPLE)
-  install_targets(/bin cmakexbuild)
+  install(TARGETS cmakexbuild DESTINATION bin)
 endif()
 
-install_files(${CMAKE_DATA_DIR}/include cmCPluginAPI.h)
+install(FILES cmCPluginAPI.h DESTINATION ${CMAKE_DATA_DIR}/include)

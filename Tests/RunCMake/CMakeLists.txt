@@ -28,7 +28,7 @@
 #   <SubTest>-stdout.txt  = Regex matching expected stdout content
 #   <SubTest>-stderr.txt  = Regex matching expected stderr content
 #   <SubTest>-check.cmake = Custom result check
-# Note that trailing newlines will be stripped from actual test
+# Note that trailing newlines will be stripped from actual and expected test
 # output before matching against the stdout and stderr expressions.
 # The code in <SubTest>-check.cmake may use variables
 #   RunCMake_TEST_SOURCE_DIR = Top of test source tree
@@ -52,10 +52,12 @@ if(XCODE_VERSION AND "${XCODE_VERSION}" VERSION_LESS 3)
 endif()
 
 add_RunCMake_test(CMP0019)
+add_RunCMake_test(CMP0022)
 add_RunCMake_test(CTest)
 if(UNIX AND "${CMAKE_TEST_GENERATOR}" MATCHES "Unix Makefiles")
   add_RunCMake_test(CompilerChange)
 endif()
+add_RunCMake_test(Configure)
 add_RunCMake_test(ExternalData)
 add_RunCMake_test(FPHSA)
 add_RunCMake_test(GeneratorExpression)
@@ -65,24 +67,55 @@ add_RunCMake_test(Languages)
 add_RunCMake_test(ObjectLibrary)
 if(NOT WIN32)
   add_RunCMake_test(PositionIndependentCode)
+  set(SKIP_VISIBILITY 0)
+  if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" AND "${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 4.2)
+    set(SKIP_VISIBILITY 1)
+  endif()
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES Watcom
+      OR CMAKE_SYSTEM_NAME MATCHES IRIX64
+      OR CMAKE_CXX_COMPILER_ID MATCHES HP
+      OR CMAKE_CXX_COMPILER_ID MATCHES XL
+      OR CMAKE_CXX_COMPILER_ID MATCHES SunPro)
+    set(SKIP_VISIBILITY 1)
+  endif()
+
+  if (NOT SKIP_VISIBILITY)
+    add_RunCMake_test(VisibilityPreset)
+  endif()
 endif()
 add_RunCMake_test(CompatibleInterface)
+add_RunCMake_test(Syntax)
 
 add_RunCMake_test(add_dependencies)
 add_RunCMake_test(build_command)
 add_RunCMake_test(find_package)
+add_RunCMake_test(get_filename_component)
+add_RunCMake_test(if)
 add_RunCMake_test(include)
 add_RunCMake_test(include_directories)
 add_RunCMake_test(list)
+add_RunCMake_test(try_compile)
+add_RunCMake_test(variable_watch)
 add_RunCMake_test(CMP0004)
+add_RunCMake_test(TargetPolicies)
+add_RunCMake_test(alias_targets)
 
 find_package(Qt4 QUIET)
 find_package(Qt5Core QUIET)
 if (QT4_FOUND AND Qt5Core_FOUND AND NOT Qt5Core_VERSION VERSION_LESS 5.1.0)
   add_RunCMake_test(IncompatibleQt)
 endif()
+if (QT4_FOUND)
+  set(ObsoleteQtMacros_ARGS -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE})
+  add_RunCMake_test(ObsoleteQtMacros)
+endif()
 
 if("${CMAKE_TEST_GENERATOR}" MATCHES "Visual Studio [^6]")
   add_RunCMake_test(include_external_msproject)
   add_RunCMake_test(SolutionGlobalSections)
 endif()
+
+add_RunCMake_test(File_Generate)
+add_RunCMake_test(ExportWithoutLanguage)
+add_RunCMake_test(target_link_libraries)

@@ -36,8 +36,26 @@ public:
     OD(od), GlobalGenerator(od->GlobalGenerator)
     {
     this->FullPath = file;
-    this->Directory = cmSystemTools::GetFilenamePath(file);
-    this->FileName = cmSystemTools::GetFilenameName(file);
+
+    if(file.rfind(".framework") != std::string::npos)
+      {
+      cmsys::RegularExpression splitFramework;
+      splitFramework.compile("^(.*)/(.*).framework/(.*)$");
+      if(splitFramework.find(file) &&
+        (std::string::npos !=
+         splitFramework.match(3).find(splitFramework.match(2))))
+        {
+        this->Directory = splitFramework.match(1);
+        this->FileName =
+          std::string(file.begin() + this->Directory.size() + 1, file.end());
+        }
+      }
+
+    if(this->FileName.empty())
+      {
+      this->Directory = cmSystemTools::GetFilenamePath(file);
+      this->FileName = cmSystemTools::GetFilenameName(file);
+      }
     }
   virtual ~cmOrderDirectoriesConstraint() {}
 
@@ -305,6 +323,19 @@ void cmOrderDirectories::AddRuntimeLibrary(std::string const& fullPath,
     if(!this->ImplicitDirectories.empty())
       {
       std::string dir = cmSystemTools::GetFilenamePath(fullPath);
+
+      if(fullPath.rfind(".framework") != std::string::npos)
+        {
+        cmsys::RegularExpression splitFramework;
+        splitFramework.compile("^(.*)/(.*).framework/(.*)$");
+        if(splitFramework.find(fullPath) &&
+          (std::string::npos !=
+           splitFramework.match(3).find(splitFramework.match(2))))
+          {
+          dir = splitFramework.match(1);
+          }
+        }
+
       if(this->ImplicitDirectories.find(dir) !=
          this->ImplicitDirectories.end())
         {

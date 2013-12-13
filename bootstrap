@@ -43,9 +43,9 @@ if [ "$cmake_version_tweak" != "0" ]; then
   cmake_version="${cmake_version}.${cmake_version_tweak}"
 fi
 
-cmake_data_dir="/share/cmake-${cmake_version_major}.${cmake_version_minor}"
-cmake_doc_dir="/doc/cmake-${cmake_version_major}.${cmake_version_minor}"
-cmake_man_dir="/man"
+cmake_data_dir="share/cmake-${cmake_version_major}.${cmake_version_minor}"
+cmake_doc_dir="doc/cmake-${cmake_version_major}.${cmake_version_minor}"
+cmake_man_dir="man"
 cmake_init_file=""
 cmake_bootstrap_system_libs=""
 cmake_bootstrap_qt_gui=""
@@ -160,8 +160,8 @@ if ${cmake_system_mingw}; then
   fi
 elif ${cmake_system_haiku}; then
   cmake_default_prefix=`finddir B_COMMON_DIRECTORY`
-  cmake_man_dir="/documentation/man"
-  cmake_doc_dir="/documentation/doc/cmake-${cmake_version}"
+  cmake_man_dir="documentation/man"
+  cmake_doc_dir="documentation/doc/cmake-${cmake_version}"
 else
   cmake_default_prefix="/usr/local"
 fi
@@ -247,7 +247,8 @@ CMAKE_CXX_SOURCES="\
   cmMakefileUtilityTargetGenerator \
   cmOSXBundleGenerator \
   cmNewLineStyle \
-  cmBootstrapCommands \
+  cmBootstrapCommands1 \
+  cmBootstrapCommands2 \
   cmCommands \
   cmTarget \
   cmTest \
@@ -352,13 +353,13 @@ Configuration:
 
 Directory and file names:
   --prefix=PREFIX         install files in tree rooted at PREFIX
-                          [${cmake_default_prefix}]
+                          ['"${cmake_default_prefix}"']
   --datadir=DIR           install data files in PREFIX/DIR
-                          [/share/CMake]
+                          ['"${cmake_data_dir}"']
   --docdir=DIR            install documentation files in PREFIX/DIR
-                          [/doc/CMake]
+                          ['"${cmake_doc_dir}"']
   --mandir=DIR            install man pages files in PREFIX/DIR/manN
-                          [/man]
+                          ['"${cmake_man_dir}"']
 '
   exit 10
 }
@@ -691,7 +692,10 @@ if ${cmake_system_linux}; then
   # avoid binutils problem with large binaries, e.g. when building CMake in debug mode
   # See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=50230
   if ${cmake_machine_parisc}; then
-    cmake_ld_flags="${LDFLAGS} -Wl,--unique=.text.*"
+    # if -O[s23] is given the effect is inverted, so do not use the flag then
+    if [ "`echo "${CXXFLAGS}" | sed -r '/^(.* )?(-O[s234])( .*)?$/s/.*/-Os/'`" != "-Os" ]; then
+      cmake_ld_flags="${LDFLAGS} -Wl,--unique=.text.*"
+    fi
   fi
 fi
 
@@ -1082,6 +1086,8 @@ KWSYS_STL_HAS_ALLOCATOR_OBJECTS=0
 KWSYS_CXX_HAS_SETENV=0
 KWSYS_CXX_HAS_UNSETENV=0
 KWSYS_CXX_HAS_ENVIRON_IN_STDLIB_H=0
+KWSYS_CXX_HAS_UTIMENSAT=0
+KWSYS_CXX_HAS_UTIMES=0
 KWSYS_CXX_HAS_CSTDDEF=0
 KWSYS_CXX_HAS_NULL_TEMPLATE_ARGS=0
 KWSYS_CXX_HAS_MEMBER_TEMPLATES=0
@@ -1397,7 +1403,7 @@ cmake_report cmVersionConfig.h${_tmp} "#define CMake_VERSION_PATCH ${cmake_versi
 cmake_report cmVersionConfig.h${_tmp} "#define CMake_VERSION_TWEAK ${cmake_version_tweak}"
 cmake_report cmVersionConfig.h${_tmp} "#define CMake_VERSION \"${cmake_version}\""
 cmake_report cmConfigure.h${_tmp} "#define CMAKE_ROOT_DIR \"${cmake_root_dir}\""
-cmake_report cmConfigure.h${_tmp} "#define CMAKE_DATA_DIR \"${cmake_data_dir}\""
+cmake_report cmConfigure.h${_tmp} "#define CMAKE_DATA_DIR \"/${cmake_data_dir}\""
 cmake_report cmConfigure.h${_tmp} "#define CMAKE_BOOTSTRAP"
 
 # Regenerate configured headers
@@ -1447,11 +1453,15 @@ for a in ${CMAKE_CXX_SOURCES} ${CMAKE_C_SOURCES} ${KWSYS_CXX_SOURCES} ${KWSYS_C_
   objs="${objs} ${a}.o"
 done
 
-# Generate dependencies for cmBootstrapCommands.cxx
-for file in `grep "#include.*cm[^.]*.cxx" "${cmake_source_dir}/Source/cmBootstrapCommands.cxx" | sed "s/.* \"\(.*\)\"/\1/"`; do
-  cmBootstrapCommandsDeps="${cmBootstrapCommandsDeps} `cmake_escape "${cmake_source_dir}/Source/$file"`"
+# Generate dependencies for cmBootstrapCommands1.cxx
+for file in `grep "#include.*cm[^.]*.cxx" "${cmake_source_dir}/Source/cmBootstrapCommands1.cxx" | sed "s/.* \"\(.*\)\"/\1/"`; do
+  cmBootstrapCommands1Deps="${cmBootstrapCommands1Deps} `cmake_escape "${cmake_source_dir}/Source/$file"`"
 done
-cmBootstrapCommandsDeps=`echo $cmBootstrapCommandsDeps`
+cmBootstrapCommands1Deps=`echo $cmBootstrapCommands1Deps`
+for file in `grep "#include.*cm[^.]*.cxx" "${cmake_source_dir}/Source/cmBootstrapCommands2.cxx" | sed "s/.* \"\(.*\)\"/\1/"`; do
+  cmBootstrapCommands2Deps="${cmBootstrapCommands2Deps} `cmake_escape "${cmake_source_dir}/Source/$file"`"
+done
+cmBootstrapCommands2Deps=`echo $cmBootstrapCommands2Deps`
 
 if [ "x${cmake_ansi_cxx_flags}" != "x" ]; then
   cmake_cxx_flags="${cmake_ansi_cxx_flags} ${cmake_cxx_flags}"
@@ -1466,7 +1476,13 @@ if [ "x${cmake_cxx_flags}" != "x" ]; then
 fi
 
 cmake_c_flags_String="-DKWSYS_STRING_C"
-cmake_cxx_flags_SystemTools="-DKWSYS_CXX_HAS_SETENV=${KWSYS_CXX_HAS_SETENV} -DKWSYS_CXX_HAS_UNSETENV=${KWSYS_CXX_HAS_UNSETENV} -DKWSYS_CXX_HAS_ENVIRON_IN_STDLIB_H=${KWSYS_CXX_HAS_ENVIRON_IN_STDLIB_H}"
+cmake_cxx_flags_SystemTools="
+  -DKWSYS_CXX_HAS_SETENV=${KWSYS_CXX_HAS_SETENV}
+  -DKWSYS_CXX_HAS_UNSETENV=${KWSYS_CXX_HAS_UNSETENV}
+  -DKWSYS_CXX_HAS_ENVIRON_IN_STDLIB_H=${KWSYS_CXX_HAS_ENVIRON_IN_STDLIB_H}
+  -DKWSYS_CXX_HAS_UTIMENSAT=${KWSYS_CXX_HAS_UTIMENSAT}
+  -DKWSYS_CXX_HAS_UTIMES=${KWSYS_CXX_HAS_UTIMES}
+"
 cmake_c_flags="${cmake_c_flags}-I`cmake_escape \"${cmake_bootstrap_dir}\"` -I`cmake_escape \"${cmake_source_dir}/Source\"` \
   -I`cmake_escape \"${cmake_bootstrap_dir}\"`"
 cmake_cxx_flags="${cmake_cxx_flags} -I`cmake_escape \"${cmake_bootstrap_dir}\"` -I`cmake_escape \"${cmake_source_dir}/Source\"` \
@@ -1478,7 +1494,8 @@ for a in ${CMAKE_CXX_SOURCES}; do
   echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
   echo "	${cmake_cxx_compiler} ${cmake_cxx_flags} -c ${src} -o ${a}.o" >> "${cmake_bootstrap_dir}/Makefile"
 done
-echo "cmBootstrapCommands.o : $cmBootstrapCommandsDeps" >> "${cmake_bootstrap_dir}/Makefile"
+echo "cmBootstrapCommands1.o : $cmBootstrapCommands1Deps" >> "${cmake_bootstrap_dir}/Makefile"
+echo "cmBootstrapCommands2.o : $cmBootstrapCommands2Deps" >> "${cmake_bootstrap_dir}/Makefile"
 for a in ${CMAKE_C_SOURCES}; do
   src=`cmake_escape "${cmake_source_dir}/Source/${a}.c"`
   echo "${a}.o : ${src} ${dep}" >> "${cmake_bootstrap_dir}/Makefile"
@@ -1510,14 +1527,6 @@ set (CMAKE_DOC_DIR "'"${cmake_doc_dir}"'" CACHE PATH "Install location for docum
 set (CMAKE_MAN_DIR "'"${cmake_man_dir}"'" CACHE PATH "Install location for man pages (relative to prefix)." FORCE)
 set (CMAKE_DATA_DIR "'"${cmake_data_dir}"'" CACHE PATH "Install location for data (relative to prefix)." FORCE)
 ' > "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
-
-# Suppress -isysroot if user-provided flags already have it.
-if echo "${cmake_c_flags}"   | grep isysroot >/dev/null 2>&1 &&
-   echo "${cmake_cxx_flags}" | grep isysroot >/dev/null 2>&1; then
-  echo '
-set(CMAKE_OSX_SYSROOT "" CACHE PATH "" FORCE)
-' >> "${cmake_bootstrap_dir}/InitialCacheFlags.cmake"
-fi
 
 # Add configuration settings given as command-line options.
 if [ "x${cmake_bootstrap_qt_gui}" != "x" ]; then

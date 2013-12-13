@@ -41,7 +41,7 @@
 #  Boost_LIBRARY_DIR         - Directory containing Boost libraries
 #  Boost_<C>_LIBRARY_DEBUG   - Component <C> library debug variant
 #  Boost_<C>_LIBRARY_RELEASE - Component <C> library release variant
-# Users may set the these hints or results as cache entries.  Projects should
+# Users may set these hints or results as cache entries.  Projects should
 # not read these entries directly but instead use the above result variables.
 # Note that some hint names start in upper-case "BOOST".  One may specify
 # these as environment variables if they are not specified as CMake variables
@@ -154,7 +154,7 @@
 
 
 #-------------------------------------------------------------------------------
-# Before we go searching, check whether boost-cmake is avaialble, unless the
+# Before we go searching, check whether boost-cmake is available, unless the
 # user specifically asked NOT to search for boost-cmake.
 #
 # If Boost_DIR is set, this behaves as any find_package call would. If not,
@@ -247,7 +247,7 @@ macro(_Boost_ADJUST_LIB_VARS basename)
     endif()
 
   endif()
-  # Make variables changeble to the advanced user
+  # Make variables changeable to the advanced user
   mark_as_advanced(
       Boost_${basename}_LIBRARY_RELEASE
       Boost_${basename}_LIBRARY_DEBUG
@@ -1022,7 +1022,12 @@ if(Boost_FOUND)
     # We were unable to find some libraries, so generate a sensible
     # error message that lists the libraries we were unable to find.
     set(Boost_ERROR_REASON
-      "${Boost_ERROR_REASON}\nThe following Boost libraries could not be found:\n")
+      "${Boost_ERROR_REASON}\nCould not find the following")
+    if(Boost_USE_STATIC_LIBS)
+      set(Boost_ERROR_REASON "${Boost_ERROR_REASON} static")
+    endif()
+    set(Boost_ERROR_REASON
+      "${Boost_ERROR_REASON} Boost libraries:\n")
     foreach(COMPONENT ${_Boost_MISSING_COMPONENTS})
       set(Boost_ERROR_REASON
         "${Boost_ERROR_REASON}        boost_${COMPONENT}\n")

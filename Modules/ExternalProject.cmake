@@ -114,6 +114,15 @@
 # and <TMP_DIR>
 # with corresponding property values.
 #
+# Any builtin step that specifies a "<step>_COMMAND cmd..." or custom
+# step that specifies a "COMMAND cmd..." may specify additional command
+# lines using the form "COMMAND cmd...".  At build time the commands will
+# be executed in order and aborted if any one fails.  For example:
+#  ... BUILD_COMMAND make COMMAND echo done ...
+# specifies to run "make" and then "echo done" during the build step.
+# Whether the current working directory is preserved between commands
+# is not defined.  Behavior of shell operators like "&&" is not defined.
+#
 # The 'ExternalProject_Get_Property' function retrieves external project
 # target properties:
 #  ExternalProject_Get_Property(<name> [prop1 [prop2 [...]]])
@@ -961,7 +970,7 @@ endif()
         set(sep ";")
       endif()
     endforeach()
-    set(code "set(ENV{VS_UNICODE_OUTPUT} \"\")\n${code}set(command \"${cmd}\")${code_execute_process}")
+    set(code "${code}set(command \"${cmd}\")${code_execute_process}")
     file(WRITE ${stamp_dir}/${name}-${step}-impl.cmake "${code}")
     set(command ${CMAKE_COMMAND} "-Dmake=\${make}" "-Dconfig=\${config}" -P ${stamp_dir}/${name}-${step}-impl.cmake)
   endif()
@@ -971,7 +980,6 @@ endif()
   set(logbase ${stamp_dir}/${name}-${step})
   file(WRITE ${script} "
 ${code_cygpath_make}
-set(ENV{VS_UNICODE_OUTPUT} \"\")
 set(command \"${command}\")
 execute_process(
   COMMAND \${command}
@@ -1251,10 +1259,10 @@ function(_ep_add_download_command name)
     get_filename_component(work_dir "${source_dir}" PATH)
     set(comment "Performing download step (SVN checkout) for '${name}'")
     set(svn_user_pw_args "")
-    if(svn_username)
+    if(DEFINED svn_username)
       set(svn_user_pw_args ${svn_user_pw_args} "--username=${svn_username}")
     endif()
-    if(svn_password)
+    if(DEFINED svn_password)
       set(svn_user_pw_args ${svn_user_pw_args} "--password=${svn_password}")
     endif()
     if(svn_trust_cert)
@@ -1473,10 +1481,10 @@ function(_ep_add_update_command name)
     get_property(svn_password TARGET ${name} PROPERTY _EP_SVN_PASSWORD)
     get_property(svn_trust_cert TARGET ${name} PROPERTY _EP_SVN_TRUST_CERT)
     set(svn_user_pw_args "")
-    if(svn_username)
+    if(DEFINED svn_username)
       set(svn_user_pw_args ${svn_user_pw_args} "--username=${svn_username}")
     endif()
-    if(svn_password)
+    if(DEFINED svn_password)
       set(svn_user_pw_args ${svn_user_pw_args} "--password=${svn_password}")
     endif()
     if(svn_trust_cert)

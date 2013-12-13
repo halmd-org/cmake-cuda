@@ -605,7 +605,7 @@ bool SystemTools::MakeDirectory(const char* path)
     }
   if(SystemTools::FileExists(path))
     {
-    return true;
+    return SystemTools::FileIsDirectory(path);
     }
   kwsys_stl::string dir = path;
   if(dir.size() == 0)
@@ -695,6 +695,52 @@ void SystemTools::ReplaceString(kwsys_stl::string& source,
 #endif
 
 #if defined(_WIN32) && !defined(__CYGWIN__)
+static bool SystemToolsParseRegistryKey(const char* key,
+                                        HKEY& primaryKey,
+                                        kwsys_stl::string& second,
+                                        kwsys_stl::string& valuename)
+{
+  kwsys_stl::string primary = key;
+
+  size_t start = primary.find("\\");
+  if (start == kwsys_stl::string::npos)
+    {
+    return false;
+    }
+
+  size_t valuenamepos = primary.find(";");
+  if (valuenamepos != kwsys_stl::string::npos)
+    {
+    valuename = primary.substr(valuenamepos+1);
+    }
+
+  second = primary.substr(start+1, valuenamepos-start-1);
+  primary = primary.substr(0, start);
+
+  if (primary == "HKEY_CURRENT_USER")
+    {
+    primaryKey = HKEY_CURRENT_USER;
+    }
+  if (primary == "HKEY_CURRENT_CONFIG")
+    {
+    primaryKey = HKEY_CURRENT_CONFIG;
+    }
+  if (primary == "HKEY_CLASSES_ROOT")
+    {
+    primaryKey = HKEY_CLASSES_ROOT;
+    }
+  if (primary == "HKEY_LOCAL_MACHINE")
+    {
+    primaryKey = HKEY_LOCAL_MACHINE;
+    }
+  if (primary == "HKEY_USERS")
+    {
+    primaryKey = HKEY_USERS;
+    }
+
+  return true;
+}
+
 static DWORD SystemToolsMakeRegistryMode(DWORD mode,
                                          SystemTools::KeyWOW64 view)
 {
@@ -718,6 +764,55 @@ static DWORD SystemToolsMakeRegistryMode(DWORD mode,
 }
 #endif
 
+#if defined(_WIN32) && !defined(__CYGWIN__)
+bool
+SystemTools::GetRegistrySubKeys(const char *key,
+                                kwsys_stl::vector<kwsys_stl::string>& subkeys,
+                                KeyWOW64 view)
+{
+  HKEY primaryKey = HKEY_CURRENT_USER;
+  kwsys_stl::string second;
+  kwsys_stl::string valuename;
+  if (!SystemToolsParseRegistryKey(key, primaryKey, second, valuename))
+    {
+    return false;
+    }
+
+  HKEY hKey;
+  if(RegOpenKeyEx(primaryKey,
+                  second.c_str(),
+                  0,
+                  SystemToolsMakeRegistryMode(KEY_READ, view),
+                  &hKey) != ERROR_SUCCESS)
+    {
+    return false;
+    }
+  else
+    {
+    char name[1024];
+    DWORD dwNameSize = sizeof(name)/sizeof(name[0]);
+
+    DWORD i = 0;
+    while (RegEnumKey(hKey, i, name, dwNameSize) == ERROR_SUCCESS)
+      {
+      subkeys.push_back(name);
+      ++i;
+      }
+
+    RegCloseKey(hKey);
+    }
+
+  return true;
+}
+#else
+bool SystemTools::GetRegistrySubKeys(const char *,
+                                     kwsys_stl::vector<kwsys_stl::string>&,
+                                     KeyWOW64)
+{
+  return false;
+}
+#endif
+
 // Read a registry value.
 // Example :
 //      HKEY_LOCAL_MACHINE\SOFTWARE\Python\PythonCore\2.1\InstallPath
@@ -730,45 +825,12 @@ bool SystemTools::ReadRegistryValue(const char *key, kwsys_stl::string &value,
                                     KeyWOW64 view)
 {
   bool valueset = false;
-  kwsys_stl::string primary = key;
+  HKEY primaryKey = HKEY_CURRENT_USER;
   kwsys_stl::string second;
   kwsys_stl::string valuename;
-
-  size_t start = primary.find("\\");
-  if (start == kwsys_stl::string::npos)
+  if (!SystemToolsParseRegistryKey(key, primaryKey, second, valuename))
     {
     return false;
-    }
-
-  size_t valuenamepos = primary.find(";");
-  if (valuenamepos != kwsys_stl::string::npos)
-    {
-    valuename = primary.substr(valuenamepos+1);
-    }
-
-  second = primary.substr(start+1, valuenamepos-start-1);
-  primary = primary.substr(0, start);
-
-  HKEY primaryKey = HKEY_CURRENT_USER;
-  if (primary == "HKEY_CURRENT_USER")
-    {
-    primaryKey = HKEY_CURRENT_USER;
-    }
-  if (primary == "HKEY_CURRENT_CONFIG")
-    {
-    primaryKey = HKEY_CURRENT_CONFIG;
-    }
-  if (primary == "HKEY_CLASSES_ROOT")
-    {
-    primaryKey = HKEY_CLASSES_ROOT;
-    }
-  if (primary == "HKEY_LOCAL_MACHINE")
-    {
-    primaryKey = HKEY_LOCAL_MACHINE;
-    }
-  if (primary == "HKEY_USERS")
-    {
-    primaryKey = HKEY_USERS;
     }
 
   HKEY hKey;
@@ -834,45 +896,12 @@ bool SystemTools::ReadRegistryValue(const char *, kwsys_stl::string &,
 bool SystemTools::WriteRegistryValue(const char *key, const char *value,
                                      KeyWOW64 view)
 {
-  kwsys_stl::string primary = key;
+  HKEY primaryKey = HKEY_CURRENT_USER;
   kwsys_stl::string second;
   kwsys_stl::string valuename;
-
-  size_t start = primary.find("\\");
-  if (start == kwsys_stl::string::npos)
+  if (!SystemToolsParseRegistryKey(key, primaryKey, second, valuename))
     {
     return false;
-    }
-
-  size_t valuenamepos = primary.find(";");
-  if (valuenamepos != kwsys_stl::string::npos)
-    {
-    valuename = primary.substr(valuenamepos+1);
-    }
-
-  second = primary.substr(start+1, valuenamepos-start-1);
-  primary = primary.substr(0, start);
-
-  HKEY primaryKey = HKEY_CURRENT_USER;
-  if (primary == "HKEY_CURRENT_USER")
-    {
-    primaryKey = HKEY_CURRENT_USER;
-    }
-  if (primary == "HKEY_CURRENT_CONFIG")
-    {
-    primaryKey = HKEY_CURRENT_CONFIG;
-    }
-  if (primary == "HKEY_CLASSES_ROOT")
-    {
-    primaryKey = HKEY_CLASSES_ROOT;
-    }
-  if (primary == "HKEY_LOCAL_MACHINE")
-    {
-    primaryKey = HKEY_LOCAL_MACHINE;
-    }
-  if (primary == "HKEY_USERS")
-    {
-    primaryKey = HKEY_USERS;
     }
 
   HKEY hKey;
@@ -919,45 +948,12 @@ bool SystemTools::WriteRegistryValue(const char *, const char *, KeyWOW64)
 #if defined(_WIN32) && !defined(__CYGWIN__)
 bool SystemTools::DeleteRegistryValue(const char *key, KeyWOW64 view)
 {
-  kwsys_stl::string primary = key;
+  HKEY primaryKey = HKEY_CURRENT_USER;
   kwsys_stl::string second;
   kwsys_stl::string valuename;
-
-  size_t start = primary.find("\\");
-  if (start == kwsys_stl::string::npos)
+  if (!SystemToolsParseRegistryKey(key, primaryKey, second, valuename))
     {
     return false;
-    }
-
-  size_t valuenamepos = primary.find(";");
-  if (valuenamepos != kwsys_stl::string::npos)
-    {
-    valuename = primary.substr(valuenamepos+1);
-    }
-
-  second = primary.substr(start+1, valuenamepos-start-1);
-  primary = primary.substr(0, start);
-
-  HKEY primaryKey = HKEY_CURRENT_USER;
-  if (primary == "HKEY_CURRENT_USER")
-    {
-    primaryKey = HKEY_CURRENT_USER;
-    }
-  if (primary == "HKEY_CURRENT_CONFIG")
-    {
-    primaryKey = HKEY_CURRENT_CONFIG;
-    }
-  if (primary == "HKEY_CLASSES_ROOT")
-    {
-    primaryKey = HKEY_CLASSES_ROOT;
-    }
-  if (primary == "HKEY_LOCAL_MACHINE")
-    {
-    primaryKey = HKEY_LOCAL_MACHINE;
-    }
-  if (primary == "HKEY_USERS")
-    {
-    primaryKey = HKEY_USERS;
     }
 
   HKEY hKey;
@@ -1124,22 +1120,58 @@ bool SystemTools::Touch(const char* filename, bool create)
       }
     return false;
     }
-#ifdef _MSC_VER
-#define utime _utime
-#define utimbuf _utimbuf
+#if defined(_WIN32) && !defined(__CYGWIN__)
+  HANDLE h = CreateFile(filename, FILE_WRITE_ATTRIBUTES,
+                        FILE_SHARE_WRITE, 0, OPEN_EXISTING,
+                        FILE_FLAG_BACKUP_SEMANTICS, 0);
+  if(!h)
+    {
+    return false;
+    }
+  FILETIME mtime;
+  GetSystemTimeAsFileTime(&mtime);
+  if(!SetFileTime(h, 0, 0, &mtime))
+    {
+    CloseHandle(h);
+    return false;
+    }
+  CloseHandle(h);
+#elif KWSYS_CXX_HAS_UTIMENSAT
+  struct timespec times[2] = {{0,UTIME_OMIT},{0,UTIME_NOW}};
+  if(utimensat(AT_FDCWD, filename, times, 0) < 0)
+    {
+    return false;
+    }
+#else
+  struct stat st;
+  if(stat(filename, &st) < 0)
+    {
+    return false;
+    }
+  struct timeval mtime;
+  gettimeofday(&mtime, 0);
+# if KWSYS_CXX_HAS_UTIMES
+  struct timeval times[2] =
+    {
+#  if KWSYS_STAT_HAS_ST_MTIM
+      {st.st_atim.tv_sec, st.st_atim.tv_nsec/1000}, /* tv_sec, tv_usec */
+#  else
+      {st.st_atime, 0},
+#  endif
+      mtime
+    };
+  if(utimes(filename, times) < 0)
+    {
+    return false;
+    }
+# else
+  struct utimbuf times = {st.st_atime, mtime.tv_sec};
+  if(utime(filename, &times) < 0)
+    {
+    return false;
+    }
+# endif
 #endif
-  struct stat fromStat;
-  if(stat(filename, &fromStat) < 0)
-    {
-    return false;
-    }
-  struct utimbuf buf;
-  buf.actime = fromStat.st_atime;
-  buf.modtime = static_cast<time_t>(SystemTools::GetTime());
-  if(utime(filename, &buf) < 0)
-    {
-    return false;
-    }
   return true;
 }
 
@@ -2741,12 +2773,12 @@ bool SystemTools::FileIsDirectory(const char* name)
     return false;
     }
 
-  // Remove any trailing slash from the name.
+  // Remove any trailing slash from the name except in a root component.
   char local_buffer[KWSYS_SYSTEMTOOLS_MAXPATH];
   std::string string_buffer;
   size_t last = length-1;
   if(last > 0 && (name[last] == '/' || name[last] == '\\')
-    && strcmp(name, "/") !=0)
+    && strcmp(name, "/") !=0 && name[last-1] != ':')
     {
     if(last < sizeof(local_buffer))
       {
@@ -3049,7 +3081,7 @@ SystemToolsAppendComponents(
     {
     if(*i == "..")
       {
-      if(out_components.begin() != out_components.end())
+      if(out_components.size() > 1)
         {
         out_components.erase(out_components.end()-1, out_components.end());
         }
@@ -4011,7 +4043,7 @@ void SystemTools::SplitProgramFromArgs(const char* path,
       args = dir.substr(spacePos, dir.size()-spacePos);
       return;
       }
-    // Now try and find the the program in the path
+    // Now try and find the program in the path
     findProg = SystemTools::FindProgram(tryProg.c_str(), e);
     if(findProg.size())
       {
@@ -4225,17 +4257,13 @@ bool SystemTools::IsSubDirectory(const char* cSubdir, const char* cDir)
     }
   kwsys_stl::string subdir = cSubdir;
   kwsys_stl::string dir = cDir;
+  SystemTools::ConvertToUnixSlashes(subdir);
   SystemTools::ConvertToUnixSlashes(dir);
-  kwsys_stl::string path = subdir;
-  do
+  if(subdir.size() > dir.size() && subdir[dir.size()] == '/')
     {
-    path = SystemTools::GetParentDirectory(path.c_str());
-    if(SystemTools::ComparePath(dir.c_str(), path.c_str()))
-      {
-      return true;
-      }
+    std::string s = subdir.substr(0, dir.size());
+    return SystemTools::ComparePath(s.c_str(), dir.c_str());
     }
-  while ( path.size() > dir.size() );
   return false;
 }
 
@@ -4837,7 +4865,8 @@ static int SystemToolsDebugReport(int, char* message, int*)
 
 void SystemTools::EnableMSVCDebugHook()
 {
-  if (getenv("DART_TEST_FROM_DART"))
+  if (getenv("DART_TEST_FROM_DART") ||
+      getenv("DASHBOARD_TEST_FROM_CTEST"))
     {
     _CrtSetReportHook(SystemToolsDebugReport);
     }

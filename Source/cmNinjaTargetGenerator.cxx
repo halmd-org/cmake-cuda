@@ -150,15 +150,19 @@ cmNinjaTargetGenerator::ComputeFlagsForObject(cmSourceFile *source,
                                         language.c_str(),
                                         this->GetConfigName());
 
+  this->LocalGenerator->AddVisibilityPresetFlags(flags, this->Target,
+                                                 language.c_str());
+
   // Add include directory flags.
+  const char *config = this->Makefile->GetDefinition("CMAKE_BUILD_TYPE");
   {
   std::vector<std::string> includes;
-  const char *config = this->Makefile->GetDefinition("CMAKE_BUILD_TYPE");
   this->LocalGenerator->GetIncludeDirectories(includes,
                                               this->GeneratorTarget,
                                               language.c_str(), config);
   std::string includeFlags =
-    this->LocalGenerator->GetIncludeFlags(includes, language.c_str(),
+    this->LocalGenerator->GetIncludeFlags(includes, this->GeneratorTarget,
+                                          language.c_str(),
     language == "RC" ? true : false); // full include paths for RC
                                       // needed by cmcldeps
   if(cmGlobalNinjaGenerator::IsMinGW())
@@ -171,36 +175,8 @@ cmNinjaTargetGenerator::ComputeFlagsForObject(cmSourceFile *source,
   this->LocalGenerator->AppendFlags(flags, this->Makefile->GetDefineFlags());
 
   // Add target-specific flags.
-  if(this->Target->GetProperty("COMPILE_FLAGS"))
-    {
-    std::string langIncludeExpr = "CMAKE_";
-    langIncludeExpr += language;
-    langIncludeExpr += "_FLAG_REGEX";
-    const char* regex = this->Makefile->
-      GetDefinition(langIncludeExpr.c_str());
-    if(regex)
-      {
-      cmsys::RegularExpression r(regex);
-      std::vector<std::string> args;
-      cmSystemTools::ParseWindowsCommandLine(
-        this->Target->GetProperty("COMPILE_FLAGS"),
-        args);
-      for(std::vector<std::string>::iterator i = args.begin();
-          i != args.end(); ++i)
-        {
-        if(r.find(i->c_str()))
-          {
-          this->LocalGenerator->AppendFlags
-            (flags, i->c_str());
-          }
-        }
-      }
-    else
-      {
-      this->LocalGenerator->AppendFlags
-        (flags, this->Target->GetProperty("COMPILE_FLAGS"));
-      }
-    }
+  this->LocalGenerator->AddCompileOptions(flags, this->Target,
+                                          language.c_str(), config);
 
     // Add source file specific flags.
     this->LocalGenerator->AppendFlags(flags,
@@ -226,9 +202,8 @@ ComputeDefines(cmSourceFile *source, const std::string& language)
     }
 
   // Add preprocessor definitions for this target and configuration.
-  this->LocalGenerator->AppendDefines
-    (defines,
-     this->Target->GetCompileDefinitions(this->GetConfigName()));
+  this->LocalGenerator->AddCompileDefinitions(defines, this->Target,
+                                             this->GetConfigName());
   this->LocalGenerator->AppendDefines
     (defines,
      source->GetProperty("COMPILE_DEFINITIONS"));
@@ -569,11 +544,9 @@ cmNinjaTargetGenerator
   EnsureParentDirectoryExists(objectFileName);
 
   std::string objectDir = cmSystemTools::GetFilenamePath(objectFileName);
-  objectDir = this->GetLocalGenerator()->Convert(objectDir.c_str(),
-                            cmLocalGenerator::START_OUTPUT,
-                            cmLocalGenerator::SHELL);
-  vars["OBJECT_DIR"] = objectDir;
-
+  vars["OBJECT_DIR"] = this->GetLocalGenerator()->ConvertToOutputFormat(
+                         ConvertToNinjaPath(objectDir.c_str()).c_str(),
+                         cmLocalGenerator::SHELL);
 
   this->SetMsvcTargetPdbVariable(vars);
 
@@ -623,24 +596,24 @@ cmNinjaTargetGenerator
                                                      sourceFileName);
     }
 
-  cmGlobalNinjaGenerator::WriteBuild(this->GetBuildFileStream(),
-                                     comment,
-                                     rule,
-                                     outputs,
-                                     explicitDeps,
-                                     implicitDeps,
-                                     orderOnlyDeps,
-                                     vars);
+  this->GetGlobalGenerator()->WriteBuild(this->GetBuildFileStream(),
+                                         comment,
+                                         rule,
+                                         outputs,
+                                         explicitDeps,
+                                         implicitDeps,
+                                         orderOnlyDeps,
+                                         vars);
 
   if(const char* objectOutputs = source->GetProperty("OBJECT_OUTPUTS")) {
     std::vector<std::string> outputList;
     cmSystemTools::ExpandListArgument(objectOutputs, outputList);
     std::transform(outputList.begin(), outputList.end(), outputList.begin(),
                    MapToNinjaPath());
-    cmGlobalNinjaGenerator::WritePhonyBuild(this->GetBuildFileStream(),
-                                            "Additional output files.",
-                                            outputList,
-                                            outputs);
+    this->GetGlobalGenerator()->WritePhonyBuild(this->GetBuildFileStream(),
+                                                "Additional output files.",
+                                                outputList,
+                                                outputs);
   }
 }
 
@@ -701,7 +674,7 @@ cmNinjaTargetGenerator::MacOSXContentGeneratorType::operator()(
   cmSourceFile& source, const char* pkgloc)
 {
   // Skip OS X content when not building a Framework or Bundle.
-  if(this->Generator->OSXBundleGenerator->GetMacContentDirectory().empty())
+  if(!this->Generator->GetTarget()->IsBundleOnApple())
     {
     return;
     }

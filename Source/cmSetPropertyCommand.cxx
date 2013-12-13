@@ -84,12 +84,14 @@ bool cmSetPropertyCommand
       {
       doing = DoingNone;
       this->AppendMode = true;
+      this->Remove = false;
       this->AppendAsString = false;
       }
     else if(*arg == "APPEND_STRING")
       {
       doing = DoingNone;
       this->AppendMode = true;
+      this->Remove = false;
       this->AppendAsString = true;
       }
     else if(doing == DoingNames)
@@ -160,7 +162,7 @@ bool cmSetPropertyCommand::HandleGlobalMode()
     }
   if(this->AppendMode)
     {
-    cm->AppendProperty(name, value, this->AppendAsString);
+    cm->AppendProperty(name, value ? value : "", this->AppendAsString);
     }
   else
     {
@@ -226,7 +228,7 @@ bool cmSetPropertyCommand::HandleDirectoryMode()
     }
   if(this->AppendMode)
     {
-    mf->AppendProperty(name, value, this->AppendAsString);
+    mf->AppendProperty(name, value ? value : "", this->AppendAsString);
     }
   else
     {
@@ -242,6 +244,11 @@ bool cmSetPropertyCommand::HandleTargetMode()
   for(std::set<cmStdString>::const_iterator ni = this->Names.begin();
       ni != this->Names.end(); ++ni)
     {
+    if (this->Makefile->IsAlias(ni->c_str()))
+      {
+      this->SetError("can not be used on an ALIAS target.");
+      return false;
+      }
     if(cmTarget* target = this->Makefile->FindTargetToUse(ni->c_str()))
       {
       // Handle the current target.

@@ -99,7 +99,6 @@ macro(add_include_lib _libName)
   set_property(TARGET ${_libName} APPEND PROPERTY
       INTERFACE_INCLUDE_DIRECTORIES
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/${_libName}>"
-        "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/${_libName}>"
       )
   if (NOT "${ARGV1}" STREQUAL "NO_HEADER")
       file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/${_libName}/${_libName}.h" "// no content\n")
@@ -140,6 +139,12 @@ install(FILES
 )
 add_include_lib(testLibIncludeRequired6)
 
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/testLibIncludeRequired7/testLibIncludeRequired7.h" "// No content\n")
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/testLibIncludeRequired7/testLibIncludeRequired7.h"
+    DESTINATION include/testLibIncludeRequired7
+)
+
 set_property(TARGET testLibRequired APPEND PROPERTY
   INTERFACE_INCLUDE_DIRECTORIES
     $<TARGET_PROPERTY:testLibIncludeRequired1,INTERFACE_INCLUDE_DIRECTORIES>
@@ -154,6 +159,7 @@ set_property(TARGET testLibRequired APPEND PROPERTY
     $<BUILD_INTERFACE:$<TARGET_PROPERTY:testLibIncludeRequired5,INTERFACE_INCLUDE_DIRECTORIES>>
     # Test that the below is non-fatal
     $<$<STREQUAL:one,two>:$<TARGET_PROPERTY:not_a_target,INTERFACE_INCLUDE_DIRECTORIES>>
+    $<INSTALL_INTERFACE:include/testLibIncludeRequired7;include/testLibIncludeRequired4>
 )
 
 set_property(TARGET testLibRequired APPEND PROPERTY
@@ -162,8 +168,9 @@ set_property(TARGET testLibRequired APPEND PROPERTY
     $<BUILD_INTERFACE:BuildOnly_DEFINE>
     $<INSTALL_INTERFACE:InstallOnly_DEFINE>
 )
-
 include(GenerateExportHeader)
+
+add_subdirectory(renamed)
 
 add_library(testSharedLibRequired SHARED testSharedLibRequired.cpp)
 generate_export_header(testSharedLibRequired)
@@ -180,8 +187,10 @@ install(FILES
     DESTINATION include/testSharedLibRequired
 )
 set_property(TARGET testSharedLibRequired APPEND PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/testSharedLibRequired>"
-                                "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+)
+set_property(TARGET testSharedLibRequired APPEND PROPERTY
+  INTERFACE_COMPILE_DEFINITIONS USING_TESTSHAREDLIBREQUIRED
 )
 set_property(TARGET testSharedLibRequired
   APPEND PROPERTY
@@ -199,6 +208,39 @@ set_property(TARGET testSharedLibRequired
   PROPERTY
     INTERFACE_CUSTOM_STRING testcontent
 )
+set_property(TARGET testSharedLibRequired APPEND PROPERTY
+  INTERFACE_COMPILE_OPTIONS
+    $<$<CXX_COMPILER_ID:GNU>:-DCUSTOM_COMPILE_OPTION>
+)
+
+add_library(testSharedLibRequiredUser SHARED testSharedLibRequiredUser.cpp)
+generate_export_header(testSharedLibRequiredUser)
+# LINK_PRIVATE so that it appears in the LINK_DEPENDENT_LIBRARIES, but not
+# the INTERFACE_LINK_LIBRARIES.
+set_property(TARGET testSharedLibRequiredUser APPEND PROPERTY
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+)
+target_link_libraries(testSharedLibRequiredUser LINK_PRIVATE testSharedLibRequired)
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/testSharedLibRequiredUser.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/testsharedlibrequireduser_export.h"
+    DESTINATION include/testSharedLibRequiredUser
+)
+
+cmake_policy(SET CMP0022 NEW)
+add_library(testSharedLibRequiredUser2 SHARED testSharedLibRequiredUser2.cpp)
+generate_export_header(testSharedLibRequiredUser2)
+set_property(TARGET testSharedLibRequiredUser2 APPEND PROPERTY
+  INTERFACE_INCLUDE_DIRECTORIES "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+)
+set_property(TARGET testSharedLibRequiredUser2 PROPERTY LINK_LIBRARIES testSharedLibRequired)
+set_property(TARGET testSharedLibRequiredUser2 PROPERTY INTERFACE_LINK_LIBRARIES testSharedLibRequired)
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/testSharedLibRequiredUser2.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/testsharedlibrequireduser2_export.h"
+    DESTINATION include/testSharedLibRequiredUser2
+)
+cmake_policy(SET CMP0022 OLD)
 
 add_library(testSharedLibDepends SHARED testSharedLibDepends.cpp)
 set_property(TARGET testSharedLibDepends APPEND PROPERTY
@@ -219,24 +261,79 @@ set_property(TARGET testSharedLibDepends APPEND PROPERTY
   INTERFACE_INCLUDE_DIRECTORIES "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/testSharedLibDepends>"
                                 "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
 )
-set_property(TARGET testSharedLibDepends APPEND PROPERTY
-  LINK_INTERFACE_LIBRARIES
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:$<TARGET_NAME:testSharedLibRequired>>
-)
 
 # LINK_PRIVATE because the LINK_INTERFACE_LIBRARIES is specified above.
 target_link_libraries(testSharedLibDepends LINK_PRIVATE testSharedLibRequired)
+target_link_libraries(testSharedLibDepends LINK_PUBLIC renamed_on_export)
+target_link_libraries(testSharedLibDepends LINK_INTERFACE_LIBRARIES
+  $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:$<TARGET_NAME:testSharedLibRequired>>)
+
+add_library(cmp0022OLD SHARED cmp0022_vs6_1.cpp)
+generate_export_header(cmp0022OLD BASE_NAME cmp0022)
+target_include_directories(cmp0022OLD PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+  "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/cmp0022>"
+)
+cmake_policy(SET CMP0022 NEW)
+add_library(cmp0022NEW SHARED cmp0022_vs6_1.cpp)
+set_property(TARGET cmp0022NEW PROPERTY DEFINE_SYMBOL cmp0022OLD_EXPORTS)
+target_include_directories(cmp0022NEW PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR};${CMAKE_CURRENT_SOURCE_DIR}>"
+  "$<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/cmp0022>"
+)
+cmake_policy(SET CMP0022 OLD)
+install(FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmp0022.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/cmp0022_export.h"
+    DESTINATION include/cmp0022
+)
+
+set_property(TARGET testLib2 APPEND PROPERTY INTERFACE_COMPILE_DEFINITIONS USING_TESTLIB2)
+set_property(TARGET testLib3 APPEND PROPERTY INTERFACE_COMPILE_DEFINITIONS USING_TESTLIB3)
+
+set_property(TARGET cmp0022NEW APPEND PROPERTY INTERFACE_LINK_LIBRARIES testLib2)
+# set_property(TARGET cmp0022NEW APPEND PROPERTY LINK_INTERFACE_LIBRARIES testLibIncludeRequired2) # TODO: Test for error
+set_property(TARGET cmp0022OLD APPEND PROPERTY INTERFACE_LINK_LIBRARIES testLib2)
+set_property(TARGET cmp0022OLD APPEND PROPERTY LINK_INTERFACE_LIBRARIES testLib3)
+
+add_library(noIncludesInterface empty.cpp)
 
 install(TARGETS testLibRequired
-                testLibIncludeRequired1
-                testLibIncludeRequired2
-                testLibIncludeRequired3
-                testLibIncludeRequired4
-                testLibIncludeRequired5
-                testLibIncludeRequired6
-                testSharedLibRequired
-        EXPORT RequiredExp DESTINATION lib )
+        EXPORT RequiredExp DESTINATION lib
+        INCLUDES DESTINATION
+          installIncludesTest
+          $<INSTALL_PREFIX>/installIncludesTest2
+          )
+install(TARGETS
+          testLibIncludeRequired1
+          testLibIncludeRequired2
+          testLibIncludeRequired3
+          testLibIncludeRequired4
+          testLibIncludeRequired5
+          testLibIncludeRequired6
+          testSharedLibRequired
+          testSharedLibRequiredUser
+          testSharedLibRequiredUser2
+          noIncludesInterface
+        EXPORT RequiredExp DESTINATION lib
+        INCLUDES DESTINATION
+          $<INSTALL_PREFIX>/include/$<TARGET_PROPERTY:NAME>
+)
 install(EXPORT RequiredExp NAMESPACE Req:: FILE testLibRequiredTargets.cmake DESTINATION lib/cmake/testLibRequired)
+
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest/installIncludesTest.h" "// No content\n")
+
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest2")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest2/installIncludesTest2.h" "// No content\n")
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest/installIncludesTest.h"
+  DESTINATION installIncludesTest
+)
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/installIncludesTest2/installIncludesTest2.h"
+  DESTINATION installIncludesTest2
+)
 
 install(TARGETS testLibDepends testSharedLibDepends EXPORT DependsExp DESTINATION lib )
 install(EXPORT DependsExp FILE testLibDependsTargets.cmake DESTINATION lib/cmake/testLibDepends)
@@ -268,6 +365,7 @@ install(
   testExe2lib testLib4lib testLib4libdbg testLib4libopt
   testLib6
   testLibCycleA testLibCycleB
+  cmp0022NEW cmp0022OLD
   EXPORT exp
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib NAMELINK_SKIP
@@ -275,6 +373,12 @@ install(
   FRAMEWORK DESTINATION Frameworks
   BUNDLE DESTINATION Applications
   )
+if (APPLE)
+  file(COPY testLib4.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/testLib4.framework/Headers)
+  file(COPY testLib4.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Debug/testLib4.framework/Headers)
+  file(COPY testLib4.h DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/Release/testLib4.framework/Headers)
+  install(FILES testLib4.h DESTINATION Frameworks/testLib4.framework/Headers)
+endif()
 install(
   TARGETS
   testExe2libImp testLib3Imp
@@ -310,7 +414,9 @@ add_subdirectory(sublib) # For CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE test.
 # Export from build tree.
 export(TARGETS testExe1 testLib1 testLib2 testLib3
   testExe2libImp testLib3Imp testLib3ImpDep subdirlib
-  testSharedLibRequired testSharedLibDepends
+  testSharedLibRequired testSharedLibRequiredUser testSharedLibRequiredUser2
+  testSharedLibDepends renamed_on_export
+  cmp0022NEW cmp0022OLD
   NAMESPACE bld_
   FILE ExportBuildTree.cmake
   )

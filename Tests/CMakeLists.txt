@@ -227,6 +227,7 @@ if(BUILD_TESTING)
   ADD_TEST_MACRO(ObjectLibrary UseCshared)
   ADD_TEST_MACRO(NewlineArgs NewlineArgs)
   ADD_TEST_MACRO(SetLang SetLang)
+  ADD_TEST_MACRO(EmptyProperty EmptyProperty)
   ADD_TEST_MACRO(ExternalOBJ ExternalOBJ)
   ADD_TEST_MACRO(LoadCommand LoadedCommand)
   ADD_TEST_MACRO(LinkDirectory bin/LinkDirectory)
@@ -244,9 +245,11 @@ if(BUILD_TESTING)
   ADD_TEST_MACRO(PolicyScope PolicyScope)
   ADD_TEST_MACRO(EmptyLibrary EmptyLibrary)
   ADD_TEST_MACRO(CompileDefinitions CompileDefinitions)
+  ADD_TEST_MACRO(CompileOptions CompileOptions)
   ADD_TEST_MACRO(CompatibleInterface CompatibleInterface)
+  ADD_TEST_MACRO(AliasTarget AliasTarget)
   set_tests_properties(EmptyLibrary PROPERTIES
-    PASS_REGULAR_EXPRESSION "CMake Error: CMake can not determine linker language for target:test")
+    PASS_REGULAR_EXPRESSION "CMake Error: CMake can not determine linker language for target: test")
   ADD_TEST_MACRO(CrossCompile CrossCompile)
   set_tests_properties(CrossCompile PROPERTIES
     PASS_REGULAR_EXPRESSION "TRY_RUN.. invoked in cross-compiling mode")
@@ -394,10 +397,20 @@ if(BUILD_TESTING)
   endmacro()
   ADD_LINK_FLAGS_TEST(lib prepare)
   ADD_LINK_FLAGS_TEST(dll lib)
-  ADD_LINK_FLAGS_TEST(exe dll)
+  ADD_LINK_FLAGS_TEST(mod dll)
+  ADD_LINK_FLAGS_TEST(exe mod)
   ADD_LINK_FLAGS_TEST(lib_config exe)
   ADD_LINK_FLAGS_TEST(dll_config lib_config)
-  ADD_LINK_FLAGS_TEST(exe_config dll_config)
+  ADD_LINK_FLAGS_TEST(mod_config dll_config)
+  ADD_LINK_FLAGS_TEST(exe_config mod_config)
+  ADD_LINK_FLAGS_TEST(lib_flags exe_config)
+  ADD_LINK_FLAGS_TEST(dll_flags lib_flags)
+  ADD_LINK_FLAGS_TEST(mod_flags dll_flags)
+  ADD_LINK_FLAGS_TEST(exe_flags mod_flags)
+  ADD_LINK_FLAGS_TEST(lib_flags_config exe_flags)
+  ADD_LINK_FLAGS_TEST(dll_flags_config lib_flags_config)
+  ADD_LINK_FLAGS_TEST(mod_flags_config dll_flags_config)
+  ADD_LINK_FLAGS_TEST(exe_flags_config mod_flags_config)
 
   # If we are running right now with a UnixMakefiles based generator,
   # build the "Simple" test with the ExtraGenerators, if available
@@ -1002,21 +1015,35 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     )
   list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/QtAutomocNoQt")
 
-  if(QT4_WORKS AND QT_QTGUI_FOUND)
-    add_test(QtAutomoc ${CMAKE_CTEST_COMMAND}
+  find_package(Qt5Widgets QUIET NO_MODULE)
+  if(Qt5Widgets_FOUND)
+    add_test(Qt5Automoc ${CMAKE_CTEST_COMMAND}
       --build-and-test
       "${CMake_SOURCE_DIR}/Tests/QtAutomoc"
-      "${CMake_BINARY_DIR}/Tests/QtAutomoc"
+      "${CMake_BINARY_DIR}/Tests/Qt5Automoc"
       ${build_generator_args}
       --build-project QtAutomoc
-      --build-exe-dir "${CMake_BINARY_DIR}/Tests/QtAutomoc"
+      --build-exe-dir "${CMake_BINARY_DIR}/Tests/Qt5Automoc"
       --force-new-ctest-process
-      --build-options -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE}
+      --build-options -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE} -DQT_TEST_VERSION=5
       --test-command ${CMAKE_CTEST_COMMAND} -V
       )
-    list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/QtAutomoc")
+    list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Qt5Automoc")
   endif()
   if(QT4_WORKS AND QT_QTGUI_FOUND)
+    add_test(Qt4Automoc ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/QtAutomoc"
+      "${CMake_BINARY_DIR}/Tests/Qt4Automoc"
+      ${build_generator_args}
+      --build-project QtAutomoc
+      --build-exe-dir "${CMake_BINARY_DIR}/Tests/Qt4Automoc"
+      --force-new-ctest-process
+      --build-options -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_QMAKE_EXECUTABLE} -DQT_TEST_VERSION=4
+      --test-command ${CMAKE_CTEST_COMMAND} -V
+      )
+    list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Qt4Automoc")
+
     add_test(Qt4Targets ${CMAKE_CTEST_COMMAND}
       --build-and-test
       "${CMake_SOURCE_DIR}/Tests/Qt4Targets"
@@ -1029,6 +1056,20 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       --test-command ${CMAKE_CTEST_COMMAND} -V
       )
     list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Qt4Targets")
+
+    if(Qt5Widgets_FOUND AND NOT Qt5Widgets_VERSION VERSION_LESS 5.1.0)
+      add_test(Qt4And5Automoc ${CMAKE_CTEST_COMMAND}
+        --build-and-test
+        "${CMake_SOURCE_DIR}/Tests/Qt4And5Automoc"
+        "${CMake_BINARY_DIR}/Tests/Qt4And5Automoc"
+        ${build_generator_args}
+        --build-project Qt4And5Automoc
+        --build-exe-dir "${CMake_BINARY_DIR}/Tests/Qt4And5Automoc"
+        --force-new-ctest-process
+        --test-command ${CMAKE_CTEST_COMMAND} -V
+        )
+      list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/Qt4And5Automoc")
+    endif()
   endif()
 
   add_test(ExternalProject ${CMAKE_CTEST_COMMAND}
@@ -1216,6 +1257,16 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     if(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG)
       ADD_TEST_MACRO(RuntimePath RuntimePath)
     endif()
+  endif()
+
+  if(APPLE AND "${DARWIN_MAJOR_VERSION}" GREATER 9)
+    add_test(MacRuntimePath ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/MacRuntimePath"
+      "${CMake_BINARY_DIR}/Tests/MacRuntimePath"
+      ${build_generator_args}
+      --build-project MacRuntimePath
+      )
   endif()
 
   add_test(linkorder1 ${CMAKE_CTEST_COMMAND}
@@ -1447,6 +1498,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       ADD_TEST_MACRO(SBCS SBCS)
     endif()
 
+    if(NOT "${CMAKE_TEST_GENERATOR}" MATCHES "Visual Studio [6789]( |$)"
+        AND NOT CMAKE_TEST_GENERATOR_TOOLSET)
+      ADD_TEST_MACRO(VSWindowsFormsResx VSWindowsFormsResx)
+    endif()
+
     add_test(VSExternalInclude ${CMAKE_CTEST_COMMAND}
       --build-and-test
       "${CMake_SOURCE_DIR}/Tests/VSExternalInclude"
@@ -1493,6 +1549,34 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
       endforeach()
       unset(_last_test)
       list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/VSExcludeFromDefaultBuild")
+    endif()
+
+    if(CMAKE_TEST_GENERATOR MATCHES "Visual Studio ([0-5]|[6-9][0-9])")
+      if(CMAKE_TEST_MAKEPROGRAM MATCHES "[mM][sS][bB][uU][iI][lL][dD]\\.[eE][xX][eE]")
+        set(MSBUILD_EXECUTABLE "${CMAKE_TEST_MAKEPROGRAM}")
+      else()
+        if(CMAKE_TEST_GENERATOR MATCHES "Visual Studio (12)")
+          set(_msbuild_hints "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\MSBuild\\ToolsVersions\\${CMAKE_MATCH_1}.0;MSBuildToolsPath]")
+        else()
+          set(_FDIR "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7;FrameworkDir32]")
+          set(_FVER "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VC7;FrameworkVer32]")
+          set(_msbuild_hints ${_FDIR}/${_FVER})
+        endif()
+        find_program(MSBUILD_EXECUTABLE NAMES msbuild HINTS ${_msbuild_hints})
+      endif()
+      if(MSBUILD_EXECUTABLE)
+        add_test(NAME VSProjectInSubdir COMMAND ${CMAKE_CTEST_COMMAND}
+          --build-and-test
+          "${CMake_SOURCE_DIR}/Tests/VSProjectInSubdir"
+          "${CMake_BINARY_DIR}/Tests/VSProjectInSubdir"
+          --build-two-config
+          --build-generator ${CMAKE_TEST_GENERATOR}
+          --build-generator-toolset "${CMAKE_TEST_GENERATOR_TOOLSET}"
+          --build-makeprogram "${MSBUILD_EXECUTABLE}"
+          --build-project VSProjectInSubdir
+          --build-target test)
+        list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/VSProjectInSubdir")
+      endif()
     endif()
   endif()
 
@@ -1575,17 +1659,23 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     FAIL_REGULAR_EXPRESSION "CMake Warning .*VariableUnusedViaUnset.CMakeLists.txt:5 \\(set\\):")
   list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/WarnUnusedUnusedViaUnset")
 
-  add_test(WarnUnusedCliUnused ${CMAKE_CTEST_COMMAND}
-    --build-and-test
-    "${CMake_SOURCE_DIR}/Tests/VariableUsage"
-    "${CMake_BINARY_DIR}/Tests/WarnUnusedCliUnused"
-    ${build_generator_args}
-    --build-noclean
-    --build-project WarnUnusedCliUnused
-    --build-options "-DUNUSED_CLI_VARIABLE=Unused")
-  set_tests_properties(WarnUnusedCliUnused PROPERTIES
-    PASS_REGULAR_EXPRESSION "CMake Warning:.*Manually-specified variables were not used by the project:.*  UNUSED_CLI_VARIABLE")
-  list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/WarnUnusedCliUnused")
+  if("${CMAKE_TEST_GENERATOR}" MATCHES "Makefile" AND NOT WIN32)
+    # Ninja does not support ADDITIONAL_MAKE_CLEAN_FILES and therefore fails
+    # this test. (See #13371)
+    # Apparently Visual Studio does not support it either. As the MakeClean
+    # test above is only run with the Makefiles generator, only run this
+    # test with the Makefiles generator also.
+    add_test(WarnUnusedCliUnused ${CMAKE_CTEST_COMMAND}
+      --build-and-test
+      "${CMake_SOURCE_DIR}/Tests/WarnUnusedCliUnused"
+      "${CMake_BINARY_DIR}/Tests/WarnUnusedCliUnused"
+      ${build_generator_args}
+      --build-project WarnUnusedCliUnused
+      --build-options "-DUNUSED_CLI_VARIABLE=Unused")
+    set_tests_properties(WarnUnusedCliUnused PROPERTIES
+      PASS_REGULAR_EXPRESSION "CMake Warning:.*Manually-specified variables were not used by the project:.*  UNUSED_CLI_VARIABLE")
+    list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/WarnUnusedCliUnused")
+  endif()
 
   add_test(WarnUnusedCliUsed ${CMAKE_CTEST_COMMAND}
     --build-and-test
@@ -1635,6 +1725,20 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
 #  add_test(CTest.ScriptMode ${CMAKE_CTEST_COMMAND}
 #        -S "${CMake_BINARY_DIR}/Tests/CTestScriptMode/CTestTestScriptMode.cmake"
 #        )
+
+  # A test for ctest_build() with targets in subdirectories
+  if(CMAKE_TEST_GENERATOR_TOOLSET)
+    set(CMAKE_TEST_GENERATOR_TOOLSET_SELECTION "-T;${CMAKE_TEST_GENERATOR_TOOLSET};")
+  else()
+    set(CMAKE_TEST_GENERATOR_TOOLSET_SELECTION)
+  endif()
+  configure_file("${CMake_SOURCE_DIR}/Tests/CTestBuildCommandProjectInSubdir/CTestBuildCommandProjectInSubdir.cmake.in"
+                 "${CMake_BINARY_DIR}/Tests/CTestBuildCommandProjectInSubdir/CTestBuildCommandProjectInSubdir.cmake" @ONLY)
+  unset(CMAKE_TEST_GENERATOR_TOOLSET_SELECTION)
+  add_test(CTest.BuildCommand.ProjectInSubdir
+    ${CMAKE_CTEST_COMMAND} -S "${CMake_BINARY_DIR}/Tests/CTestBuildCommandProjectInSubdir/CTestBuildCommandProjectInSubdir.cmake"
+                           -DCMAKE_MAKE_PROGRAM:FILEPATH=${CMAKE_TEST_MAKEPROGRAM})
+  list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/CTestBuildCommandProjectInSubdir/Nested")
 
   set(CTEST_TEST_UPDATE 1)
   if(CTEST_TEST_UPDATE)
@@ -1909,6 +2013,7 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   ADD_TEST_MACRO(CMakeCommands.target_link_libraries target_link_libraries)
   ADD_TEST_MACRO(CMakeCommands.target_include_directories target_include_directories)
   ADD_TEST_MACRO(CMakeCommands.target_compile_definitions target_compile_definitions)
+  ADD_TEST_MACRO(CMakeCommands.target_compile_options target_compile_options)
 
   configure_file(
     "${CMake_SOURCE_DIR}/Tests/CTestTestCrash/test.cmake.in"
@@ -1953,9 +2058,11 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --output-log "${CMake_BINARY_DIR}/Tests/CTestTestParallel/testOutput.log"
     )
 
-  set(CTestLimitDashJ_EXTRA_OPTIONS --force-new-ctest-process)
-  add_test_macro(CTestLimitDashJ ${CMAKE_CTEST_COMMAND} -j 4
-    --output-on-failure -C "\${CTestTest_CONFIG}")
+  if(NOT BORLAND)
+    set(CTestLimitDashJ_EXTRA_OPTIONS --force-new-ctest-process)
+    add_test_macro(CTestLimitDashJ ${CMAKE_CTEST_COMMAND} -j 4
+      --output-on-failure -C "\${CTestTest_CONFIG}")
+  endif()
 
   add_test(CTestTestPrintLabels ${CMAKE_CTEST_COMMAND} --print-labels)
   set_tests_properties(CTestTestPrintLabels PROPERTIES LABELS "Label1;Label2")
@@ -2083,6 +2190,15 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
   add_test(CTestTestShowOnly ${CMAKE_CTEST_COMMAND} -N)
 
   add_test(CTestBatchTest ${CMAKE_CTEST_COMMAND} -B)
+
+  configure_file(
+    "${CMake_SOURCE_DIR}/Tests/CTestTestFdSetSize/test.cmake.in"
+    "${CMake_BINARY_DIR}/Tests/CTestTestFdSetSize/test.cmake"
+    @ONLY ESCAPE_QUOTES)
+  add_test(CTestTestFdSetSize ${CMAKE_CTEST_COMMAND}
+    -S "${CMake_BINARY_DIR}/Tests/CTestTestFdSetSize/test.cmake" -j20 -V --timeout 120
+    --output-log "${CMake_BINARY_DIR}/Tests/CTestTestFdSetSize/testOutput.log"
+    )
 
   # Use macro, not function so that build can still be driven by CMake 2.4.
   # After 2.6 is required, this could be a function without the extra 'set'
@@ -2427,6 +2543,16 @@ ${CMake_BINARY_DIR}/bin/cmake -DVERSION=master -P ${CMake_SOURCE_DIR}/Utilities/
     --build-project IncludeDirectories
     --test-command IncludeDirectories)
   list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/IncludeDirectories")
+
+  add_test(InterfaceLinkLibraries ${CMAKE_CTEST_COMMAND}
+    --build-and-test
+    "${CMake_SOURCE_DIR}/Tests/InterfaceLinkLibraries"
+    "${CMake_BINARY_DIR}/Tests/InterfaceLinkLibraries"
+    --build-two-config
+    ${build_generator_args}
+    --build-project InterfaceLinkLibraries
+    --test-command InterfaceLinkLibraries)
+  list(APPEND TEST_BUILD_DIRS "${CMake_BINARY_DIR}/Tests/InterfaceLinkLibraries")
 
   if(CMAKE_USE_KWSTYLE AND KWSTYLE_EXECUTABLE)
     # The "make StyleCheck" command line as a test. If the test fails, look

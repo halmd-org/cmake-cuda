@@ -20,9 +20,11 @@
 #include "cmSystemTools.h" // for cmSystemTools::OutputOption
 #include "cmExportSetMap.h" // For cmExportSetMap
 #include "cmGeneratorTarget.h"
+#include "cmGeneratorExpression.h"
 
 class cmake;
 class cmGeneratorTarget;
+class cmGeneratorExpressionEvaluationFile;
 class cmMakefile;
 class cmLocalGenerator;
 class cmExternalMakefileProjectGenerator;
@@ -121,9 +123,10 @@ public:
 
   virtual std::string GenerateBuildCommand(
     const char* makeProgram,
-    const char *projectName, const char* additionalOptions,
-    const char *targetName,
-    const char* config, bool ignoreErrors, bool fast);
+    const char *projectName, const char *projectDir,
+    const char* additionalOptions,
+    const char *targetName, const char* config,
+    bool ignoreErrors, bool fast);
 
 
   ///! Set the CMake instance
@@ -193,7 +196,11 @@ public:
   void FindMakeProgram(cmMakefile*);
 
   ///! Find a target by name by searching the local generators.
-  cmTarget* FindTarget(const char* project, const char* name);
+  cmTarget* FindTarget(const char* project, const char* name,
+                       bool excludeAliases = false);
+
+  void AddAlias(const char *name, cmTarget *tgt);
+  bool IsAlias(const char *name);
 
   /** Determine if a name resolves to a framework on disk or a built target
       that is a framework. */
@@ -278,6 +285,14 @@ public:
 
   static std::string EscapeJSON(const std::string& s);
 
+  void AddEvaluationFile(const std::string &inputFile,
+                  cmsys::auto_ptr<cmCompiledGeneratorExpression> outputName,
+                  cmMakefile *makefile,
+                  cmsys::auto_ptr<cmCompiledGeneratorExpression> condition,
+                  bool inputIsContent);
+
+  void ProcessEvaluationFiles();
+
 protected:
   typedef std::vector<cmLocalGenerator*> GeneratorVector;
   // for a project collect all its targets by following depend
@@ -336,7 +351,9 @@ protected:
 
   // All targets in the entire project.
   std::map<cmStdString,cmTarget *> TotalTargets;
+  std::map<cmStdString,cmTarget *> AliasTargets;
   std::map<cmStdString,cmTarget *> ImportedTargets;
+  std::vector<cmGeneratorExpressionEvaluationFile*> EvaluationFiles;
 
   virtual const char* GetPredefinedTargetsFolder();
   virtual bool UseFolderProperty();
@@ -365,6 +382,7 @@ private:
 
   void WriteSummary();
   void WriteSummary(cmTarget* target);
+  void FinalizeTargetCompileDefinitions();
 
   cmExternalMakefileProjectGenerator* ExtraGenerator;
 
