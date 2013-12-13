@@ -573,21 +573,19 @@ cmLocalVisualStudio6Generator
 
   // Add the rule with the given dependencies and commands.
   const char* no_main_dependency = 0;
-  this->Makefile->AddCustomCommandToOutput(output,
-                                       depends,
-                                       no_main_dependency,
-                                       origCommand.GetCommandLines(),
-                                       comment.c_str(),
-                                       origCommand.GetWorkingDirectory());
+  if(cmSourceFile* outsf =
+     this->Makefile->AddCustomCommandToOutput(
+       output, depends, no_main_dependency,
+       origCommand.GetCommandLines(), comment.c_str(),
+       origCommand.GetWorkingDirectory()))
+    {
+    target.AddSourceFile(outsf);
+    }
 
   // Replace the dependencies with the output of this rule so that the
   // next rule added will run after this one.
   depends.clear();
   depends.push_back(output);
-
-  // Add a source file representing this output to the project.
-  cmSourceFile* outsf = this->Makefile->GetSourceFileWithOutput(output);
-  target.AddSourceFile(outsf);
 
   // Free the fake output name.
   delete [] output;
@@ -1171,18 +1169,42 @@ void cmLocalVisualStudio6Generator
   std::string extraLinkOptionsRelWithDebInfo;
   if(target.GetType() == cmTarget::EXECUTABLE)
     {
-    extraLinkOptions =
-      this->Makefile->GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS");
+    extraLinkOptions = this->Makefile->
+      GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS");
+    extraLinkOptionsDebug = this->Makefile->
+      GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS_DEBUG");
+    extraLinkOptionsRelease = this->Makefile->
+      GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS_RELEASE");
+    extraLinkOptionsMinSizeRel = this->Makefile->
+      GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS_MINSIZEREL");
+    extraLinkOptionsRelWithDebInfo = this->Makefile->
+      GetRequiredDefinition("CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO");
     }
   if(target.GetType() == cmTarget::SHARED_LIBRARY)
     {
-    extraLinkOptions =
-      this->Makefile->GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS");
+    extraLinkOptions = this->Makefile->
+      GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS");
+    extraLinkOptionsDebug = this->Makefile->
+      GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS_DEBUG");
+    extraLinkOptionsRelease = this->Makefile->
+      GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS_RELEASE");
+    extraLinkOptionsMinSizeRel = this->Makefile->
+      GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL");
+    extraLinkOptionsRelWithDebInfo = this->Makefile->
+      GetRequiredDefinition("CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO");
     }
   if(target.GetType() == cmTarget::MODULE_LIBRARY)
     {
-    extraLinkOptions =
-      this->Makefile->GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS");
+    extraLinkOptions = this->Makefile->
+      GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS");
+    extraLinkOptionsDebug = this->Makefile->
+      GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS_DEBUG");
+    extraLinkOptionsRelease = this->Makefile->
+      GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS_RELEASE");
+    extraLinkOptionsMinSizeRel = this->Makefile->
+      GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL");
+    extraLinkOptionsRelWithDebInfo = this->Makefile->
+      GetRequiredDefinition("CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO");
     }
 
   // Get extra linker options for this target.
@@ -1228,7 +1250,7 @@ void cmLocalVisualStudio6Generator
     if(!linkLanguage)
       {
       cmSystemTools::Error
-        ("CMake can not determine linker language for target:",
+        ("CMake can not determine linker language for target: ",
          target.GetName());
       return;
       }
@@ -1435,38 +1457,39 @@ void cmLocalVisualStudio6Generator
   std::string staticLibOptionsRelWithDebInfo;
   if(target.GetType() == cmTarget::STATIC_LIBRARY )
     {
-    if(const char* libflags = target.GetProperty("STATIC_LIBRARY_FLAGS"))
-      {
-      staticLibOptions = libflags;
-      staticLibOptionsDebug = libflags;
-      staticLibOptionsRelease = libflags;
-      staticLibOptionsMinSizeRel = libflags;
-      staticLibOptionsRelWithDebInfo = libflags;
-      }
-    if(const char* libflagsDebug =
-       target.GetProperty("STATIC_LIBRARY_FLAGS_DEBUG"))
-      {
-      staticLibOptionsDebug += " ";
-      staticLibOptionsDebug = libflagsDebug;
-      }
-    if(const char* libflagsRelease =
-       target.GetProperty("STATIC_LIBRARY_FLAGS_RELEASE"))
-      {
-      staticLibOptionsRelease += " ";
-      staticLibOptionsRelease = libflagsRelease;
-      }
-    if(const char* libflagsMinSizeRel =
-       target.GetProperty("STATIC_LIBRARY_FLAGS_MINSIZEREL"))
-      {
-      staticLibOptionsMinSizeRel += " ";
-      staticLibOptionsMinSizeRel = libflagsMinSizeRel;
-      }
-    if(const char* libflagsRelWithDebInfo =
-       target.GetProperty("STATIC_LIBRARY_FLAGS_RELWITHDEBINFO"))
-      {
-      staticLibOptionsRelWithDebInfo += " ";
-      staticLibOptionsRelWithDebInfo = libflagsRelWithDebInfo;
-      }
+    const char *libflagsGlobal =
+      this->Makefile->GetSafeDefinition("CMAKE_STATIC_LINKER_FLAGS");
+    this->AppendFlags(staticLibOptions, libflagsGlobal);
+    this->AppendFlags(staticLibOptionsDebug, libflagsGlobal);
+    this->AppendFlags(staticLibOptionsRelease, libflagsGlobal);
+    this->AppendFlags(staticLibOptionsMinSizeRel, libflagsGlobal);
+    this->AppendFlags(staticLibOptionsRelWithDebInfo, libflagsGlobal);
+
+    this->AppendFlags(staticLibOptionsDebug, this->Makefile->
+      GetSafeDefinition("CMAKE_STATIC_LINKER_FLAGS_DEBUG"));
+    this->AppendFlags(staticLibOptionsRelease, this->Makefile->
+      GetSafeDefinition("CMAKE_STATIC_LINKER_FLAGS_RELEASE"));
+    this->AppendFlags(staticLibOptionsMinSizeRel, this->Makefile->
+      GetSafeDefinition("CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL"));
+    this->AppendFlags(staticLibOptionsRelWithDebInfo, this->Makefile->
+      GetSafeDefinition("CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO"));
+
+    const char *libflags = target.GetProperty("STATIC_LIBRARY_FLAGS");
+    this->AppendFlags(staticLibOptions, libflags);
+    this->AppendFlags(staticLibOptionsDebug, libflags);
+    this->AppendFlags(staticLibOptionsRelease, libflags);
+    this->AppendFlags(staticLibOptionsMinSizeRel, libflags);
+    this->AppendFlags(staticLibOptionsRelWithDebInfo, libflags);
+
+    this->AppendFlags(staticLibOptionsDebug,
+      target.GetProperty("STATIC_LIBRARY_FLAGS_DEBUG"));
+    this->AppendFlags(staticLibOptionsRelease,
+      target.GetProperty("STATIC_LIBRARY_FLAGS_RELEASE"));
+    this->AppendFlags(staticLibOptionsMinSizeRel,
+      target.GetProperty("STATIC_LIBRARY_FLAGS_MINSIZEREL"));
+    this->AppendFlags(staticLibOptionsRelWithDebInfo,
+      target.GetProperty("STATIC_LIBRARY_FLAGS_RELWITHDEBINFO"));
+
     std::string objects;
     this->OutputObjects(target, "LIB", objects);
     if(!objects.empty())
@@ -1639,9 +1662,9 @@ void cmLocalVisualStudio6Generator
     // store flags for each configuration
     std::string flags = " ";
     std::string flagsRelease = " ";
-    std::string flagsMinSize = " ";
+    std::string flagsMinSizeRel = " ";
     std::string flagsDebug = " ";
-    std::string flagsDebugRel = " ";
+    std::string flagsRelWithDebInfo = " ";
     if(target.GetType() >= cmTarget::EXECUTABLE &&
        target.GetType() <= cmTarget::OBJECT_LIBRARY)
       {
@@ -1649,7 +1672,7 @@ void cmLocalVisualStudio6Generator
       if(!linkLanguage)
         {
         cmSystemTools::Error
-          ("CMake can not determine linker language for target:",
+          ("CMake can not determine linker language for target: ",
            target.GetName());
         return;
         }
@@ -1664,16 +1687,24 @@ void cmLocalVisualStudio6Generator
       flagsRelease += " -DCMAKE_INTDIR=\\\"Release\\\" ";
 
       flagVar = baseFlagVar + "_MINSIZEREL";
-      flagsMinSize = this->Makefile->GetSafeDefinition(flagVar.c_str());
-      flagsMinSize += " -DCMAKE_INTDIR=\\\"MinSizeRel\\\" ";
+      flagsMinSizeRel = this->Makefile->GetSafeDefinition(flagVar.c_str());
+      flagsMinSizeRel += " -DCMAKE_INTDIR=\\\"MinSizeRel\\\" ";
 
       flagVar = baseFlagVar + "_DEBUG";
       flagsDebug = this->Makefile->GetSafeDefinition(flagVar.c_str());
       flagsDebug += " -DCMAKE_INTDIR=\\\"Debug\\\" ";
 
       flagVar = baseFlagVar + "_RELWITHDEBINFO";
-      flagsDebugRel = this->Makefile->GetSafeDefinition(flagVar.c_str());
-      flagsDebugRel += " -DCMAKE_INTDIR=\\\"RelWithDebInfo\\\" ";
+      flagsRelWithDebInfo = this->Makefile->GetSafeDefinition(flagVar.c_str());
+      flagsRelWithDebInfo += " -DCMAKE_INTDIR=\\\"RelWithDebInfo\\\" ";
+
+      this->AddCompileOptions(flags, &target, linkLanguage, 0);
+      this->AddCompileOptions(flagsDebug, &target, linkLanguage, "Debug");
+      this->AddCompileOptions(flagsRelease, &target, linkLanguage, "Release");
+      this->AddCompileOptions(flagsMinSizeRel, &target, linkLanguage,
+                              "MinSizeRel");
+      this->AddCompileOptions(flagsRelWithDebInfo, &target, linkLanguage,
+                              "RelWithDebInfo");
       }
 
     // if _UNICODE and _SBCS are not found, then add -D_MBCS
@@ -1686,13 +1717,6 @@ void cmLocalVisualStudio6Generator
       flags += " /D \"_MBCS\"";
       }
 
-    // Add per-target flags.
-    if(const char* targetFlags = target.GetProperty("COMPILE_FLAGS"))
-      {
-      flags += " ";
-      flags += targetFlags;
-      }
-
     // Add per-target and per-configuration preprocessor definitions.
     std::set<std::string> definesSet;
     std::set<std::string> debugDefinesSet;
@@ -1700,21 +1724,11 @@ void cmLocalVisualStudio6Generator
     std::set<std::string> minsizeDefinesSet;
     std::set<std::string> debugrelDefinesSet;
 
-    this->AppendDefines(
-      definesSet,
-      target.GetCompileDefinitions(0));
-    this->AppendDefines(
-      debugDefinesSet,
-      target.GetCompileDefinitions("DEBUG"));
-    this->AppendDefines(
-      releaseDefinesSet,
-      target.GetCompileDefinitions("RELEASE"));
-    this->AppendDefines(
-      minsizeDefinesSet,
-      target.GetCompileDefinitions("MINSIZEREL"));
-    this->AppendDefines(
-      debugrelDefinesSet,
-      target.GetCompileDefinitions("RELWITHDEBINFO"));
+    this->AddCompileDefinitions(definesSet, &target, 0);
+    this->AddCompileDefinitions(debugDefinesSet, &target, "DEBUG");
+    this->AddCompileDefinitions(releaseDefinesSet, &target, "RELEASE");
+    this->AddCompileDefinitions(minsizeDefinesSet, &target, "MINSIZEREL");
+    this->AddCompileDefinitions(debugrelDefinesSet, &target, "RELWITHDEBINFO");
 
     std::string defines = " ";
     std::string debugDefines = " ";
@@ -1731,19 +1745,19 @@ void cmLocalVisualStudio6Generator
     flags += defines;
     flagsDebug += debugDefines;
     flagsRelease += releaseDefines;
-    flagsMinSize += minsizeDefines;
-    flagsDebugRel += debugrelDefines;
+    flagsMinSizeRel += minsizeDefines;
+    flagsRelWithDebInfo += debugrelDefines;
 
     // The template files have CXX FLAGS in them, that need to be replaced.
     // There are not separate CXX and C template files, so we use the same
     // variable names.   The previous code sets up flags* variables to contain
     // the correct C or CXX flags
     cmSystemTools::ReplaceString(line, "CMAKE_CXX_FLAGS_MINSIZEREL",
-                                 flagsMinSize.c_str());
+                                 flagsMinSizeRel.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_CXX_FLAGS_DEBUG",
                                  flagsDebug.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
-                                 flagsDebugRel.c_str());
+                                 flagsRelWithDebInfo.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_CXX_FLAGS_RELEASE",
                                  flagsRelease.c_str());
     cmSystemTools::ReplaceString(line, "CMAKE_CXX_FLAGS", flags.c_str());

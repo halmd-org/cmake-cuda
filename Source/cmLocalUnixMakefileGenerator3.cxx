@@ -92,7 +92,6 @@ cmLocalUnixMakefileGenerator3::cmLocalUnixMakefileGenerator3()
   this->SkipPreprocessedSourceRules = false;
   this->SkipAssemblySourceRules = false;
   this->MakeCommandEscapeTargetTwice = false;
-  this->IsMakefileGenerator = true;
   this->BorlandMakeCurlyHack = false;
 }
 
@@ -1304,7 +1303,7 @@ cmLocalUnixMakefileGenerator3
   std::string unmodified = s;
   unmodified += s2;
   // if there is no restriction on the length of make variables
-  // and there are no "." charactors in the string, then return the
+  // and there are no "." characters in the string, then return the
   // unmodified combination.
   if((!this->MakefileVariableSize && unmodified.find('.') == s.npos)
      && (!this->MakefileVariableSize && unmodified.find('+') == s.npos)
@@ -1345,7 +1344,7 @@ cmLocalUnixMakefileGenerator3
     return ret;
     }
 
-  // if the string is greater the 32 chars it is an invalid vairable name
+  // if the string is greater than 32 chars it is an invalid variable name
   // for borland make
   if(static_cast<int>(ret.size()) > this->MakefileVariableSize)
     {
@@ -1353,8 +1352,8 @@ cmLocalUnixMakefileGenerator3
     int size = keep + 3;
     std::string str1 = s;
     std::string str2 = s2;
-    // we must shorten the combined string by 4 charactors
-    // keep no more than 24 charactors from the second string
+    // we must shorten the combined string by 4 characters
+    // keep no more than 24 characters from the second string
     if(static_cast<int>(str2.size()) > keep)
       {
       str2 = str2.substr(0, keep);
@@ -1962,8 +1961,8 @@ void cmLocalUnixMakefileGenerator3
 
   // Build a list of preprocessor definitions for the target.
   std::set<std::string> defines;
-  this->AppendDefines(defines, target.GetCompileDefinitions(
-                                            this->ConfigurationName.c_str()));
+  this->AddCompileDefinitions(defines, &target,
+                               this->ConfigurationName.c_str());
   if(!defines.empty())
     {
     cmakefileStream

@@ -30,7 +30,7 @@ bool cmExportBuildFileGenerator::GenerateMainFile(std::ostream& os)
         tei = this->Exports->begin();
       tei != this->Exports->end(); ++tei)
     {
-    expectedTargets += sep + this->Namespace + (*tei)->GetName();
+    expectedTargets += sep + this->Namespace + (*tei)->GetExportName();
     sep = " ";
     cmTarget* te = *tei;
     if(this->ExportedTargets.insert(te).second)
@@ -72,8 +72,20 @@ bool cmExportBuildFileGenerator::GenerateMainFile(std::ostream& os)
     this->PopulateInterfaceProperty("INTERFACE_COMPILE_DEFINITIONS", te,
                                     cmGeneratorExpression::BuildInterface,
                                     properties, missingTargets);
+    this->PopulateInterfaceProperty("INTERFACE_COMPILE_OPTIONS", te,
+                                    cmGeneratorExpression::BuildInterface,
+                                    properties, missingTargets);
     this->PopulateInterfaceProperty("INTERFACE_POSITION_INDEPENDENT_CODE",
                                   te, properties);
+    const bool newCMP0022Behavior =
+                              te->GetPolicyStatusCMP0022() != cmPolicies::WARN
+                           && te->GetPolicyStatusCMP0022() != cmPolicies::OLD;
+    if (newCMP0022Behavior)
+      {
+      this->PopulateInterfaceLinkLibrariesProperty(te,
+                                    cmGeneratorExpression::BuildInterface,
+                                    properties, missingTargets);
+      }
     this->PopulateCompatibleInterfaceProperties(te, properties);
 
     this->GenerateInterfaceProperties(te, os, properties);
@@ -143,7 +155,7 @@ cmExportBuildFileGenerator
   std::string prop = "IMPORTED_LOCATION";
   prop += suffix;
   std::string value;
-  if(target->IsFrameworkOnApple() || target->IsAppBundleOnApple())
+  if(target->IsAppBundleOnApple())
     {
     value = target->GetFullPath(config, false);
     }
@@ -189,7 +201,7 @@ cmExportBuildFileGenerator::HandleMissingTarget(
   // Assume the target will be exported by another command.
   // Append it with the export namespace.
   link_libs += this->Namespace;
-  link_libs += dependee->GetName();
+  link_libs += dependee->GetExportName();
 }
 
 //----------------------------------------------------------------------------
@@ -210,4 +222,20 @@ cmExportBuildFileGenerator
     << "If the required target is not easy to reference in this call, "
     << "consider using the APPEND option with multiple separate calls.";
   this->ExportCommand->ErrorMessage = e.str();
+}
+
+std::string
+cmExportBuildFileGenerator::InstallNameDir(cmTarget* target,
+                                           const std::string& config)
+{
+  std::string install_name_dir;
+
+  cmMakefile* mf = target->GetMakefile();
+  if(mf->IsOn("CMAKE_PLATFORM_HAS_INSTALLNAME"))
+    {
+    install_name_dir =
+      target->GetInstallNameDirForBuildTree(config.c_str());
+    }
+
+  return install_name_dir;
 }

@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 2.8.8)
 project(GeneratorExpression CXX)
 
+# This test is split into multiple parts as needed to avoid NMake command
+# length limits.
+
 add_custom_target(check-part1 ALL
   COMMAND ${CMAKE_COMMAND}
     -Dtest_0=$<0:nothing>
@@ -60,7 +63,7 @@ add_custom_target(check-part1 ALL
     -Dtest_colons_4=$<1:C:\\CMake>
     -Dtest_colons_5=$<1:C:/CMake>
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check-part1.cmake
-  COMMAND ${CMAKE_COMMAND} -E echo "check done (part 1 of 2)"
+  COMMAND ${CMAKE_COMMAND} -E echo "check done (part 1 of 3)"
   VERBATIM
   )
 
@@ -120,7 +123,70 @@ add_custom_target(check-part2 ALL
     -Dtest_target_includes6=$<TARGET_PROPERTY:empty3,INCLUDE_DIRECTORIES>
     -Dtest_target_includes7=$<TARGET_PROPERTY:empty1,INTERFACE_INCLUDE_DIRECTORIES>
     -Dtest_target_includes8=$<TARGET_PROPERTY:empty5,INCLUDE_DIRECTORIES>
+    -Dtest_arbitrary_content_comma_1=$<1:a,>
+    -Dtest_arbitrary_content_comma_2=$<1:,a>
+    -Dtest_arbitrary_content_comma_3=$<1:a,,>
+    -Dtest_arbitrary_content_comma_4=$<1:,>
+    -Dtest_arbitrary_content_comma_5=$<1:,,>
+    -Dtest_arbitrary_content_comma_6=$<1:,,,>
+    -Dtest_arbitrary_content_comma_7=$<1:,,a>
+    -Dtest_arbitrary_content_comma_8=$<1:a,,b>
+    -Dtest_arbitrary_content_comma_9=$<1:a,,b,,>
+    -Dtest_arbitrary_content_comma_10=$<1:,,a,,b,,>
     -P ${CMAKE_CURRENT_SOURCE_DIR}/check-part2.cmake
-  COMMAND ${CMAKE_COMMAND} -E echo "check done (part 2 of 2)"
+  COMMAND ${CMAKE_COMMAND} -E echo "check done (part 2 of 3)"
+  VERBATIM
+)
+
+add_library(imported1 SHARED IMPORTED)
+set_property(TARGET imported1 PROPERTY IMPORTED_LOCATION_RELEASE release_loc)
+set_property(TARGET imported1 PROPERTY IMPORTED_LOCATION_DEBUG debug_loc)
+set_property(TARGET imported1 PROPERTY IMPORTED_CONFIGURATIONS RELEASE DEBUG)
+set_property(TARGET imported1 PROPERTY INTERFACE_INCLUDE_DIRECTORIES /imported1/include)
+
+add_library(imported2 SHARED IMPORTED)
+set_property(TARGET imported2 PROPERTY IMPORTED_LOCATION_RELEASE release_loc)
+set_property(TARGET imported2 PROPERTY IMPORTED_LOCATION_DEBUG debug_loc)
+set_property(TARGET imported2 PROPERTY IMPORTED_CONFIGURATIONS RELEASE DEBUG)
+set_property(TARGET imported2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES /imported2/include)
+
+add_library(imported3 SHARED IMPORTED)
+set_property(TARGET imported3 PROPERTY IMPORTED_LOCATION_RELEASE release_loc)
+set_property(TARGET imported3 PROPERTY IMPORTED_LOCATION_DEBUG debug_loc)
+# Both Debug and Release should not be true when this is evaluated.
+set_property(TARGET imported3 APPEND PROPERTY
+  INTERFACE_INCLUDE_DIRECTORIES $<$<CONFIG:DEBUG>:$<TARGET_PROPERTY:imported1,INTERFACE_INCLUDE_DIRECTORIES>>)
+set_property(TARGET imported3 APPEND PROPERTY
+  INTERFACE_INCLUDE_DIRECTORIES $<$<CONFIG:RELEASE>:$<TARGET_PROPERTY:imported2,INTERFACE_INCLUDE_DIRECTORIES>>)
+
+add_library(imported4 SHARED IMPORTED)
+set_property(TARGET imported4 APPEND PROPERTY
+  INCLUDE_DIRECTORIES $<TARGET_PROPERTY:imported3,INTERFACE_INCLUDE_DIRECTORIES>)
+
+add_executable(someexe empty.cpp)
+add_executable(Alias::SomeExe ALIAS someexe)
+
+add_library(Alias::SomeLib ALIAS empty1)
+
+add_custom_target(check-part3 ALL
+  COMMAND ${CMAKE_COMMAND}
+    -Dtest_version_greater_1=$<VERSION_GREATER:1.0,1.1.1>
+    -Dtest_version_greater_2=$<VERSION_GREATER:1.1.1,1.0>
+    -Dtest_version_less_1=$<VERSION_LESS:1.1.1,1.0>
+    -Dtest_version_less_2=$<VERSION_LESS:1.0,1.1.1>
+    -Dtest_version_equal_1=$<VERSION_EQUAL:1.0.1,1.1>
+    -Dtest_version_equal_2=$<VERSION_EQUAL:1.1,1.1>
+    -Dconfig=$<CONFIGURATION>
+    -Dtest_imported_debug=$<TARGET_PROPERTY:imported4,INCLUDE_DIRECTORIES>
+    -Dtest_imported_release=$<TARGET_PROPERTY:imported4,INCLUDE_DIRECTORIES>
+    -Dtest_imported_relwithdebinfo=$<TARGET_PROPERTY:imported4,INCLUDE_DIRECTORIES>
+    -Dtest_imported_minsizerel=$<TARGET_PROPERTY:imported4,INCLUDE_DIRECTORIES>
+    -Dtest_alias_file_exe=$<STREQUAL:$<TARGET_FILE:Alias::SomeExe>,$<TARGET_FILE:someexe>>
+    -Dtest_alias_file_lib=$<STREQUAL:$<TARGET_FILE:Alias::SomeLib>,$<TARGET_FILE:empty1>>
+    -Dtest_alias_target_name=$<STREQUAL:$<TARGET_PROPERTY:Alias::SomeLib,NAME>,$<TARGET_PROPERTY:empty1,NAME>>
+    -Dtest_early_termination_1=$<$<1:>:
+    -Dtest_early_termination_2=$<$<1:>:,
+    -P ${CMAKE_CURRENT_SOURCE_DIR}/check-part3.cmake
+  COMMAND ${CMAKE_COMMAND} -E echo "check done (part 3 of 3)"
   VERBATIM
   )

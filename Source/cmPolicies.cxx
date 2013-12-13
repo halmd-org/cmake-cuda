@@ -440,7 +440,8 @@ cmPolicies::cmPolicies()
 
     this->DefinePolicy(
     CMP0016, "CMP0016",
-    "target_link_libraries() reports error if only argument is not a target.",
+    "target_link_libraries() reports error if its only argument "
+    "is not a target.",
     "In CMake 2.8.2 and lower the target_link_libraries() command silently "
     "ignored if it was called with only one argument, and this argument "
     "wasn't a valid target. "
@@ -452,7 +453,7 @@ cmPolicies::cmPolicies()
     "Prefer files from the CMake module directory when including from there.",
     "Starting with CMake 2.8.4, if a cmake-module shipped with CMake (i.e. "
     "located in the CMake module directory) calls include() or "
-    "find_package(), the files located in the the CMake module directory are "
+    "find_package(), the files located in the CMake module directory are "
     "preferred over the files in CMAKE_MODULE_PATH.  "
     "This makes sure that the modules belonging to "
     "CMake always get those files included which they expect, and against "
@@ -529,6 +530,77 @@ cmPolicies::cmPolicies()
     "The NEW behavior for this policy is to link executables to "
     "qtmain.lib automatically when they link to QtCore IMPORTED target.",
     2,8,11,0, cmPolicies::WARN);
+
+  this->DefinePolicy(
+    CMP0021, "CMP0021",
+    "Fatal error on relative paths in INCLUDE_DIRECTORIES target property.",
+    "CMake 2.8.10.2 and lower allowed the INCLUDE_DIRECTORIES target "
+    "property to contain relative paths.  The base path for such relative "
+    "entries is not well defined.  CMake 2.8.12 issues a FATAL_ERROR if the "
+    "INCLUDE_DIRECTORIES property contains a relative path."
+    "\n"
+    "The OLD behavior for this policy is not to warn about relative paths in "
+    "the INCLUDE_DIRECTORIES target property.  "
+    "The NEW behavior for this policy is to issue a FATAL_ERROR if "
+    "INCLUDE_DIRECTORIES contains a relative path.",
+    2,8,12,0, cmPolicies::WARN);
+
+  this->DefinePolicy(
+    CMP0022, "CMP0022",
+    "INTERFACE_LINK_LIBRARIES defines the link interface.",
+    "CMake 2.8.11 constructed the 'link interface' of a target from "
+    "properties matching (IMPORTED_)?LINK_INTERFACE_LIBRARIES(_<CONFIG>)?.  "
+    "The modern way to specify config-sensitive content is to use generator "
+    "expressions and the IMPORTED_ prefix makes uniform processing of the "
+    "link interface with generator expressions impossible.  The "
+    "INTERFACE_LINK_LIBRARIES target property was introduced as a "
+    "replacement in CMake 2.8.12. This new property is named consistently "
+    "with the INTERFACE_COMPILE_DEFINITIONS, INTERFACE_INCLUDE_DIRECTORIES "
+    "and INTERFACE_COMPILE_OPTIONS properties.  For in-build targets, CMake "
+    "will use the INTERFACE_LINK_LIBRARIES property as the source of the "
+    "link interface only if policy CMP0022 is NEW.  "
+    "When exporting a target which has this policy set to NEW, only the "
+    "INTERFACE_LINK_LIBRARIES property will be processed and generated for "
+    "the IMPORTED target by default.  A new option to the install(EXPORT) "
+    "and export commands allows export of the old-style properties for "
+    "compatibility with downstream users of CMake versions older than "
+    "2.8.12.  "
+    "The target_link_libraries command will no longer populate the "
+    "properties matching LINK_INTERFACE_LIBRARIES(_<CONFIG>)? if this policy "
+    "is NEW."
+    "\n"
+    "The OLD behavior for this policy is to ignore the "
+    "INTERFACE_LINK_LIBRARIES property for in-build targets.  "
+    "The NEW behavior for this policy is to use the INTERFACE_LINK_LIBRARIES "
+    "property for in-build targets, and ignore the old properties matching "
+    "(IMPORTED_)?LINK_INTERFACE_LIBRARIES(_<CONFIG>)?.",
+    2,8,12,0, cmPolicies::WARN);
+
+  this->DefinePolicy(
+    CMP0023, "CMP0023",
+    "Plain and keyword target_link_libraries signatures cannot be mixed.",
+    "CMake 2.8.12 introduced the target_link_libraries signature using "
+    "the PUBLIC, PRIVATE, and INTERFACE keywords to generalize the "
+    "LINK_PUBLIC and LINK_PRIVATE keywords introduced in CMake 2.8.7.  "
+    "Use of signatures with any of these keywords sets the link interface "
+    "of a target explicitly, even if empty.  "
+    "This produces confusing behavior when used in combination with the "
+    "historical behavior of the plain target_link_libraries signature.  "
+    "For example, consider the code:\n"
+    " target_link_libraries(mylib A)\n"
+    " target_link_libraries(mylib PRIVATE B)\n"
+    "After the first line the link interface has not been set explicitly "
+    "so CMake would use the link implementation, A, as the link interface.  "
+    "However, the second line sets the link interface to empty.  "
+    "In order to avoid this subtle behavior CMake now prefers to disallow "
+    "mixing the plain and keyword signatures of target_link_libraries for "
+    "a single target."
+    "\n"
+    "The OLD behavior for this policy is to allow keyword and plain "
+    "target_link_libraries signatures to be mixed.  "
+    "The NEW behavior for this policy is to not to allow mixing of the "
+    "keyword and plain signatures.",
+    2,8,12,0, cmPolicies::WARN);
 }
 
 cmPolicies::~cmPolicies()
@@ -770,7 +842,7 @@ std::string cmPolicies::GetRequiredPolicyError(cmPolicies::PolicyID id)
   {
     cmSystemTools::Error(
       "Request for error text for undefined policy!");
-    return "Request for warning text for undefined policy!";
+    return "Request for error text for undefined policy!";
   }
 
   cmOStringStream error;

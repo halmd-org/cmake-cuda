@@ -21,7 +21,7 @@ class cmGlobalVisualStudio12Generator:
 {
 public:
   cmGlobalVisualStudio12Generator(const char* name,
-    const char* architectureId, const char* additionalPlatformDefinition);
+    const char* platformName, const char* additionalPlatformDefinition);
   static cmGlobalGeneratorFactory* NewFactory();
 
   virtual void WriteSLNHeader(std::ostream& fout);
@@ -31,9 +31,13 @@ public:
 
   /** TODO: VS 12 user macro support. */
   virtual std::string GetUserMacrosDirectory() { return ""; }
+
+  //in Visual Studio 2013 they detached the MSBuild tools version
+  //from the .Net Framework version and instead made it have it's own
+  //version number
+  virtual const char* GetToolsVersion() { return "12.0"; }
 protected:
   virtual const char* GetIDEVersion() { return "12.0"; }
-  bool UseFolderProperty();
 private:
   class Factory;
 };

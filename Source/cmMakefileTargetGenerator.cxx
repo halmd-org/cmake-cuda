@@ -271,6 +271,9 @@ std::string cmMakefileTargetGenerator::GetFlags(const std::string &l)
     this->LocalGenerator->AddCMP0018Flags(flags, this->Target,
                                           lang, this->ConfigName);
 
+    this->LocalGenerator->AddVisibilityPresetFlags(flags, this->Target,
+                                                   lang);
+
     // Add include directory flags.
     this->AddIncludeFlags(flags, lang);
 
@@ -281,6 +284,10 @@ std::string cmMakefileTargetGenerator::GetFlags(const std::string &l)
     // Add include directory flags.
     this->LocalGenerator->
       AppendFlags(flags,this->GetFrameworkFlags().c_str());
+
+    // Add target-specific flags.
+    this->LocalGenerator->AddCompileOptions(flags, this->Target,
+                                            lang, this->ConfigName);
 
     ByLanguageMap::value_type entry(l, flags);
     i = this->FlagsByLanguage.insert(entry).first;
@@ -302,9 +309,8 @@ std::string cmMakefileTargetGenerator::GetDefines(const std::string &l)
       }
 
     // Add preprocessor definitions for this target and configuration.
-    this->LocalGenerator->AppendDefines
-      (defines, this->Target->GetCompileDefinitions(
-                            this->LocalGenerator->ConfigurationName.c_str()));
+    this->LocalGenerator->AddCompileDefinitions(defines, this->Target,
+                            this->LocalGenerator->ConfigurationName.c_str());
 
     std::string definesString;
     this->LocalGenerator->JoinDefines(defines, definesString, lang);
@@ -339,15 +345,6 @@ void cmMakefileTargetGenerator::WriteTargetLanguageFlags()
     *this->FlagFileStream << *l << "_DEFINES = " << this->GetDefines(*l) <<
       "\n\n";
     }
-
-  // Add target-specific flags.
-  if(this->Target->GetProperty("COMPILE_FLAGS"))
-    {
-    std::string flags;
-    this->LocalGenerator->AppendFlags
-      (flags, this->Target->GetProperty("COMPILE_FLAGS"));
-    *this->FlagFileStream << "# TARGET_FLAGS = " << flags << "\n\n";
-    }
 }
 
 
@@ -357,7 +354,7 @@ cmMakefileTargetGenerator::MacOSXContentGeneratorType::operator()
   (cmSourceFile& source, const char* pkgloc)
 {
   // Skip OS X content when not building a Framework or Bundle.
-  if(this->Generator->MacContentDirectory.empty())
+  if(!this->Generator->GetTarget()->IsBundleOnApple())
     {
     return;
     }
@@ -532,37 +529,8 @@ cmMakefileTargetGenerator
   langFlags += "_FLAGS)";
   this->LocalGenerator->AppendFlags(flags, langFlags.c_str());
 
-  // Add target-specific flags.
-  if(this->Target->GetProperty("COMPILE_FLAGS"))
-    {
-    std::string langIncludeExpr = "CMAKE_";
-    langIncludeExpr += lang;
-    langIncludeExpr += "_FLAG_REGEX";
-    const char* regex = this->Makefile->
-      GetDefinition(langIncludeExpr.c_str());
-    if(regex)
-      {
-      cmsys::RegularExpression r(regex);
-      std::vector<std::string> args;
-      cmSystemTools::ParseWindowsCommandLine(
-        this->Target->GetProperty("COMPILE_FLAGS"),
-        args);
-      for(std::vector<std::string>::iterator i = args.begin();
-          i != args.end(); ++i)
-        {
-        if(r.find(i->c_str()))
-          {
-          this->LocalGenerator->AppendFlags
-            (flags, i->c_str());
-          }
-        }
-      }
-    else
-      {
-      this->LocalGenerator->AppendFlags
-        (flags, this->Target->GetProperty("COMPILE_FLAGS"));
-      }
-    }
+  std::string configUpper =
+    cmSystemTools::UpperCase(this->LocalGenerator->ConfigurationName);
 
   // Add Fortran format flags.
   if(strcmp(lang, "Fortran") == 0)
@@ -594,8 +562,6 @@ cmMakefileTargetGenerator
                           << compile_defs << "\n"
                           << "\n";
     }
-  std::string configUpper =
-    cmSystemTools::UpperCase(this->LocalGenerator->ConfigurationName);
   std::string defPropName = "COMPILE_DEFINITIONS_";
   defPropName += configUpper;
   if(const char* config_compile_defs =
@@ -1869,7 +1835,8 @@ void cmMakefileTargetGenerator::AddIncludeFlags(std::string& flags,
                                               lang, config);
 
   std::string includeFlags =
-    this->LocalGenerator->GetIncludeFlags(includes, lang, useResponseFile);
+    this->LocalGenerator->GetIncludeFlags(includes, this->GeneratorTarget,
+                                          lang, useResponseFile);
   if(includeFlags.empty())
     {
     return;

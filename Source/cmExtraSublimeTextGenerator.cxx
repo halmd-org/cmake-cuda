@@ -421,7 +421,7 @@ cmExtraSublimeTextGenerator::ComputeFlagsForObject(cmSourceFile* source,
   std::vector<std::string> includes;
   lg->GetIncludeDirectories(includes, gtgt, language, config);
   std::string includeFlags =
-    lg->GetIncludeFlags(includes, language, true); // full include paths
+    lg->GetIncludeFlags(includes, gtgt, language, true); // full include paths
   lg->AppendFlags(flags, includeFlags.c_str());
   }
 
@@ -429,35 +429,10 @@ cmExtraSublimeTextGenerator::ComputeFlagsForObject(cmSourceFile* source,
   lg->AppendFlags(flags, makefile->GetDefineFlags());
 
   // Add target-specific flags.
-  if(target->GetProperty("COMPILE_FLAGS"))
-    {
-    std::string langIncludeExpr = "CMAKE_";
-    langIncludeExpr += language;
-    langIncludeExpr += "_FLAG_REGEX";
-    const char* regex = makefile->GetDefinition(langIncludeExpr.c_str());
-    if(regex)
-      {
-      cmsys::RegularExpression r(regex);
-      std::vector<std::string> args;
-      cmSystemTools::
-        ParseWindowsCommandLine(target->GetProperty("COMPILE_FLAGS"), args);
-      for(std::vector<std::string>::iterator i = args.begin();
-          i != args.end(); ++i)
-        {
-        if(r.find(i->c_str()))
-          {
-          lg->AppendFlags(flags, i->c_str());
-          }
-        }
-      }
-    else
-      {
-      lg->AppendFlags(flags, target->GetProperty("COMPILE_FLAGS"));
-      }
-    }
+  lg->AddCompileOptions(flags, target, config, language);
 
   // Add source file specific flags.
-  lg->AppendFlags(flags, target->GetProperty("COMPILE_FLAGS"));
+  lg->AppendFlags(flags, source->GetProperty("COMPILE_FLAGS"));
 
   // TODO: Handle Apple frameworks.
 
@@ -488,7 +463,7 @@ ComputeDefines(cmSourceFile *source, cmLocalGenerator* lg, cmTarget *target,
     }
 
   // Add preprocessor definitions for this target and configuration.
-  lg->AppendDefines(defines, target->GetCompileDefinitions(config));
+  lg->AddCompileDefinitions(defines, target, config);
   lg->AppendDefines(defines, source->GetProperty("COMPILE_DEFINITIONS"));
   {
   std::string defPropName = "COMPILE_DEFINITIONS_";

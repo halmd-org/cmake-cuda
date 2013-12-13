@@ -263,6 +263,12 @@
 #                           Only available for CUDA version 3.2+.
 #  CUDA_npp_LIBRARY      -- NVIDIA Performance Primitives library.
 #                           Only available for CUDA version 4.0+.
+#  CUDA_nppc_LIBRARY      -- NVIDIA Performance Primitives library (core).
+#                           Only available for CUDA version 5.5+.
+#  CUDA_nppi_LIBRARY      -- NVIDIA Performance Primitives library (image processing).
+#                           Only available for CUDA version 5.5+.
+#  CUDA_npps_LIBRARY      -- NVIDIA Performance Primitives library (signal processing).
+#                           Only available for CUDA version 5.5+.
 #  CUDA_nvcuvenc_LIBRARY -- CUDA Video Encoder library.
 #                           Only available for CUDA version 3.2+.
 #                           Windows only.
@@ -496,6 +502,9 @@ if(NOT "${CUDA_TOOLKIT_ROOT_DIR}" STREQUAL "${CUDA_TOOLKIT_ROOT_DIR_INTERNAL}")
   unset(CUDA_curand_LIBRARY CACHE)
   unset(CUDA_cusparse_LIBRARY CACHE)
   unset(CUDA_npp_LIBRARY CACHE)
+  unset(CUDA_nppc_LIBRARY CACHE)
+  unset(CUDA_nppi_LIBRARY CACHE)
+  unset(CUDA_npps_LIBRARY CACHE)
   unset(CUDA_nvcuvenc_LIBRARY CACHE)
   unset(CUDA_nvcuvid_LIBRARY CACHE)
 endif()
@@ -607,7 +616,11 @@ macro(cuda_find_library_local_first_with_path_ext _var _names _doc _path_ext )
     NO_DEFAULT_PATH
     )
   # Search default search paths, after we search our own set of paths.
-  find_library(${_var} NAMES ${_names} DOC ${_doc})
+  find_library(${_var}
+    NAMES ${_names}
+    PATHS "/usr/lib/nvidia-current"
+    DOC ${_doc}
+    )
 endmacro()
 
 macro(cuda_find_library_local_first _var _names _doc)
@@ -696,7 +709,13 @@ if(NOT CUDA_VERSION VERSION_LESS "3.2")
     find_cuda_helper_libs(nvcuvid)
   endif()
 endif()
-if(NOT CUDA_VERSION VERSION_LESS "4.0")
+if(CUDA_VERSION VERSION_GREATER "5.0")
+  # In CUDA 5.5 NPP was splitted onto 3 separate libraries.
+  find_cuda_helper_libs(nppc)
+  find_cuda_helper_libs(nppi)
+  find_cuda_helper_libs(npps)
+  set(CUDA_npp_LIBRARY "${CUDA_nppc_LIBRARY};${CUDA_nppi_LIBRARY};${CUDA_npps_LIBRARY}")
+elseif(NOT CUDA_VERSION VERSION_LESS "4.0")
   find_cuda_helper_libs(npp)
 endif()
 
@@ -920,7 +939,13 @@ function(CUDA_COMPUTE_BUILD_PATH path build_path)
   if (IS_ABSOLUTE "${bpath}")
     # Absolute paths are generally unnessary, especially if something like
     # file(GLOB_RECURSE) is used to pick up the files.
-    file(RELATIVE_PATH bpath "${CMAKE_CURRENT_SOURCE_DIR}" "${bpath}")
+
+    string(FIND "${bpath}" "${CMAKE_CURRENT_BINARY_DIR}" _binary_dir_pos)
+    if (_binary_dir_pos EQUAL 0)
+      file(RELATIVE_PATH bpath "${CMAKE_CURRENT_BINARY_DIR}" "${bpath}")
+    else()
+      file(RELATIVE_PATH bpath "${CMAKE_CURRENT_SOURCE_DIR}" "${bpath}")
+    endif()
   endif()
 
   # This recipie is from cmLocalGenerator::CreateSafeUniqueObjectFileName in the
@@ -1021,7 +1046,10 @@ macro(CUDA_WRAP_SRCS cuda_target format generated_files)
   # Initialize our list of includes with the user ones followed by the CUDA system ones.
   set(CUDA_NVCC_INCLUDE_ARGS ${CUDA_NVCC_INCLUDE_ARGS_USER} "-I${CUDA_INCLUDE_DIRS}")
   # Get the include directories for this directory and use them for our nvcc command.
+  # Remove duplicate entries which may be present since include_directories
+  # in CMake >= 2.8.8 does not remove them.
   get_directory_property(CUDA_NVCC_INCLUDE_DIRECTORIES INCLUDE_DIRECTORIES)
+  list(REMOVE_DUPLICATES CUDA_NVCC_INCLUDE_DIRECTORIES)
   if(CUDA_NVCC_INCLUDE_DIRECTORIES)
     foreach(dir ${CUDA_NVCC_INCLUDE_DIRECTORIES})
       list(APPEND CUDA_NVCC_INCLUDE_ARGS -I${dir})
@@ -1279,22 +1307,7 @@ macro(CUDA_WRAP_SRCS cuda_target format generated_files)
       # Make sure the build system knows the file is generated.
       set_source_files_properties(${generated_file} PROPERTIES GENERATED TRUE)
 
-      # Don't add the object file to the list of generated files if we are using
-      # visual studio and we are attaching the build rule to the cuda file.  VS
-      # will add our object file to the linker automatically for us.
-      set(cuda_add_generated_file TRUE)
-
-      if(NOT compile_to_ptx AND CMAKE_GENERATOR MATCHES "Visual Studio" AND CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE)
-        # Visual Studio 8 crashes when you close the solution when you don't add the object file.
-        if(NOT CMAKE_GENERATOR MATCHES "Visual Studio 8")
-          #message("Not adding ${generated_file}")
-          set(cuda_add_generated_file FALSE)
-        endif()
-      endif()
-
-      if(cuda_add_generated_file)
-        list(APPEND _cuda_wrap_generated_files ${generated_file})
-      endif()
+      list(APPEND _cuda_wrap_generated_files ${generated_file})
 
       # Add the other files that we want cmake to clean on a cleanup ##########
       list(APPEND CUDA_ADDITIONAL_CLEAN_FILES "${cmake_dependency_file}")

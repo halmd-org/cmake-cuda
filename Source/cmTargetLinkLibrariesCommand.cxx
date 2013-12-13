@@ -31,6 +31,11 @@ bool cmTargetLinkLibrariesCommand
     return false;
     }
 
+  if (this->Makefile->IsAlias(args[0].c_str()))
+    {
+    this->SetError("can not be used on an ALIAS target.");
+    return false;
+    }
   // Lookup the target for which libraries are specified.
   this->Target =
     this->Makefile->GetCMakeInstance()
@@ -116,7 +121,7 @@ bool cmTargetLinkLibrariesCommand
     {
     if(args[i] == "LINK_INTERFACE_LIBRARIES")
       {
-      this->CurrentProcessingState = ProcessingLinkInterface;
+      this->CurrentProcessingState = ProcessingPlainLinkInterface;
       if(i != 1)
         {
         this->Makefile->IssueMessage(
@@ -127,9 +132,26 @@ bool cmTargetLinkLibrariesCommand
         return true;
         }
       }
+    else if(args[i] == "INTERFACE")
+      {
+      if(i != 1
+          && this->CurrentProcessingState != ProcessingKeywordPrivateInterface
+          && this->CurrentProcessingState != ProcessingKeywordPublicInterface
+          && this->CurrentProcessingState != ProcessingKeywordLinkInterface)
+        {
+        this->Makefile->IssueMessage(
+          cmake::FATAL_ERROR,
+          "The INTERFACE option must appear as the second "
+          "argument, just after the target name."
+          );
+        return true;
+        }
+      this->CurrentProcessingState = ProcessingKeywordLinkInterface;
+      }
     else if(args[i] == "LINK_PUBLIC")
       {
-      if(i != 1 && this->CurrentProcessingState != ProcessingPrivateInterface)
+      if(i != 1
+          && this->CurrentProcessingState != ProcessingPlainPrivateInterface)
         {
         this->Makefile->IssueMessage(
           cmake::FATAL_ERROR,
@@ -138,11 +160,28 @@ bool cmTargetLinkLibrariesCommand
           );
         return true;
         }
-      this->CurrentProcessingState = ProcessingPublicInterface;
+      this->CurrentProcessingState = ProcessingPlainPublicInterface;
+      }
+    else if(args[i] == "PUBLIC")
+      {
+      if(i != 1
+          && this->CurrentProcessingState != ProcessingKeywordPrivateInterface
+          && this->CurrentProcessingState != ProcessingKeywordPublicInterface
+          && this->CurrentProcessingState != ProcessingKeywordLinkInterface)
+        {
+        this->Makefile->IssueMessage(
+          cmake::FATAL_ERROR,
+          "The PUBLIC or PRIVATE option must appear as the second "
+          "argument, just after the target name."
+          );
+        return true;
+        }
+      this->CurrentProcessingState = ProcessingKeywordPublicInterface;
       }
     else if(args[i] == "LINK_PRIVATE")
       {
-      if(i != 1 && this->CurrentProcessingState != ProcessingPublicInterface)
+      if(i != 1
+          && this->CurrentProcessingState != ProcessingPlainPublicInterface)
         {
         this->Makefile->IssueMessage(
           cmake::FATAL_ERROR,
@@ -151,7 +190,23 @@ bool cmTargetLinkLibrariesCommand
           );
         return true;
         }
-      this->CurrentProcessingState = ProcessingPrivateInterface;
+      this->CurrentProcessingState = ProcessingPlainPrivateInterface;
+      }
+    else if(args[i] == "PRIVATE")
+      {
+      if(i != 1
+          && this->CurrentProcessingState != ProcessingKeywordPrivateInterface
+          && this->CurrentProcessingState != ProcessingKeywordPublicInterface
+          && this->CurrentProcessingState != ProcessingKeywordLinkInterface)
+        {
+        this->Makefile->IssueMessage(
+          cmake::FATAL_ERROR,
+          "The PUBLIC or PRIVATE option must appear as the second "
+          "argument, just after the target name."
+          );
+        return true;
+        }
+      this->CurrentProcessingState = ProcessingKeywordPrivateInterface;
       }
     else if(args[i] == "debug")
       {
@@ -184,7 +239,10 @@ bool cmTargetLinkLibrariesCommand
       {
       // The link type was specified by the previous argument.
       haveLLT = false;
-      this->HandleLibrary(args[i].c_str(), llt);
+      if (!this->HandleLibrary(args[i].c_str(), llt))
+        {
+        return false;
+        }
       }
     else
       {
@@ -210,7 +268,10 @@ bool cmTargetLinkLibrariesCommand
           llt = cmTarget::OPTIMIZED;
           }
         }
-      this->HandleLibrary(args[i].c_str(), llt);
+      if (!this->HandleLibrary(args[i].c_str(), llt))
+        {
+        return false;
+        }
       }
     }
 
@@ -224,12 +285,17 @@ bool cmTargetLinkLibrariesCommand
     cmSystemTools::SetFatalErrorOccured();
     }
 
+  const cmPolicies::PolicyStatus policy22Status
+                      = this->Target->GetPolicyStatusCMP0022();
+
   // If any of the LINK_ options were given, make sure the
   // LINK_INTERFACE_LIBRARIES target property exists.
   // Use of any of the new keywords implies awareness of
   // this property. And if no libraries are named, it should
   // result in an empty link interface.
-  if(this->CurrentProcessingState != ProcessingLinkLibraries &&
+  if((policy22Status == cmPolicies::OLD ||
+      policy22Status == cmPolicies::WARN) &&
+      this->CurrentProcessingState != ProcessingLinkLibraries &&
      !this->Target->GetProperty("LINK_INTERFACE_LIBRARIES"))
     {
     this->Target->SetProperty("LINK_INTERFACE_LIBRARIES", "");
@@ -252,20 +318,104 @@ cmTargetLinkLibrariesCommand
 }
 
 //----------------------------------------------------------------------------
-void
+bool
 cmTargetLinkLibrariesCommand::HandleLibrary(const char* lib,
                                             cmTarget::LinkLibraryType llt)
 {
+  cmTarget::TLLSignature sig =
+        (this->CurrentProcessingState == ProcessingPlainPrivateInterface
+      || this->CurrentProcessingState == ProcessingPlainPublicInterface
+      || this->CurrentProcessingState == ProcessingKeywordPrivateInterface
+      || this->CurrentProcessingState == ProcessingKeywordPublicInterface
+      || this->CurrentProcessingState == ProcessingKeywordLinkInterface)
+        ? cmTarget::KeywordTLLSignature : cmTarget::PlainTLLSignature;
+  if (!this->Target->PushTLLCommandTrace(sig))
+    {
+    const char *modal = 0;
+    cmake::MessageType messageType = cmake::AUTHOR_WARNING;
+    switch(this->Makefile->GetPolicyStatus(cmPolicies::CMP0023))
+      {
+      case cmPolicies::WARN:
+        modal = "should";
+      case cmPolicies::OLD:
+        break;
+      case cmPolicies::REQUIRED_ALWAYS:
+      case cmPolicies::REQUIRED_IF_USED:
+      case cmPolicies::NEW:
+        modal = "must";
+        messageType = cmake::FATAL_ERROR;
+      }
+
+      if(modal)
+        {
+        cmOStringStream e;
+        // If the sig is a keyword form and there is a conflict, the existing
+        // form must be the plain form.
+        const char *existingSig
+                    = (sig == cmTarget::KeywordTLLSignature ? "plain"
+                                                            : "keyword");
+        e << this->Makefile->GetPolicies()
+                              ->GetPolicyWarning(cmPolicies::CMP0023) << "\n"
+            "The " << existingSig << " signature for target_link_libraries "
+            "has already been used with the target \""
+          << this->Target->GetName() << "\".  All uses of "
+             "target_link_libraries with a target " << modal << " be either "
+             "all-keyword or all-plain.\n";
+        this->Target->GetTllSignatureTraces(e,
+                                          sig == cmTarget::KeywordTLLSignature
+                                            ? cmTarget::PlainTLLSignature
+                                            : cmTarget::KeywordTLLSignature);
+        this->Makefile->IssueMessage(messageType, e.str().c_str());
+        if(messageType == cmake::FATAL_ERROR)
+          {
+          return false;
+          }
+        }
+    }
+
   // Handle normal case first.
-  if(this->CurrentProcessingState != ProcessingLinkInterface)
+  if(this->CurrentProcessingState != ProcessingKeywordLinkInterface
+      && this->CurrentProcessingState != ProcessingPlainLinkInterface)
     {
     this->Makefile
       ->AddLinkLibraryForTarget(this->Target->GetName(), lib, llt);
-    if (this->CurrentProcessingState != ProcessingPublicInterface)
+    if(this->CurrentProcessingState == ProcessingLinkLibraries)
       {
-      // Not LINK_INTERFACE_LIBRARIES or LINK_PUBLIC, do not add to interface.
-      return;
+      this->Target->AppendProperty("INTERFACE_LINK_LIBRARIES",
+        this->Target->GetDebugGeneratorExpressions(lib, llt).c_str());
+      return true;
       }
+    else if(this->CurrentProcessingState != ProcessingKeywordPublicInterface
+            && this->CurrentProcessingState != ProcessingPlainPublicInterface)
+      {
+      if (this->Target->GetType() == cmTarget::STATIC_LIBRARY)
+        {
+        std::string configLib = this->Target
+                                     ->GetDebugGeneratorExpressions(lib, llt);
+        if (cmGeneratorExpression::IsValidTargetName(lib)
+            || cmGeneratorExpression::Find(lib) != std::string::npos)
+          {
+          configLib = "$<LINK_ONLY:" + configLib + ">";
+          }
+        this->Target->AppendProperty("INTERFACE_LINK_LIBRARIES",
+                                     configLib.c_str());
+        }
+      // Not a 'public' or 'interface' library. Do not add to interface
+      // property.
+      return true;
+      }
+    }
+
+  this->Target->AppendProperty("INTERFACE_LINK_LIBRARIES",
+              this->Target->GetDebugGeneratorExpressions(lib, llt).c_str());
+
+  const cmPolicies::PolicyStatus policy22Status
+                      = this->Target->GetPolicyStatusCMP0022();
+
+  if (policy22Status != cmPolicies::OLD
+      && policy22Status != cmPolicies::WARN)
+    {
+    return true;
     }
 
   // Get the list of configurations considered to be DEBUG.
@@ -303,4 +453,5 @@ cmTargetLinkLibrariesCommand::HandleLibrary(const char* lib,
         }
       }
     }
+  return true;
 }

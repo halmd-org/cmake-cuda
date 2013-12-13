@@ -68,6 +68,16 @@ target_link_libraries(imp_testExe1b
   bld_testLibCycleA
   )
 
+add_executable(cmp0022OLD_test cmp0022OLD_test_vs6_1.cpp)
+target_link_libraries(cmp0022OLD_test bld_cmp0022OLD)
+add_executable(cmp0022NEW_test cmp0022NEW_test_vs6_1.cpp)
+target_link_libraries(cmp0022NEW_test bld_cmp0022NEW)
+
+add_executable(cmp0022OLD_exp_test cmp0022OLD_test_vs6_2.cpp)
+target_link_libraries(cmp0022OLD_exp_test exp_cmp0022OLD)
+add_executable(cmp0022NEW_exp_test cmp0022NEW_test_vs6_2.cpp)
+target_link_libraries(cmp0022NEW_exp_test exp_cmp0022NEW)
+
 # Try building a plugin to an executable imported from the build tree.
 add_library(imp_mod1b MODULE imp_mod1.c)
 target_link_libraries(imp_mod1b bld_testExe2)
@@ -169,6 +179,13 @@ target_compile_definitions(deps_shared_iface
     $<$<STREQUAL:$<TARGET_PROPERTY:CUSTOM_STRING>,testcontent>:CUSTOM_STRING_IS_MATCH>
 )
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_compile_definitions(deps_shared_iface
+    PRIVATE
+      "DO_GNU_TESTS"
+  )
+endif()
+
 if (APPLE OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   include(CheckCXXCompilerFlag)
   check_cxx_compiler_flag(-fPIE run_pic_test)
@@ -183,8 +200,18 @@ else()
   endif()
 endif()
 
+add_executable(exp_renamed_test renamed_test.cpp)
+target_link_libraries(exp_renamed_test exp_renamed)
+
+add_executable(bld_renamed_test renamed_test.cpp)
+target_link_libraries(bld_renamed_test bld_renamed)
+
 if (run_pic_test)
   target_compile_definitions(deps_shared_iface PRIVATE CHECK_PIC_WORKS)
+endif()
+
+if(APPLE)
+  add_subdirectory(framework_interface)
 endif()
 
 #-----------------------------------------------------------------------------
@@ -193,9 +220,48 @@ endif()
 
 add_executable(deps_shared_iface2 deps_shared_iface.cpp)
 target_link_libraries(deps_shared_iface2 bld_testSharedLibDepends bld_subdirlib)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  target_compile_definitions(deps_shared_iface2
+    PRIVATE
+      "DO_GNU_TESTS"
+  )
+endif()
 target_compile_definitions(deps_shared_iface2
   PRIVATE TEST_SUBDIR_LIB
   $<$<BOOL:$<TARGET_PROPERTY:POSITION_INDEPENDENT_CODE>>:PIC_PROPERTY_IS_ON>
   $<$<BOOL:$<TARGET_PROPERTY:CUSTOM_PROP>>:CUSTOM_PROPERTY_IS_ON>
   $<$<STREQUAL:$<TARGET_PROPERTY:CUSTOM_STRING>,testcontent>:CUSTOM_STRING_IS_MATCH>
 )
+
+add_subdirectory(excludedFromAll)
+
+add_executable(iface_test_bld iface_test.cpp)
+target_link_libraries(iface_test_bld bld_testSharedLibDepends)
+
+set_property(TARGET bld_testSharedLibRequired APPEND PROPERTY
+    LINK_INTERFACE_LIBRARIES
+        excludedFromAll
+)
+get_target_property(_configs bld_testSharedLibRequired IMPORTED_CONFIGURATIONS)
+foreach(_config ${_configs})
+    set_property(TARGET bld_testSharedLibRequired APPEND PROPERTY
+        IMPORTED_LINK_INTERFACE_LIBRARIES_${_config}
+        excludedFromAll
+    )
+endforeach()
+unset(_configs)
+add_executable(iface_test_exp iface_test.cpp)
+target_link_libraries(iface_test_exp testSharedLibDepends)
+
+set_property(TARGET testSharedLibDepends APPEND PROPERTY
+    LINK_INTERFACE_LIBRARIES
+        excludedFromAll
+)
+get_target_property(_configs testSharedLibDepends IMPORTED_CONFIGURATIONS)
+foreach(_config ${_configs})
+    set_property(TARGET testSharedLibDepends APPEND PROPERTY
+        IMPORTED_LINK_INTERFACE_LIBRARIES_${_config}
+        excludedFromAll
+    )
+endforeach()
+unset(_configs)
