@@ -96,7 +96,7 @@ void cmDocumentationFormatterMan::PrintHeader(const char* docname,
   os << ".TH " << s_docname << " " << this->ManSection << " \""
     << cmSystemTools::GetCurrentDateTime("%B %d, %Y").c_str()
     << "\" \"" << s_appname
-    << " " << cmVersion::GetCMakeVersion()
+    << " " << cmVersion::GetCMakeVersion() << cmVersion::GetCMakeVariant()
     << "\"\n";
 }
 

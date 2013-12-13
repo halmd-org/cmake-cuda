@@ -1140,7 +1140,7 @@ void CMakeCommandUsage(const char* program)
 
 #ifdef CMAKE_BUILD_WITH_CMAKE
   errorStream
-    << "cmake version " << cmVersion::GetCMakeVersion() << "\n";
+    << "cmake version " << cmVersion::GetCMakeVersion() << cmVersion::GetCMakeVariant() << "\n";
 #else
   errorStream
     << "cmake bootstrap\n";

@@ -22,3 +22,8 @@ const char* cmVersion::GetCMakeVersion()
 {
   return CMake_VERSION;
 }
+
+const char* cmVersion::GetCMakeVariant()
+{
+  return " with native CUDA support";
+}

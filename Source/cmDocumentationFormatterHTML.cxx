@@ -270,7 +270,7 @@ void cmDocumentationFormatterHTML
     }
 
   os << "<h2><a name=\"section_Index\"></a>Master Index "
-     << "CMake " << cmVersion::GetCMakeVersion()
+     << "CMake " << cmVersion::GetCMakeVersion() << cmVersion::GetCMakeVariant()
      << "</h2>\n";
 
   if (!sections.empty())

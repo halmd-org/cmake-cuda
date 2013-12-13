@@ -263,7 +263,7 @@ bool cmDocumentation::PrintCopyright(std::ostream& os)
 bool cmDocumentation::PrintVersion(std::ostream& os)
 {
   os << this->GetNameString() << " version "
-     << cmVersion::GetCMakeVersion() << "\n";
+     << cmVersion::GetCMakeVersion() << cmVersion::GetCMakeVariant() << "\n";
   return true;
 }
 

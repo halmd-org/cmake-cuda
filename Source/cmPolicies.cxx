@@ -891,7 +891,7 @@ void cmPolicies::GetDocumentation(std::vector<cmDocumentationEntry>& v)
     if(i->first != cmPolicies::CMP0000)
       {
       full << "  "
-           << "CMake version " << cmVersion::GetCMakeVersion() << " ";
+           << "CMake version " << cmVersion::GetCMakeVersion() << cmVersion::GetCMakeVariant() << " ";
       // add in some more text here based on status
       switch (i->second->Status)
         {

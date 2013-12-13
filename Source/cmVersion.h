@@ -30,6 +30,7 @@ public:
   static unsigned int GetPatchVersion();
   static unsigned int GetTweakVersion();
   static const char* GetCMakeVersion();
+  static const char* GetCMakeVariant();
 };
 
 #define CMake_VERSION_ENCODE(major, minor, patch) \
